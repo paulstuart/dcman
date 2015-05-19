@@ -1,4 +1,6 @@
 PRAGMA foreign_keys=OFF;
+PRAGMA journal_mode = WAL;
+
 BEGIN TRANSACTION;
 
 CREATE TABLE "datacenters" (
@@ -65,7 +67,7 @@ CREATE TABLE "racknet" (
     min_ip int default 0,
     max_ip int default 0,
     first_ip text default '',
-    last_ip text default ''
+    last_ip text default '',
     unique(rid, vid)
 );
 
