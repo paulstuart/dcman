@@ -1,0 +1,40 @@
+{{define "head"}}<title>{{.Title}}</title>{{end}}
+{{define "javascript"}}
+$(document).ready(function() {
+   $("#upload").click(function() {
+    var payload = {
+        data: $('#data').val()
+    };
+    $.ajax({
+          type: "POST",
+          url: "/data/upload",
+          data: payload,
+          error: function(jqXHR, textStatus, errorThrown) {
+            alert("Error: " + jqXHR.responseText)
+          },
+          //success: function(){ 
+          success: function(jqXHR, textStatus, errorThrown) {
+           //document.location.reload(); 
+            alert("Status:" + textStatus);
+          }
+      });
+   });
+});
+{{end}}
+
+{{define "body"}}
+<div class="centered upload">
+<h1 class="title">{{.Title}}</h1>
+<h2>Copy/paste from spreadsheet (or paste tab-delimited data)<br>
+    The first line must include a header with columns, and column names must match expected format<br>
+    (if they don't, you will get feedback on what is wrong and the valid options)
+</h2>
+<div class="centered">
+<form>
+    <textarea name="data" id="data" rows="20" cols="100"></textarea>
+    <input type="button" id="upload" value="Upload">
+</form>
+</div>
+</div>
+{{end}}
+

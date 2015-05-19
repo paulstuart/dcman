@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en" xml:lang="en">
+<head>
+    <meta http-equiv="content-type" content="text/html;charset=utf-8"/>
+    <title>Okta Login</title>
+    <link rel="stylesheet" type="text/css" href="/dcman/static/css/side-menu.css" media="screen" />
+    <link rel="stylesheet" type="text/css" href="/dcman/static/css/pure-menu.css" media="screen" />
+    <style>
+.invalid_login {
+    text-align:  center;
+    width: 40em;
+    margin-top: 2em ;
+    margin-bottom: -4em ;
+    margin-left: auto ;
+    margin-right: auto ;
+    color: red;
+}
+    </style>
+</head>
+<body>
+
+<div class="layout">
+
+        <div class="header">
+            <h1>Okta Login</h1>
+            <h2>Enter your Okta Login Credentials</h2>
+        </div>
+        {{ if .ErrorMsg }}
+        <div class="invalid_login">{{.ErrorMsg}}</div>
+        {{ end }}
+        <div class="contents">
+    
+<form action="/dcman/login" method="post" class="pure-form pure-form-aligned">
+<br/><br/><table align="center">
+<tr>
+    <td><input type="text" name="username" placeholder="{{.Placeholder}}" required autofocus/></td>
+</tr>
+
+<tr>
+<td><input type="password" name="password" placeholder="Password" required/></td>
+</tr>
+
+
+<tr><td><br/><input type="submit" value="Login" name="Submit" class="pure-button pure-button-primary"/></td></tr>
+</table>
+</form>
+            
+            
+       </div>     
+    </div>
+
+</body>
+</html>
+

@@ -1,0 +1,149 @@
+{{define "head"}}<title>{{.Title}}</title>{{end}}
+{{define "javascript"}}
+
+$(document).ready(function() {
+    $('#rackunit').change(function() {
+        window.location.assign("/"+$(this).val()+"/add/{{.Server.DC}}/{{.Server.Rack}}/{{.Server.RU}}")
+    });
+
+    $('#ipselector').change(function() {
+        $("#vlanip").val(this.value);
+    })
+
+    if ($("#vlanip").val().length == 0) {
+        $("#vlanip").val($('#ipselector').val());
+    }
+
+    // because safari doesn't support the pattern/required HTML5 feature
+   $('#servo').on('submit', function(e){
+      //e.preventDefault();
+      var hostname = $("input[name=Hostname]").val();
+      if (hostname.length == 0) {
+          alert("Hostname cannot be blank");
+          e.preventDefault();
+      } else {
+          this.submit()
+     }
+   });
+
+});
+
+
+
+{{end}}
+{{define "body"}}
+<div id="serverform" class="server">
+{{ if eq .Server.ID 0 }}
+<div id="rutype">
+<select id="rackunit">
+    <option value="server" selected>Server</option>
+    <option value="network">Network Device</option>
+</select>
+</div>
+{{ end }}
+<form method="post" action="/dcman/server/edit/{{.Server.ID}}" class="common" id="servo">
+    <fieldset>
+        <legend>General</legend>
+        <label>Hostname<input type="text" name="Hostname" value="{{.Server.Hostname}}" pattern=".+" required/></label><br/>
+        <label>Alias<input type="text" name="Alias" value="{{.Server.Alias}}"/></label><br/>
+        <label>Datacenter<input type="text" name="DC" value="{{.Server.DC}}" readonly/></label><br/>
+        <label><a href="/dcman/rack/view/{{.Server.DC}}/{{.Server.Rack}}">Rack Number</a><input type="text" name="Rack" value="{{.Server.Rack}}"/></label><br/>
+        <label>Rack Unit<input type="text" name="RU" value="{{.Server.RU}}"/></label><br/>
+        <label>Unit Height<input type="text" name="Height" value="{{.Server.Height}}"/></label><br/>
+        <label>Profile<input type="text" name="Profile" value="{{.Server.Profile}}"/></label><br/>
+        <label>Asset Tag<input type="text" name="AssetTag" value="{{.Server.AssetTag}}"/></label><br/>
+        <label>Serial Number<input type="text" name="SerialNo" value="{{.Server.SerialNo}}"/></label><br/>
+        <label>Part Number<input type="text" name="PartNo" value="{{.Server.PartNo}}"/></label><br/>
+        <label>Assigned<input type="text" name="Assigned" value="{{.Server.Assigned}}"/></label><br/>
+        <!--
+        <label class="threelines">Note<textarea cols="35" rows="3" name="Note">{{.Server.Note}}</textarea></label><br/>
+        -->
+        <label id="notelabel">Note<textarea cols="35" rows="3" name="Note">{{.Server.Note}}</textarea></label><br/>
+    </fieldset>
+
+    <fieldset>
+        <legend>IPMI</legend>
+        <label>IP<input type="text" name="IPIpmi" 
+            value="{{ if eq 0 (len .Server.IPIpmi)}}{{index .IPs "32"}}{{else}}{{.Server.IPIpmi}}{{end}}"/></label><br/>
+        <label>MAC<input type="text" name="MacIPMI" value="{{.Server.MacIPMI}}"/></label><br/>
+    </fieldset>
+
+    <fieldset>
+        <legend>Network IP</legend>
+        {{ if ne 0 (len .IPs) }}
+        <label>VLAN
+        <select id="ipselector">
+            {{ range $k,$v := .IPs }}
+            <option value="{{$v}}">{{$k}}</option>
+            {{ end }}
+        </select>
+        </label><br/>
+        {{ end }}
+        {{ if .Server.IPInternal }}
+        {{/*
+        <label title="{{.Server.InternalVLAN}}" class="tooltip"> Internal IP <input type="text" id="vlanip" name="IPInternal" value="{{.Server.IPInternal}}"/></label><br/>
+        */}}
+        <label title="{{.Server.InternalVLAN}}"> Internal IP <input type="text" id="vlanip" name="IPInternal" value="{{.Server.IPInternal}}"/></label><br/>
+        {{ else }}
+        <label> Internal IP <input type="text" id="vlanip" name="IPInternal" value="{{.Server.IPInternal}}"/></label><br/>
+        {{ end }}
+        <label>Eth0 MAC<input type="text" name="MacPort0" value="{{.Server.MacPort0}}"/></label><br/>
+        <label>Eth1 MAC<input type="text" name="MacPort1" value="{{.Server.MacPort1}}"/></label><br/>
+        <label>Public IP<input type="text" id="publicip" name="IPPublic" value="{{.Server.IPPublic}}"/></label><br/>
+    </fieldset>
+
+    <fieldset>
+        <legend>Switch Ports</legend>
+        <label>IPMI<input type="text" name="PortIpmi" value="{{.Server.PortIpmi}}"/></label><br/>
+        <label>Eth0<input type="text" name="PortEth0" value="{{.Server.PortEth0}}"/></label><br/>
+        <label>Eth1<input type="text" name="PortEth1" value="{{.Server.PortEth1}}"/></label><br/>
+    </fieldset>
+
+    <fieldset>
+        <legend>Cables</legend>
+        <label>IPMI<input type="text" name="CableIpmi" value="{{.Server.CableIpmi}}"/></label><br/>
+        <label>Eth0<input type="text" name="CableEth0" value="{{.Server.CableEth0}}"/></label><br/>
+        <label>Eth1<input type="text" name="CableEth1" value="{{.Server.CableEth1}}"/></label><br/>
+    </fieldset>
+
+{{ if gt .Server.ID 0 }}
+    <fieldset>
+<a href="/dcman/server/audit/{{ .Server.ID }}">Change History</a>
+    </fieldset>
+{{end}}
+<input type="hidden" name="ID" value="{{.Server.ID}}">
+<input type="hidden" name="RID" value="{{.Server.RID}}">
+<input type="hidden" name="UID" value="{{.User.ID}}">
+<input type="hidden" name="OriginalRack" value="{{.Server.Rack}}"/>
+<input type="button" value="Cancel"  onclick="javascript:window.history.go(-1)">
+{{ if .User.Editor }}
+{{ if eq .Server.ID 0 }}
+<input type="submit" name="action" value="Add">
+{{ else }}
+<input type="submit" name="action" value="Update">
+<input type="submit" name="action" value="Delete">
+{{ end }}
+{{ else }}
+<div id="sorry">You must be logged in as an admin to modify this record</div>
+{{ end }}
+</form>
+</div>
+{{ if gt .Server.ID 0 }}
+<div class="vms">
+    <fieldset>
+        <legend>VMs</legend>
+    <div>
+    {{ range .Server.VMs }}
+    <div class="vmrow"><a href="/dcman/vm/edit/{{ .ID }}">{{ .Hostname }}</a> {{.Private}} {{if .Public }}({{.Public}}){{end}}</div>
+    {{ end }}
+    </div>
+    {{ if .User.Editor }}
+    <form action="/dcman/vm/add/{{.Server.ID}}">
+        <input type="submit" value="Add VM">
+    </form>
+    {{end}}
+    </fieldset>
+</div>
+{{end}}
+{{end}}
+

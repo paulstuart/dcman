@@ -1,0 +1,25 @@
+{{define "head"}}<title>{{.Title}}</title>{{end}}
+{{define "javascript"}}
+$(document).ready(function() {
+    var table = $('#example').DataTable( {
+        "lengthMenu": [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
+        "iDisplayLength": -1,
+        "order": [
+        {{ range .Table.Sorting }} [ {{.Column}}, "{{ if .Decend }}Desc{{ else }}Asc{{ end }}" ],
+        {{ end }} ]
+        ,
+      "columnDefs": [
+               {{ range $key, $value := .Table.Types }} { type: '{{$key}}', targets: {{$value}} },
+               {{ end }} ] 
+    });
+    // new $.fn.dataTable.FixedHeader( table );
+});
+{{end}}
+
+
+
+{{define "body"}}
+
+{{ template "tablelinks" .Table }}
+
+{{end}}

@@ -1,0 +1,33 @@
+{{define "head"}}<title>{{.Title}}</title>{{end}}
+{{define "javascript"}}
+{{end}}
+{{define "body"}}
+<div id="serverform" class="server">
+<form method="post" class="common" id="servo">
+    <fieldset>
+        <legend>VLAN</legend>
+        <label>Datacenter<input type="text" name="DC" value="{{.VLAN.DC}}" /></label><br/>
+        <label>Number<input type="text" name="Name" value="{{.VLAN.Name}}" pattern=".+" required/></label><br/>
+        <label>Gateway<input type="text" name="Gateway" value="{{.VLAN.Gateway}}"/></label><br/>
+        <label>Route<input type="text" name="Route" value="{{.VLAN.Route}}"/></label><br/>
+        <label>Netmask<input type="text" name="Netmask" value="{{.VLAN.Netmask}}"/></label><br/>
+    </fieldset>
+
+<input type="hidden" name="ID" value="{{.VLAN.ID}}">
+<input type="hidden" name="DID" value="{{.VLAN.DID}}">
+<input type="hidden" name="UID" value="{{.User.ID}}">
+<input type="button" value="Cancel"  onclick="javascript:window.history.go(-1)">
+{{ if .User.Editor }}
+{{ if eq .VLAN.ID 0 }}
+<input type="submit" name="action" value="Add">
+{{ else }}
+<input type="submit" name="action" value="Update">
+<input type="submit" name="action" value="Delete">
+{{ end }}
+{{ else }}
+<div id="sorry">You must be logged in as an admin to modify this record</div>
+{{ end }}
+</form>
+</div>
+{{end}}
+

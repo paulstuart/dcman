@@ -1,0 +1,31 @@
+{{define "head"}}<title>{{.Title}}</title>{{end}}
+{{define "javascript"}}
+$(document).ready(function() {
+    $('#example').dataTable( {
+        "iDisplayLength": 100
+    });
+});
+{{end}}
+
+
+
+{{define "body"}}
+
+<table id="example" class="display" >
+     <thead>
+    <tr>
+        <th>Datacenter</th>
+        <th>Hostname</th>
+    </tr>
+     </thead>
+     <tbody>
+         {{ range .VMs }}
+        <tr>
+            <td>{{ .Server.DC }}</td>
+            <td><a href="/dcman/vm/edit/{{.ID}}">{{.Hostname}}</a></td> 
+        </tr>
+        {{ end }}
+     </tbody>
+</table>
+
+{{end}}

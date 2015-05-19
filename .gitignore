@@ -23,6 +23,12 @@ _testmain.go
 *.test
 *.prof
 
+# our binary
 /dcman
+
+# customized favicon
 /assets/static/images/favicon.ico
+/logs
+
 config.gcfg
+inventory.db

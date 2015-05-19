@@ -1,0 +1,12 @@
+{{define "head"}}
+<title>{{ .Title }}</title>
+{{end}}
+{{define "javascript"}}
+{{end}}
+{{define "body"}}
+<h1 class="fail">{{.Title}}</h1>
+{{/*
+<input type="button" value="Back"  onclick="javascript:window.history.go(-1)">
+<div id="failure">{{.Error}}</div>
+*/}}
+{{end}}

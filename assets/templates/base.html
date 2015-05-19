@@ -1,0 +1,176 @@
+{{define "base"}}
+<!DOCTYPE html>
+<html lang="en" xml:lang="en">
+<head>
+    <meta http-equiv="content-type" content="text/html;charset=utf-8"/>
+    <title>{{.Title}}</title>
+    <link rel="stylesheet" type="text/css" href="/dcman/static/css/reset.css" media="screen" />
+    <link rel="stylesheet" type="text/css" href="/dcman/static/css/style.css" media="screen" />
+    <link rel="stylesheet" type="text/css" href="/dcman/static/css/jquery.dataTables.css" media="screen" />
+    <link rel="stylesheet" type="text/css" href="/dcman/static/css/jquery.dataTables_themeroller.css" media="screen" />
+    <script type="text/javascript" src="/dcman/static/js/jquery-2.0.3.min.js"></script>
+    <script type="text/javascript" src="/dcman/static/js/main.js"></script>
+    <script type="text/javascript" src="/dcman/static/js/jquery.dataTables.js"></script>
+    <script type="text/javascript" src="/dcman/static/js/ip-address.js"></script>
+    <script type="text/javascript">
+    {{ template "javascript" .}}
+    </script>
+</head>
+<body>
+<nav>
+    <ul>
+      <li><a href="/dcman/">Home</a>
+        <ul>
+            <li><a href="/dcman/ping">About</a></li>
+        </ul>
+    </li>
+      <li><a>Servers</a>
+        <ul>
+            <li><a href="/dcman/dc/all">List All</a></li>
+            {{ range .Datacenters }}
+            <li><a href="/dcman/dc/racks/{{.Name}}">{{.Location}}</a></li>
+            {{ end }}
+            {{ if .User.Editor }}
+            <li><a href="/dcman/rack/add">Add Rack</a></li>
+            <li><a href="/dcman/server/dupes">Duplicate Servers</a></li>
+            {{ end }}
+        </ul>
+      </li>
+      <li><a>VMs</a>
+        <ul>
+            <li><a href="/dcman/vm/all">List All</a></li>
+            <li><a href="/dcman/server/vms">By Server</a></li>
+            {{ range .Datacenters }}
+            <li><a href="/dcman/vm/list/{{.Name}}">{{.Location}}</a></li>
+            {{ end }}
+            <li><a href="/dcman/vm/orphans">Orphaned VMs</a></li>
+        </ul>
+      </li>
+      <li><a>Network</a>
+        <ul>
+            {{/*
+            <li><a>Internal IPs</a>
+            <ul>
+            <li><a href="/dcman/ip/internal/all">List All</a></li>
+            {{ range .Datacenters }}
+            <li><a href="/dcman/ip/internal/dc/{{.Name}}">{{.Location}}</a></li>
+            {{ end }}
+            </ul>
+            */}}
+            <li><a href="/dcman/network/devices">Network Devices</a></li>
+            <li><a href="/dcman/ip/internal/all">Internal IPs</a></li>
+            <li><a href="/dcman/ip/public/all">Public IPs</a></li>
+            <li><a href="/dcman/network/vlans">VLANs</a></li>
+            {{/*
+            <li><a href="/dcman/dc/connections">Connections</a></li>
+            */}}
+        </ul>
+      </li>
+      <li><a>Data</a>
+        <ul>
+            <li><a href="/dcman/data/upload">Load Server Data</a></li>
+            <li><a href="/dcman/data/servers.csv">Export Servers (CSV)</a></li>
+            <li><a href="/dcman/data/vms.csv">Export VMs (CSV)</a></li>
+        </ul>
+      </li>
+    {{ if .User.Editor }}
+      <li><a>Admin</a>
+        <ul>
+            <li><a href="/dcman/user/list">List Users</a></li>
+            {{ if .User.Admin }}
+            <li><a href="/dcman/user/add">Add User</a></li>
+            {{ end }}
+            <li><a href="/dcman/audit/log">Audit Log</a></li>
+        </ul>
+      </li>
+      {{ end }}
+      <li>
+        <div id="search">
+            <form name="finder" class="findit" method="POST" action="/dcman/search">
+                <select id="kind" name="kind">
+                    <option value="server">Server hostname</option>
+                    <option value="vm">VM hostname</option>
+                    <option value="ip">IP address</option>
+                    <option value="ipmi">IPMI address</option>
+                    <option value="rack">Rack View</option>
+                </select>
+                <input type="text" name="what"/>
+                <input type="submit" value="Search">
+            </form>
+        </div>
+        </li>
+    </ul>
+    <ul>
+        <div class="login">
+            <a href="/dcman/logout">Logout {{.User.Login}}</a>
+        </div>
+    </ul>
+</nav>
+{{ template "body" .}}
+</body>
+</html>
+{{end}}
+
+{{define "table"}}
+<table id="example" class="display cell-border" >
+  <thead>
+    <tr>
+      {{ range .Columns }}<th>{{.}}</th>{{ end }}
+    </tr>
+  </thead>
+  <tbody>
+    {{ range .Rows }}
+    <tr>
+    {{ range . }}<td>{{.}}</td>{{ end }}
+    </tr>
+    {{ end }}
+  </tbody>
+</table>
+{{end}}
+
+{{define "tablelinks"}}
+<table id="example" class="display cell-border" >
+  <thead>
+    <tr>
+      {{ range .HTMLColumns }}<th>{{.}}</th>{{ end }}
+    </tr>
+  </thead>
+  <tbody>
+    {{ range .HTMLRows }}
+    <tr{{ if .Selected }} class="selected"{{end}}>
+    {{ range .Columns }}<td>{{.}}</td>{{ end }}
+    </tr>
+    {{ end }}
+  </tbody>
+</table>
+{{end}}
+
+
+{{define "rack" }}
+<div class="rackdiv">
+    <h2><a href="/dcman/rack/edit/{{.ID}}">Rack {{.Label}}</a></h2>{{ $ID := .Label }}
+    <h2>{{if gt (len .VendorID) 0}}({{.VendorID}}){{else}}&nbsp;{{end}}</h2>
+    <table id="racklayout">
+     <thead>
+    <tr>
+        <th>RU</th><th>Hostname</th><th>IPMI</th><th>Internal IP<th>
+    </tr>
+     </thead>
+         {{/*if gt $i 1}}<th>{{.}}</th>{{ end }}{{end*/}}
+     <tbody>
+        {{ $RackLabel := .Label }}
+        {{ $DC := .DC }}
+         {{ range .RackUnits }}
+         <tr class="rackheight{{.Height}}">
+            <td>{{ if and (eq 0 .SID) (eq 0 .NID) }}<a href="/dcman/server/add/{{$DC}}/{{$RackLabel}}/{{.RU}}">{{.RU}}</a>{{else}}{{.RU}}{{ end }}</td>
+        <td> {{ if gt .SID 0 }} <a href="/dcman/server/edit/{{.SID}}">{{.Hostname}}</a> 
+                {{ else if gt .NID 0 }} <a href="/dcman/network/edit/{{.NID}}">{{.Hostname}}</a> 
+                {{ else }} {{.Hostname}} {{ end }} </td>
+            <td>{{.IPMI}}</td>
+            <td>{{.Internal}}</td>
+        </tr>
+        {{ end }}
+     </tbody>
+</table>
+</div>
+{{end}}

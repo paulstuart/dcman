@@ -1,0 +1,133 @@
+{{define "head"}}<title>{{.Title}}</title>{{end}}
+{{define "javascript"}}
+$(document).ready(function() {
+
+   $("#rn_add").click(function() {
+    var data = {
+        VID: $("#VID_new").val(),
+        FirstIP: $("#FirstIP_new").val(),
+        LastIP: $("#LastIP_new").val(),
+        RID: $("#RID").val(),
+        action: "Add"
+    };
+    $.ajax({
+      type: "POST",
+      url: "/dcman/rack/network",
+      data: data,
+      error: function(jqXHR, textStatus, errorThrown) {
+        alert("Error: " + jqXHR.responseText)
+      },
+      success: function(){ 
+       document.location.reload(); 
+      }
+    });
+  });
+
+   $(".modify_rn").click(function() {
+    var vid = this.id.split("_")[1];
+    var action = this.value;
+    var data = {
+        //VID: vid, //$("#VID_" + id).val(),
+        VID: $("#VID_" + vid).val(),
+        FirstIP: $("#FirstIP_" + vid).val(),
+        LastIP: $("#LastIP_" + vid).val(),
+        RID: $("#RID").val(),
+        OriginalVID: vid,
+        action: action
+    };
+    $.ajax({
+      type: "POST",
+      url: "/dcman/rack/network",
+      data: data,
+      error: function(jqXHR, textStatus, errorThrown) {
+        alert("Error: " + jqXHR.responseText)
+      },
+      success: function(){ 
+       document.location.reload(); 
+      }
+    });
+    /*
+    */
+  });
+
+$(".rvlan").change(function () {
+    var id = this.name.split("_")[1];
+    $("#rn_" + id).val("Update");
+  });
+
+});
+
+{{end}}
+{{define "body"}}
+<div id="rackform" class="rack">
+<form method="post" class="common">
+    <fieldset>
+        <legend>General</legend>
+        {{ if gt .Rack.ID 0 }}
+        <label>Datacenter<input type="text" name="DC" value="{{.DC}}" readonly/></label><br/>
+        {{ else }}
+        <label>Datacenter<select name="DID">{{range .Datacenters}}
+                <option value="{{.ID}}">{{.Name}}</option>
+                {{ end }}</select>
+        </label><br/>
+        {{ end }}
+        <label>Rack Number<input type="text" name="Label" value="{{.Rack.Label}}"/></label><br/>
+        <label>Vendor ID<input type="text" name="VendorID" value="{{.Rack.VendorID}}"/></label><br/>
+        <label>Rack Height<input type="text" name="RUs" value="{{.Rack.RUs}}"/></label><br/>
+    </fieldset>
+    {{/* for now
+    <fieldset>
+        <legend>Layout</legend>
+        <label>X Pos<input type="text" name="XPos" value="{{.Rack.XPos}}"/></label><br/>
+        <label>Y Pos<input type="text" name="YPos" value="{{.Rack.YPos}}"/></label><br/>
+    </fieldset>
+    */}}
+
+<input type="hidden" name="ID" value="{{.Rack.ID}}">
+<input type="hidden" name="DID" value="{{.Rack.DID}}">
+<input type="hidden" name="UID" value="{{.User.ID}}">
+<input type="button" value="Cancel"  onclick="javascript:window.history.go(-1)">
+{{ if .User.Editor }}
+{{ if eq .Rack.ID 0 }}
+<input type="submit" name="action" value="Add">
+{{ else }}
+<input type="submit" name="action" value="Update">
+<input type="submit" name="action" value="Delete">
+{{ end }}
+{{ end }}
+</form>
+</div>
+<div id="racknets" class="rack">
+    <form method="post" class="common" method="/racknet/edit">
+    <input type="hidden" name="ID" id="RID" value="{{.Rack.ID}}">
+    <fieldset>
+        <legend>VLANs</legend>
+        <table>
+        <tr>
+            <th>VLAN</th><th>Start</th><th>End</th><th></th>
+        </tr>
+        {{ range .Rack.RackNets }}
+        <tr>
+            <td><input type="text" class="rvlan" id="VID_{{.VID}}" name="VID_{{.VID}}" value="{{.VID}}"/></td>
+            <td><input type="text" class="rvlan" id="FirstIP_{{.VID}}" name="FirstIP_{{.VID}}" value="{{.FirstIP}}"/></td>
+            <td><input type="text" class="rvlan" id="LastIP_{{.VID}}" name="LastIP_{{.VID}}" value="{{.LastIP}}"/></td>
+            {{ if $.User.Editor }}
+            <td><input type="button" id="rn_{{.VID}}" class="modify_rn" value="Delete"></td>
+            {{ end }}
+        </tr>
+        {{ end }}
+        <tr>
+            <td><input type="text" id="VID_new" name="VID_new" value=""/></td>
+            <td><input type="text" id="FirstIP_new" name="FirstIP_new" value=""/></td>
+            <td><input type="text" id="LastIP_new" name="LastIP_new" value=""/></td>
+            {{ if $.User.Editor }}
+            <td><input type="button" id="rn_add" value="Add"></td>
+            {{ end }}
+        </tr>
+        </table>
+    </form>
+
+    </fieldset>
+</div>
+{{end}}
+

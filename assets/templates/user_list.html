@@ -1,0 +1,53 @@
+{{define "javascript"}}
+
+var admin_edit = function(url, payload) {
+    $.post(url, payload, "text").done(function( data ) {
+        if (data == "ok") {
+            location.reload(true);
+        } else {
+            alert(data);
+        }
+    });
+}
+
+$(document).ready(function() {
+    $("#admin_add").click(function(e) {
+        admin_edit("/user/add", 
+        {
+            "admin": $("#newadmin").val(),
+            "login": login
+        });
+    });
+    $(".admin_delete").click(function(e) {
+        admin_edit("/user/del", 
+        {
+            "admin": e.currentTarget.id, 
+            "login": login
+        });
+    });
+});
+{{end}}
+
+{{define "body"}}
+<table id="example" class="userlist">
+  <thead>
+    <tr>
+        <th>Email</th><th>Login</th><th>First</th><th>Last</th><th>Access</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{ range .Users }}
+    <tr>
+        <td><a href="/dcman/user/edit/{{.ID}}">{{.Email}}</a></td>
+        <td>{{.Login}}</td>
+        <td>{{.First}}</td>
+        <td>{{.Last}}</td>
+        <td>{{.Access}}</td>
+    </tr>
+    <tr>
+    {{ end }}
+    </tr>
+  </tbody>
+</table>
+
+{{end}}

@@ -1,0 +1,17 @@
+{{define "head"}}<title>{{.Title}}</title>{{end}}
+{{define "javascript"}}
+$(document).ready(function() {
+    $("th").css("background-color", "#eeeeee");
+    $("tr:visible:even").css("background-color", "#ffffff");
+    $("tr:visible:odd").css("background-color", "#eeeeee");
+} );
+{{end}}
+
+
+{{define "body"}}
+<h1 class="title">{{.Title}}</h1>
+{{ $DC := .DC }}
+<div class="outer">
+{{ template "rack" .Rack }}
+{{end}}
+

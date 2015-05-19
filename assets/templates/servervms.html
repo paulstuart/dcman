@@ -1,0 +1,50 @@
+{{define "head"}}<title>{{.Title}}</title>{{end}}
+{{define "javascript"}}
+$(document).ready(function() {
+    $('#example').dataTable( {
+       paging: false,
+    /*
+       "columnDefs": [
+                {
+                    "targets": [ 0 ],
+                    "visible": false,
+                    "searchable": false
+                }
+            ] 
+    */
+    });
+});
+{{end}}
+
+
+{{define "vm"}}
+<a href="/dcman/vm/edit/{{.ID}}">{{.Hostname}}</a>
+{{end}}
+
+{{define "vms"}}
+{{ $len := len . }}
+{{ range $v := . }}
+{{ template "vm" $v }}
+{{end}}
+{{end}}
+
+{{define "body"}}
+
+<table id="example" class="display" >
+     <thead>
+    <tr>
+        <th>Datacenter</th><th>Server</th><th>VMs</th>
+    </tr>
+     </thead>
+     <tbody>
+         {{ range .Servers }}
+        <tr>
+            <td>{{.DC}}</td>
+            <td><a href="/dcman/server/edit/{{.ID}}">{{.Hostname}}</a></td>
+            <td>{{ template "vms" .VMs }}</td>
+        </tr>
+        {{ end }}
+     </tbody>
+</table>
+
+{{end}}

@@ -1,0 +1,572 @@
+label {text-align:  right;}
+
+h1 {
+    text-align:  center;
+    /*
+    font-family: "HelveticaNeue-Light", "Helvetica Neue Light", "Helvetica Neue", Helvetica, Arial, "Lucida Grande", sans-serif; 
+    padding-top: 20px;
+    display:inline;
+    */
+    font-family: Helvetica, Arial, "Lucida Grande", sans-serif; 
+    font-weight: 500;
+}
+
+#title {
+    text-align:  center;
+    margin: 0px auto;
+    font-family: Helvetica, Arial, "Lucida Grande", sans-serif; 
+    /*
+    background-color: #EEEEEE;
+    font-weight: 500;
+    font-size: 200%;
+    */
+    width: 40%;
+    float: left;
+}
+
+.outer {
+    padding: 0em 1em;
+}
+
+h1.title {
+    margin: 0.5em;
+    font-weight: bold;
+    font-size: 200%;
+}
+
+
+.fail {
+    margin-top: 2em;
+    color: red;
+}
+
+.errormsg {
+    margin: 1em;
+    color: red;
+}
+
+.makered {
+    background-color: red;
+}
+
+.tbl_name {
+    text-align:  right;
+    padding-right: 0.5em;
+}
+
+.tbl_name:after {
+    content: ":";
+}
+
+.rackdiv,.summary {
+    margin: 1em ;
+    display: inline-block;
+}
+
+.rackdiv h2 {
+   background-color: #EEEEEE;
+    text-align:  center;
+}
+
+.rackdiv th {
+   font: bold 13px Arial;
+}
+
+.rackdiv td {
+   font: 12px Arial;
+   padding: 2px;
+}
+
+div.finder {
+    margin: 1em ;
+    /*
+    display: inline-block;
+    */
+}
+
+div.summary, .finder {
+      border:2px solid black;
+}
+
+#search {
+  padding: 7px 7px 3px 7px;
+    /*
+    vertical-align: center;
+    margin: 0.5em 1em 0.5em 1em;
+    background-color: red;
+    width: 50%;
+    margin-left: 4em ;
+    margin-right: 4em ;
+    */
+}
+
+.findit > label {
+    margin: 0.5em;
+}
+
+.findit > label {
+    display: inline-block;
+    width: 15em;
+}
+
+
+.summary > table {
+   padding: 3em;
+}
+
+.summary > table > thead {
+  text-transform: capitalize;
+  margin: 1em;
+  border-bottom: 2px solid black;
+  border-top: 2px solid black;
+}
+
+.grandtotal {
+  border-top: 2px solid black;
+  font-weight:bold;
+}
+
+.summary > table > tbody > tr > td {
+  padding: .5em;
+}
+
+.totaltitle {
+    /*
+  border-bottom: 1px solid black;
+  */
+  margin: .5em;
+  font: bold 16px Arial;
+    text-align:  center;
+}
+
+table.server {
+    margin: 2em;
+}
+
+.button_link {
+      font: bold 11px Arial;
+      text-decoration: none;
+      background-color: #EEEEEE;
+      color: #333333;
+      padding: 2px 6px 2px 6px;
+      border-top: 1px solid #CCCCCC;
+      border-right: 1px solid #333333;
+      border-bottom: 1px solid #333333;
+      border-left: 1px solid #CCCCCC;
+}
+
+
+.topper {
+    width: 100%;
+    border-style:solid;
+    /*
+    border-color:#0000ff;
+    border-width: initial initial thick initial;
+    height: 4em;
+    background-color: #EEEEEE;
+    overflow: hidden;
+    position:absolute;
+    */
+    position: fixed;
+    background-color: #EEEEEE;
+    border-width: 0 0 thin 0;
+
+    right: 0;
+    left: 0;
+    top: 0;
+    display:block;
+    height:2em;
+    padding-top:    0.5em;
+/*
+    margin-bottom:1em;
+*/
+
+}
+
+#blocker {
+   height: 2.5em;
+}
+
+
+#welcome {
+    margin: 5em;
+    font-family: Helvetica, Arial, "Lucida Grande", sans-serif; 
+    font-weight: 500;
+}
+
+.formbox {
+    width: 20em;
+    margin-top: 2em ;
+    margin-left: auto ;
+    margin-right: auto ;
+}
+
+.centered {
+    width: 90%;
+    margin-left: auto ;
+    margin-right: auto ;
+}
+
+.upload {
+    width: 40em;
+    text-align: center; 
+}
+
+#newuser {
+    margin-top: 2em ;
+}
+
+/* START NAV MENU */
+nav {
+  background-color:#2C5463;
+  height:40px;
+   z-index: 99999; 
+}
+ 
+ 
+nav ul {
+  font-family: Arial, Verdana;
+  font-size: 20px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+ 
+nav ul li {
+  display: block;
+  position: relative;
+  float: left;
+   z-index: 99999; 
+}
+ 
+nav li ul { 
+  display: none; 
+}
+ 
+nav ul li a {
+  display: block;
+  text-decoration: none;
+  /*
+  padding: 7px 15px 3px 15px;
+  */
+  padding: 7px 7px 3px 7px;
+  background: #2C5463;
+  color: #ffffff;  
+  margin-left: 1px;
+  /*
+  white-space: nowrap;
+  */
+  height:30px; /* Width and height of top-level nav items */
+  width:90px;
+  text-align:center;
+}
+ 
+nav ul li a:hover { 
+  background: #617F8A; 
+}
+ 
+nav li:hover ul {
+  display: block;
+  position: absolute;
+  height:30px;
+}
+ 
+nav li:hover li {
+  float: none;
+  font-size: 11px;
+ 
+}
+ 
+nav li:hover a { 
+  background: #3A464F; 
+  height:30px; /* Height of lower-level nav items is shorter than main level */
+}
+ 
+nav li:hover li a:hover { 
+  background: #95A9B1; 
+}
+ 
+nav ul li ul li a {
+    text-align:left; /* Top-level items are centered, but nested list items are left-aligned */
+}
+ 
+/* END NAV MENU */
+
+
+div.login {
+  font-family: Arial, Verdana;
+  font-size: 16px;
+  float: right;
+  text-decoration: none;
+  padding: 7px 7px 3px 7px;
+  /*
+  padding: 7px 15px 3px 15px;
+  */
+  color: white;  
+  background-color:#2C5463;
+  margin-left: 1px;
+}
+ 
+div.login > a {
+  vertical-align: middle;
+  font-size: 16px;
+  text-decoration: none;
+  color: white;  
+  margin-left: 1em;
+}
+ 
+table.userlist {
+    margin-left:auto; 
+    margin-right:auto;
+    margin-top: 2em;
+      border:1px solid black;
+}
+
+
+table.userlist > thead {
+  color: white;
+  background:#2C5463;
+  text-transform: capitalize;
+  margin: 1em;
+}
+
+table.userlist > thead > tr > th{
+  text-transform: capitalize;
+  margin: 1em;
+  padding: 1em;
+}
+
+table.userlist > tbody > tr > td{
+  margin: .25em;
+  padding: .25em;
+   border: 1px solid black;
+}
+
+.userinfo {
+  display:block; 
+  padding: 1em;
+  width: 30em;
+  margin-top: 2em; 
+  margin-left: auto; 
+  margin-right: auto;
+  border: 1px solid black;
+}
+
+/*
+.userinfo > fieldset > label {
+div.userinfo > fieldset {
+fieldset {
+*/
+.userinfo > fieldset > label {
+    padding: 1em;
+  font:80%/1 sans-serif;
+    border-width: initial initial thick initial;
+}
+
+div.userinfo > form > fieldset > label {
+/*
+  float:left;
+*/
+display: inline-block; 
+  width: 15em;
+  margin-right:0.5em;
+  padding-top:0.2em;
+  text-align:right;
+  font-weight:bold;
+}
+
+div.userinfo > form > fieldset > label > input {
+/*
+  float:left;
+display: block; 
+*/
+}
+
+div.server, div.vm, div.rack {
+  float: left;
+  padding: 1em;
+  margin-left: auto; 
+  margin-right: auto;
+  }
+
+form.common > fieldset {
+    margin: 1em;
+    font:80%/1 sans-serif;
+      border:1px solid black;
+        padding: 0.2em 0.5em;
+
+}
+
+
+form.common > fieldset > label {
+display: inline-block; 
+  width: 20em;
+  margin-right:1.5em;
+  padding-top:0.2em;
+  text-align:right;
+  font-weight:bold;
+}
+
+form.common > fieldset > label > input {
+  margin-left:0.5em;
+}
+
+div.rackdiv {
+      border:2px solid black;
+/*
+      border:1px solid green;
+      padding: 0.5em;
+*/
+}
+
+/*
+div.rackdiv > table > tbody {
+  background: blue;
+div.rackdiv > table > tbody > tr > td {
+   border-bottom:1px solid green;
+}
+*/
+
+div.rackdiv > table > tbody > tr > td > a, u {
+    text-decoration: none;
+}
+
+/*
+div.rackdiv > table  { 
+*/
+div.rackdiv > table > tbody > tr > td { 
+   border: 1px solid black;
+}   
+
+h1.title {
+    padding-top: 1em;
+   font: bold 24px Arial;
+}
+
+.tophat {
+  background: red;
+  height: 2em;
+}
+
+.ontop {
+  z-index: 999999;
+}
+
+/*
+label.twolines {
+    height: 3em;
+    vertical-align: top;
+
+}
+*/
+
+#notelabel {
+    text-align: left;
+}
+
+div.vms {
+    float: left;
+}
+
+div.vms > fieldset {
+    margin: 3em;
+    font:80%/1 sans-serif;
+    border:1px solid black;
+    padding: 0.2em 0.5em;
+}
+
+.vmrow {
+    margin: 1em;
+}
+
+.rackheight0 {
+    /*
+    */
+    display: none;
+}
+
+.rackheight1 {
+    height: 1em;
+}
+
+    /*
+    border: 3px solid black;
+    padding-top: 10px;
+    */
+/*
+.rackheight2 > td {
+    height: 2.9em;
+}
+    */
+
+.rackheight2 {
+    height: 2.4em;
+}
+
+.rackheight3 {
+    height: 3.6em;
+}
+.rackheight4 {
+    height: 4.8em;
+}
+.rackheight5 {
+    height: 6em;
+}
+.rackheight6 {
+    height: 7.2em;
+}
+.rackheight7 {
+    height: 8.4em;
+}
+.rackheight8 {
+    height: 9.6em;
+}
+.rackheight9 {
+    height: 10.8em;
+}
+.rackheight10 {
+     border-style: solid;
+    height: 12em;
+}
+
+table#racklayout {
+    border-collapse: collapse;
+}
+table#racklayout > tbody> tr > td {
+vertical-align: bottom;
+}
+
+#rackunit {
+    text-align: center;
+}
+#rutype {
+    text-align: center;
+}
+
+#sorry {
+    padding: 1em;
+    font-family: Helvetica, Arial, "Lucida Grande", sans-serif; 
+    font-weight: bold;
+    font-size: 75%;
+}
+
+.tooltip{
+    display: inline;
+    position: relative;
+}
+
+.tooltip:hover:after{
+    background: #333;
+    background: rgba(0,0,0,.8);
+    border-radius: 5px;
+    bottom: 26px;
+    color: #fff;
+    content: attr(title);
+    left: 20%;
+    padding: 5px 15px;
+    position: absolute;
+    z-index: 98;
+    width: 220px;
+}
+
+

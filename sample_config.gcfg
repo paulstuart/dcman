@@ -1,0 +1,10 @@
+[ main ]
+name        = Your Organization's Name
+
+[ saml ]
+samlURL     = https://samlhost.example.com/saml/url
+cookie      = common cookie
+loginURL    = https://login.example.com/login/url
+xsrfToken   = common xsrf token
+placeholder = first.last@example.com
+

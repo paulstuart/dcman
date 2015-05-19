@@ -1,0 +1,61 @@
+{{define "head"}}<title>{{.Title}}</title>{{end}}
+{{define "javascript"}}
+$(document).ready(function() {
+$('#rackunit').change(function() {
+    window.location.assign("/"+$(this).val()+"/add/{{.DC}}/{{.Router.Rack}}/{{.Router.RU}}")
+    })
+});
+{{end}}
+{{define "body"}}
+<div id="netform" class="server">
+{{ if eq .Router.ID 0 }}
+<div id="rutype">
+<select id="rackunit">
+    <option value="server" >Server</option>
+    <option value="network" selected>Network Device</option>
+</select>
+</div>
+{{ end }}
+<form method="post" class="common">
+    <fieldset>
+        <legend>General</legend>
+        <label>Hostname<input type="text" name="Hostname" value="{{.Router.Hostname}}"/></label><br/>
+        <label>Make<input type="text" name="Make" value="{{.Router.Make}}"/></label><br/>
+        <label>Model<input type="text" name="Model" value="{{.Router.Model}}"/></label><br/>
+        <label>Datacenter<input type="text" name="DC" value="{{.DC}}" readonly/></label><br/>
+        <label>Rack Number<input type="text" name="Rack" value="{{.Router.Rack}}"/></label><br/>
+        <label>Rack Unit<input type="text" name="RU" value="{{.Router.RU}}"/></label><br/>
+        <label>Unit Height<input type="text" name="Height" value="{{.Router.Height}}"/></label><br/>
+        <label>Asset Tag<input type="text" name="AssetTag" value="{{.Router.AssetTag}}"/></label><br/>
+        <label>Serial Number<input type="text" name="SerialNo" value="{{.Router.SerialNo}}"/></label><br/>
+        <label>Part Number<input type="text" name="PartNo" value="{{.Router.PartNo}}"/></label><br/>
+        <label class="twolines">Note<textarea cols="25" rows="2" name="Note">{{.Router.Note}}</textarea></label><br/>
+    </fieldset>
+
+    <fieldset>
+        <legend>Management Port</legend>
+        <label>IP<input type="text" name="MgmtIP" value="{{.Router.MgmtIP}}"/></label><br/>
+    </fieldset>
+
+{{ if gt .Router.ID 0 }}
+    <fieldset>
+        <a href="/dcman/network/audit/{{ .Router.ID }}">Change History</a>
+    </fieldset>
+{{end}}
+
+<input type="hidden" name="ID" value="{{.Router.ID}}">
+<input type="hidden" name="RID" value="{{.Router.RID}}">
+<input type="hidden" name="UID" value="{{.User.ID}}">
+<input type="button" value="Cancel"  onclick="javascript:window.history.go(-1)">
+{{ if .User.Editor }}
+{{ if eq .Router.ID 0 }}
+<input type="submit" value="Add">
+{{ else }}
+<input type="submit" name="action" value="Update">
+<input type="submit" name="action" value="Delete">
+{{ end }}
+{{ end }}
+</form>
+</div>
+{{end}}
+
