@@ -44,6 +44,8 @@ type SAMLConfig struct {
 	Login       string `gcfg:"loginURL"`
 	Token       string `gcfg:"xsrfToken"`
 	PlaceHolder string `gcfg:"placeholder"`
+	OKTACookie  string `gcfg:"OKTACookie"`
+	OKTAHash    string `gcfg:"OKTAHash"`
 }
 
 const (
@@ -89,17 +91,12 @@ func dbPrep() {
 	if _, err = os.Stat(dbFile); os.IsNotExist(err) {
 		fresh = true
 	}
-	log.Println("FRESH:", fresh, "ERR:", err)
 	db, err := dbu.Open(dbFile, true)
 	if err != nil {
 		panic(err)
 	}
-	log.Println("FRESHER:", fresh, "ERR:", err)
 	if fresh {
-		log.Println("READ SCHEMA")
-		//db.Debug = true
 		err = db.File(sqlSchema)
-		log.Println("NEW ERR:", err)
 		if err != nil {
 			panic(err)
 		}
@@ -108,10 +105,6 @@ func dbPrep() {
 
 func main() {
 	var err error
-	/*
-		log.Println("CONFIG:", cfg)
-		return
-	*/
 
 	dbPrep()
 	dbServer, err = dbu.Open(dbFile, false)
@@ -120,14 +113,7 @@ func main() {
 	}
 
 	LoadVLANs()
-	/*
-		v, err := findVLAN(2, "10.100.61.101")
-		if err != nil {
-			fmt.Println("NO VLAN", err)
-		}
-		fmt.Println("VLAN", v)
-		return
-	*/
+
 	dc, _ := dbServer.ObjectList(Datacenter{})
 	Datacenters = dc.([]Datacenter)
 	for _, dc := range Datacenters {

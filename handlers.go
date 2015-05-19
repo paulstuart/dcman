@@ -397,7 +397,6 @@ func ServerEdit(w http.ResponseWriter, r *http.Request) {
 func RackNetwork(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		r.ParseForm()
-		//fmt.Println("Racknet POST:", r.Form)
 		var rn RackNet
 		objFromForm(&rn, r.Form)
 		action := r.Form.Get("action")
@@ -803,9 +802,6 @@ func VlanEdit(w http.ResponseWriter, r *http.Request) {
 		var v VLAN
 		fmt.Println("FORM", r.Form)
 		objFromForm(&v, r.Form)
-		//dc := r.Form.Get("DC")
-		//user := currentUser(r)
-		//url := fmt.Sprintf(pathPrefix+"/vlan/edit/%s", v.ID)
 		action := r.Form.Get("action")
 		if action == "Add" {
 			v.Insert()
@@ -1242,13 +1238,6 @@ func DatacenterPage(w http.ResponseWriter, r *http.Request) {
 func pingPage(w http.ResponseWriter, r *http.Request) {
 	status := "ok"
 	uptime := time.Since(start_time)
-	/*
-	   pragmas := dbPragmas()
-	   p := make([]string,0,len(pragmas)
-	   for k,v range := pragmas {
-	       p = append(p, fmt.Sprintln("%s = %s", k, v)
-	   }
-	*/
 	stats := strings.Join(dbServer.Stats(), "\n")
 	fmt.Fprintf(w, "status: %s\nversion: %s\nhostname: %s\nstarted:%s\nuptime: %s\ndb stats:\n%s\n", status, version, Hostname, start_time, uptime, stats)
 }
@@ -1298,12 +1287,12 @@ func ExcelPage(w http.ResponseWriter, r *http.Request) {
 
 func Authorized(w http.ResponseWriter, yes bool) {
 	c := &http.Cookie{
-		Name: OKTACookie,
+		Name: cfg.SAML.OKTACookie,
 		Path: "/",
 	}
 	if yes {
 		c.Expires = time.Now().Add(time.Minute * sessionMinutes)
-		c.Value = OKTAHash
+		c.Value = cfg.SAML.OKTAHash
 	}
 	http.SetCookie(w, c)
 }

@@ -16,11 +16,9 @@ import (
 )
 
 const (
-	logDir     = "logs"
-	accessLog  = "access.log"
-	errorLog   = "error.log"
-	OKTACookie = "SAML"
-	OKTAHash   = "VGhpc1Nob3VsZE5vdEJlRGVjb2RlZCoqU0FNUExFKipURVhU"
+	logDir    = "logs"
+	accessLog = "access.log"
+	errorLog  = "error.log"
 )
 
 var (
@@ -116,8 +114,7 @@ func reloadPage(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "reloaded")
 }
 
-/*
-func loginPage(w http.ResponseWriter, r *http.Request) {
+func internalLoginPage(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		r.ParseForm()
 		login := r.Form["login"][0]
@@ -138,7 +135,6 @@ func loginPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 }
-*/
 
 func FaviconPage(w http.ResponseWriter, r *http.Request) {
 	fav := filepath.Join(assets_dir, "static/images/favicon.ico")
@@ -188,7 +184,6 @@ func ErrorLog(r *http.Request, msg string, args ...interface{}) {
 // it's been updated to run at a path below that
 // -- this automatically does redirects for legacy links
 func usePrefix(w http.ResponseWriter, r *http.Request) {
-	// fmt.Println("Redirect", r.URL.Path, "To", pathPrefix+r.URL.Path)
 	if r.Method == "POST" {
 		http.Redirect(w, r, pathPrefix+r.URL.Path, 307)
 	} else {
@@ -203,14 +198,9 @@ func oktaMiddleware(next http.Handler) http.Handler {
 		if r.Method == "GET" {
 			// static pages should always be accessible (login page uses them!)
 			if !(len(r.URL.Path) > len(s) && r.URL.Path[:len(s)] == s) {
-				//fmt.Println("PATH", r.URL.Path, "CHECK", r.URL.Path[:len(s)])
-				//cookie, err := r.Cookie(OKTACookie)
-				cookie, err := r.Cookie(OKTACookie)
-				//fmt.Println("PATH", r.URL.Path, "Cookie", cookie.Value)
+				cookie, err := r.Cookie(cfg.SAML.OKTACookie)
 				//TODO: we should check the cookie value to be valid, not just any string
 				auth := (err == nil && len(cookie.Value) > 0)
-				//if (err != nil && r.URL.Path != u) && len(cookie.Value) {
-				//fmt.Println("PATH", r.URL.Path, "Cookie", cookie.Value, "AUTH", auth)
 				if !(auth || r.URL.Path == u) {
 					http.Redirect(w, r, u, 302)
 					return
@@ -226,9 +216,6 @@ func webServer(handlers []HFunc) {
 	ip = MyIp()
 	http.HandleFunc("/", usePrefix)
 	for _, h := range handlers {
-		//fmt.Println("PATH", pathPrefix+h.Path, h.Func)
-		//http.HandleFunc(h.Path, h.Func)
-		// http.HandleFunc(pathPrefix+h.Path, h.Func)
 		http.Handle(pathPrefix+h.Path, oktaMiddleware(h.Func))
 	}
 
@@ -248,7 +235,6 @@ func webServer(handlers []HFunc) {
 	}
 
 	fmt.Println("serve up web:", http_server)
-	//http.ListenAndServe(http_server, nil)
 	err = http.ListenAndServe(http_server, gorilla.CompressHandler(gorilla.LoggingHandler(accessLog, http.DefaultServeMux)))
 	if err != nil {
 		panic(err)
