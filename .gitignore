@@ -22,3 +22,7 @@ _testmain.go
 *.exe
 *.test
 *.prof
+
+/dcman
+/assets/static/images/favicon.ico
+config.gcfg
