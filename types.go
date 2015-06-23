@@ -20,6 +20,8 @@ var (
 	noRange   = regexp.MustCompile("-.*")
 )
 
+//go:generate dbgen
+
 type User struct {
 	ID       int64  `sql:"id" key:"true" table:"users"`
 	RealID   int64  // when emulating another user, retain real identity
@@ -51,9 +53,20 @@ func (u User) Access() string {
 }
 
 type Datacenter struct {
-	ID       int64  `sql:"id" key:"true" table:"datacenters"`
-	Name     string `sql:"name"`
-	Location string `sql:"location"`
+	ID         int64     `sql:"id" key:"true" table:"datacenters"`
+	Name       string    `sql:"name"`
+	Location   string    `sql:"location"`
+	Modified   time.Time `sql:"modified"`
+	RemoteAddr string    `sql:"remote_addr"`
+	UID        int64     `sql:"uid"`
+}
+
+func (d Datacenter) Count() int {
+	c, err := dbServer.GetInt("select count(*) from rackunits where dc=?", d.Name)
+	if err != nil {
+		fmt.Println("ERR!", err)
+	}
+	return c
 }
 
 type DCView struct {
@@ -89,6 +102,7 @@ type RackUnit struct {
 	RU       int    `sql:"ru"`
 	Height   int    `sql:"height"`
 	Hostname string `sql:"hostname"`
+	Alias    string `sql:"alias"`
 	IPMI     string `sql:"ipmi"`
 	Internal string `sql:"internal"`
 }
@@ -420,10 +434,6 @@ func ServerAdd(columns, words []string) error {
 	if len(rack) == 0 {
 		return fmt.Errorf("no rack specified")
 	}
-	query := "select hostname from sview where dc=? and hostname=? COLLATE NOCASE"
-	if _, err := dbServer.GetString(query, dc, hostname); err == nil {
-		return fmt.Errorf("server already exists: %s", hostname)
-	}
 	d, ok := dcLookup[dc]
 	if !ok {
 		return fmt.Errorf("invalid datacenter: %s", dc)
@@ -442,7 +452,7 @@ func ServerAdd(columns, words []string) error {
 	}
 	args = append(args, fmt.Sprintf("%d", rid))
 	params = append(params, "rid")
-	query = fmt.Sprintf("insert into servers (%s) values (%s)", strings.Join(params, ","), dbu.Placeholders(len(args)))
+	query := fmt.Sprintf("replace into servers (%s) values (%s)", strings.Join(params, ","), dbu.Placeholders(len(args)))
 	_, err := dbServer.Insert(query, args...)
 	return err
 }

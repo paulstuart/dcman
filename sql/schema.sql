@@ -126,11 +126,11 @@ CREATE TABLE audit_servers (
     rid int,
     ru int,
     height int default 1,
-    asset_tag text,
-    vendor_sku,
-    sn text,
+    asset_tag text default '',
+    vendor_sku text default '',
+    sn text default '',
     profile default '', 
-    hostname text,
+    hostname text not null COLLATE NOCASE,
     ip_internal text default '',
     ip_ipmi text default '',
     port_eth0 text default '',
@@ -140,15 +140,24 @@ CREATE TABLE audit_servers (
     cable_eth1 text default '',
     cable_ipmi text default '',
     cpu text default '',
-    memory int default 0,
+    memory int default 0,  -- what unit should this be in?
     mac_port0 text  default '', 
     mac_port1 text default '',
     mac_ipmi text default '',
     note text default '', 
-    modified timestamp, 
+    modified timestamp CURRENT_TIMESTAMP, 
     uid int default 0, 
-    remote_addr text default ''
+    remote_addr text default '', 
+    ip_public text default '', 
+    alias text default '', 
+    assigned text default ''
 );
+
+CREATE TRIGGER servers_audit BEFORE UPDATE
+ON servers
+BEGIN
+   INSERT INTO audit_servers select * from servers where id=old.id;
+END;
 
 CREATE TABLE "routers" (
     id integer primary key AUTOINCREMENT,

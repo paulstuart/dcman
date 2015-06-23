@@ -1,0 +1,29 @@
+{{define "head"}}<title>{{.Title}}</title>{{end}}
+{{define "javascript"}} {{end}}
+{{define "body"}}
+<div id="serverform" class="datacenter">
+<form method="post" action="/dcman/dc/edit/{{.Datacenter.ID}}" class="common" id="dcform">
+    <fieldset>
+        <legend>General</legend>
+        <label>Name<input type="text" name="Name" value="{{.Datacenter.Name}}" pattern=".+" required/></label><br/>
+        <label>Location<input type="text" name="Location" value="{{.Datacenter.Location}}"/></label><br/>
+    </fieldset>
+
+<input type="hidden" name="ID" value="{{.Datacenter.ID}}">
+<input type="button" value="Cancel"  onclick="javascript:window.history.go(-1)">
+{{ if .User.Editor }}
+{{ if eq .Datacenter.ID 0 }}
+<input type="submit" name="action" value="Add">
+{{ else }}
+<input type="submit" name="action" value="Update">
+{{ if eq .Datacenter.Count 0 }}
+<input type="submit" name="action" value="Delete">
+{{ end }}
+{{ end }}
+{{ else }}
+<div id="sorry">You must be logged in as an admin to modify this record</div>
+{{ end }}
+</form>
+</div>
+{{end}}
+

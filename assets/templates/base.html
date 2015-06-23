@@ -76,6 +76,8 @@
     {{ if .User.Editor }}
       <li><a>Admin</a>
         <ul>
+            <li><a href="/dcman/dc/list">List Datacenters</a></li>
+            <li><a href="/dcman/dc/edit/">Add Datacenter</a></li>
             <li><a href="/dcman/user/list">List Users</a></li>
             {{ if .User.Admin }}
             <li><a href="/dcman/user/add">Add User</a></li>
@@ -163,7 +165,7 @@
          {{ range .RackUnits }}
          <tr class="rackheight{{.Height}}">
             <td>{{ if and (eq 0 .SID) (eq 0 .NID) }}<a href="/dcman/server/add/{{$DC}}/{{$RackLabel}}/{{.RU}}">{{.RU}}</a>{{else}}{{.RU}}{{ end }}</td>
-        <td> {{ if gt .SID 0 }} <a href="/dcman/server/edit/{{.SID}}">{{.Hostname}}</a> 
+            <td> {{ if gt .SID 0 }} <a href="/dcman/server/edit/{{.SID}}">{{.Hostname}} {{if .Alias}} ({{.Alias}}){{end}}</a> 
                 {{ else if gt .NID 0 }} <a href="/dcman/network/edit/{{.NID}}">{{.Hostname}}</a> 
                 {{ else }} {{.Hostname}} {{ end }} </td>
             <td>{{.IPMI}}</td>

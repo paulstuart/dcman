@@ -121,21 +121,21 @@ func ProfileView(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case len(profile) > 0 && len(dc) > 0:
 		t, _ = dbServer.Table("select * from profiles where profile=? and dc=?", profile, dc)
-		t.SetLinks(2, "/dcman/profile/view?dc=%s", 2)
+		setLinks(t, 2, "/profile/view?dc=%s", 2)
 	case len(profile) > 0:
 		t, _ = dbServer.Table("select * from profiles where profile=?", profile)
-		t.SetLinks(2, "/dcman/profile/view?dc=%s&profile=%s", 2, 4)
+		setLinks(t, 2, "/profile/view?dc=%s&profile=%s", 2, 4)
 	case len(dc) > 0:
 		t, _ = dbServer.Table("select * from profiles where dc=?", dc)
-		t.SetLinks(2, "/dcman/profile/view?dc=%s", 2)
+		setLinks(t, 2, "/profile/view?dc=%s", 2)
 	default:
 		t, _ = dbServer.Table("select * from profiles")
-		t.SetLinks(2, "/dcman/profile/view?dc=%s", 2)
+		setLinks(t, 2, "/profile/view?dc=%s", 2)
 	}
 
 	t.Hide(0, 1)
-	t.SetLinks(3, "/dcman/%s/edit/%s", 1, 0)
-	t.SetLinks(4, "/dcman/profile/view?profile=%s", 4)
+	setLinks(t, 3, "/%s/edit/%s", 1, 0)
+	setLinks(t, 4, "/profile/view?profile=%s", 4)
 	t.SetType("ip-address", 3, 4)
 	data := Tabular{
 		Title:       "Profile List",
@@ -366,17 +366,16 @@ func ServerEdit(w http.ResponseWriter, r *http.Request) {
 		}
 		auditLog(user.ID, remote_addr, action, s.String())
 		dc := r.FormValue("DC")
-		http.Redirect(w, r, pathPrefix+"/dc/racks/"+dc, http.StatusSeeOther)
+		redirect(w, r, "/dc/racks/"+dc, http.StatusSeeOther)
 	} else {
-		const pref = len(pathPrefix + "/")
-		bits := strings.Split(r.URL.Path[pref:], "/")
-		if len(bits) < 2 {
-			http.Redirect(w, r, pathPrefix+"/error", http.StatusNotFound)
+		bits := strings.Split(r.URL.Path, "/")
+		if len(bits) < 1 {
+			notFound(w, r)
 		} else {
-			if bits[1] == "add" {
-				dc := dcLookup[strings.ToUpper(bits[2])]
-				ru, _ := strconv.Atoi(bits[4])
-				rid := RackID(dc.ID, bits[3])
+			if len(bits) > 2 {
+				dc := dcLookup[strings.ToUpper(bits[0])]
+				ru, _ := strconv.Atoi(bits[2])
+				rid := RackID(dc.ID, bits[1])
 				server := Server{
 					RU:     ru,
 					RID:    rid,
@@ -384,7 +383,7 @@ func ServerEdit(w http.ResponseWriter, r *http.Request) {
 				}
 				ShowServer(w, r, server)
 			} else {
-				server, err := getServer("where id=?", bits[2])
+				server, err := getServer("where id=?", bits[0])
 				if err != nil {
 					fmt.Println("server error:", err)
 				}
@@ -417,7 +416,7 @@ func RackNetwork(w http.ResponseWriter, r *http.Request) {
 		user := currentUser(r)
 		auditLog(user.ID, RemoteHost(r), action, rn.String())
 		dc := r.FormValue("DC")
-		http.Redirect(w, r, "/dc/racks/"+dc, http.StatusSeeOther)
+		redirect(w, r, "/dc/racks/"+dc, http.StatusSeeOther)
 	}
 }
 
@@ -445,15 +444,14 @@ func RackEdit(w http.ResponseWriter, r *http.Request) {
 			user := currentUser(r)
 			auditLog(user.ID, ip, action, rack.String())
 		}
-		http.Redirect(w, r, pathPrefix+"/dc/racks/"+dc, http.StatusSeeOther)
+		redirect(w, r, "/dc/racks/"+dc, http.StatusSeeOther)
 	} else {
 		var rack Rack
-		const pref = len(pathPrefix + "/")
-		bits := strings.Split(r.URL.Path[pref:], "/")
+		bits := strings.Split(r.URL.Path, "/")
 		if bits[1] == "add" {
 			rack = Rack{RUs: 45}
 		} else if len(bits) < 3 {
-			http.Redirect(w, r, pathPrefix+"/error", http.StatusNotFound)
+			notFound(w, r)
 			return
 		} else {
 			rack, _ = getRack("where id=?", bits[2])
@@ -480,7 +478,7 @@ func ShowRacks(w http.ResponseWriter, r *http.Request, bits ...string) {
 	table, err := RackTable(bits...)
 	if err != nil {
 		fmt.Println("RACK ERR", err)
-		http.Redirect(w, r, pathPrefix+"/error", http.StatusNotFound)
+		notFound(w, r)
 		return
 	}
 	data := Tabular{
@@ -497,17 +495,15 @@ func ServerRack(w http.ResponseWriter, r *http.Request, s Server) {
 }
 
 func RackView(w http.ResponseWriter, r *http.Request) {
-	const pref = len(pathPrefix + "/rack/view/")
-	bits := strings.Split(r.URL.Path[pref:], "/")
+	bits := strings.Split(r.URL.Path, "/")
 	ShowRacks(w, r, bits...)
 }
 
 func ServerAudit(w http.ResponseWriter, r *http.Request) {
-	const pref = len(pathPrefix + "/server/audit/")
 	const query = "select * from servers_history where id=? order by rowid desc"
-	id, err := strconv.Atoi(r.URL.Path[pref:])
+	id, err := strconv.Atoi(r.URL.Path)
 	if err != nil {
-		http.Redirect(w, r, "/error", http.StatusNotFound)
+		notFound(w, r)
 	} else {
 		table, _ := dbServer.Table(query, id)
 		skip := []string{"rowid", "id", "uid", "login", "modified", "remote_addr"}
@@ -522,11 +518,10 @@ func ServerAudit(w http.ResponseWriter, r *http.Request) {
 }
 
 func VMAudit(w http.ResponseWriter, r *http.Request) {
-	const pref = len(pathPrefix + "/vm/audit/")
 	const query = "select * from vms_history where id=? order by rowid desc"
-	id, err := strconv.Atoi(r.URL.Path[pref:])
+	id, err := strconv.Atoi(r.URL.Path)
 	if err != nil {
-		http.Redirect(w, r, "/error", http.StatusNotFound)
+		notFound(w, r)
 	} else {
 		table, _ := dbServer.Table(query, id)
 		skip := []string{"rowid", "id", "uid", "login", "modified", "remote_addr"}
@@ -541,11 +536,10 @@ func VMAudit(w http.ResponseWriter, r *http.Request) {
 }
 
 func NetworkAudit(w http.ResponseWriter, r *http.Request) {
-	const pref = len(pathPrefix + "/network/audit/")
 	const query = "select * from routers_history where id=? order by rowid desc"
-	id, err := strconv.Atoi(r.URL.Path[pref:])
+	id, err := strconv.Atoi(r.URL.Path)
 	if err != nil {
-		http.Redirect(w, r, "/error", http.StatusNotFound)
+		notFound(w, r)
 	} else {
 		table, _ := dbServer.Table(query, id)
 		skip := []string{"rowid", "id", "uid", "login", "modified", "remote_addr"}
@@ -572,10 +566,9 @@ func NetworkAdd(w http.ResponseWriter, r *http.Request) {
 		dc := r.FormValue("DC")
 		http.Redirect(w, r, "/dc/racks/"+dc, http.StatusSeeOther)
 	} else {
-		const pref = len(pathPrefix + "/network/add/")
-		bits := strings.Split(r.URL.Path[pref:], "/")
+		bits := strings.Split(r.URL.Path, "/")
 		if len(bits) < 2 {
-			http.Redirect(w, r, "/error", http.StatusNotFound)
+			notFound(w, r)
 		} else {
 			dc := dcLookup[strings.ToUpper(bits[0])]
 			ru, _ := strconv.Atoi(bits[2])
@@ -590,8 +583,7 @@ func NetworkAdd(w http.ResponseWriter, r *http.Request) {
 }
 
 func NetworkNext(w http.ResponseWriter, r *http.Request) {
-	const pref = len(pathPrefix + "/network/next/")
-	id := r.URL.Path[pref:]
+	id := r.URL.Path
 	fmt.Println("NEXT ID:", id)
 	i, _ := strconv.ParseInt(id, 0, 64)
 	next, _ := NextIPs(i)
@@ -645,7 +637,7 @@ func NetworkEdit(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.Atoi(r.URL.Path[i+1:])
 		if err != nil {
 			fmt.Println("NETWORK ERROR:", err)
-			http.Redirect(w, r, "/error", http.StatusNotFound)
+			notFound(w, r)
 		} else {
 			router, err := getRouter("where id=?", id)
 			if err != nil {
@@ -717,19 +709,18 @@ func VMAdd(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		r.ParseForm()
 		var v VM
-		url := pathPrefix + "/vm/all"
+		url := "/vm/all"
 		objFromForm(&v, r.Form)
 		var err error
 		if v.ID, err = dbServer.ObjectInsert(v); err != nil {
 			fmt.Println("VM ADD ERROR:", err)
-			url = fmt.Sprintf(pathPrefix+"/server/edit/%d", v.SID)
+			url = fmt.Sprintf("/server/edit/%d", v.SID)
 		}
-		http.Redirect(w, r, url, http.StatusSeeOther)
+		redirect(w, r, url, http.StatusSeeOther)
 	} else {
-		const pref = len(pathPrefix + "/")
-		bits := strings.Split(r.URL.Path[pref:], "/")
+		bits := strings.Split(r.URL.Path, "/")
 		if len(bits) < 2 {
-			http.Redirect(w, r, pathPrefix+"/error", http.StatusNotFound)
+			notFound(w, r)
 		} else {
 			id, _ := strconv.ParseInt(bits[2], 0, 64)
 			vm := VM{SID: id}
@@ -759,7 +750,7 @@ func VMEdit(w http.ResponseWriter, r *http.Request) {
 		v.Modified = time.Now()
 		v.RemoteAddr = RemoteHost(r)
 		v.UID = user.ID
-		url := fmt.Sprintf(pathPrefix+"/server/edit/%d", v.SID)
+		url := fmt.Sprintf("/server/edit/%d", v.SID)
 		action := r.Form.Get("action")
 		if action == "Add" {
 			v.Insert()
@@ -768,12 +759,11 @@ func VMEdit(w http.ResponseWriter, r *http.Request) {
 		} else if action == "Delete" {
 			v.Delete()
 		}
-		http.Redirect(w, r, url, http.StatusSeeOther)
+		redirect(w, r, url, http.StatusSeeOther)
 	} else {
-		const pref = len(pathPrefix + "/")
-		bits := strings.Split(r.URL.Path[pref:], "/")
+		bits := strings.Split(r.URL.Path, "/")
 		if len(bits) < 2 {
-			http.Redirect(w, r, pathPrefix+"/error", http.StatusNotFound)
+			notFound(w, r)
 		} else {
 			id, err := strconv.ParseInt(bits[2], 0, 64)
 			if err != nil {
@@ -796,6 +786,68 @@ func VMEdit(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func DCEdit(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "POST" {
+		r.ParseForm()
+		dc := &Datacenter{}
+		objFromForm(dc, r.Form)
+		user := currentUser(r)
+		dc.Modified = time.Now()
+		dc.RemoteAddr = RemoteHost(r)
+		dc.UID = user.ID
+		action := r.Form.Get("action")
+		if action == "Add" {
+			dbServer.Add(dc)
+		} else if action == "Update" {
+			dbServer.Save(dc)
+		} else if action == "Delete" {
+			dbServer.Delete(dc)
+		}
+		redirect(w, r, "/dc/list", http.StatusSeeOther)
+	} else {
+		dc := Datacenter{}
+		if len(r.URL.Path) > 0 {
+			id, err := strconv.ParseInt(r.URL.Path, 0, 64)
+			if err != nil {
+				fmt.Println("Bad DC ID:", err)
+			}
+			dc.ID = id
+			if err := dbServer.FindSelf(&dc); err != nil {
+				fmt.Println("DC not found:", err)
+			}
+		}
+		data := struct {
+			Title       string
+			User        User
+			Datacenter  Datacenter
+			Datacenters []Datacenter
+		}{
+			Title:       "DC: " + dc.Location,
+			User:        currentUser(r),
+			Datacenter:  dc,
+			Datacenters: Datacenters,
+		}
+		renderTemplate(w, r, "dc", data)
+	}
+}
+
+func DCList(w http.ResponseWriter, r *http.Request) {
+	const query = "select id,name,location from datacenters"
+	table, err := dbServer.Table(query)
+	if err != nil {
+		fmt.Println("dc query error", err)
+	}
+	table.Hide(0)
+	setLinks(table, 1, "/dc/edit/%s", 0)
+	data := Tabular{
+		Title:       "Datacenters",
+		Table:       table,
+		User:        currentUser(r),
+		Datacenters: Datacenters,
+	}
+	renderTemplate(w, r, "table", data)
+}
+
 func VlanEdit(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		r.ParseForm()
@@ -810,17 +862,16 @@ func VlanEdit(w http.ResponseWriter, r *http.Request) {
 		} else if action == "Delete" {
 			v.Delete()
 		}
-		http.Redirect(w, r, pathPrefix+"/network/vlans", http.StatusSeeOther)
+		redirect(w, r, "/network/vlans", http.StatusSeeOther)
 	} else {
-		const pref = len(pathPrefix + "/vlan/edit/")
-		bits := strings.Split(r.URL.Path[pref:], "/")
+		bits := strings.Split(r.URL.Path, "/")
 		if len(bits) < 2 {
-			http.Redirect(w, r, pathPrefix+"/error", http.StatusNotFound)
+			notFound(w, r)
 		} else {
 			vlan, err := dcVLAN(bits[0], bits[1])
 			if err != nil {
 				fmt.Println("VLAN ERR", err)
-				http.Redirect(w, r, pathPrefix+"/error", http.StatusNotFound)
+				notFound(w, r)
 				return
 			}
 			data := struct {
@@ -879,11 +930,15 @@ func ServerDupes(w http.ResponseWriter, r *http.Request) {
 	ShowListing(w, r, data)
 }
 
+func setLinks(t *dbu.Table, id int, path string, args ...int) {
+	t.SetLinks(id, pathPrefix+path, args...)
+}
+
 func ShowListing(w http.ResponseWriter, r *http.Request, t Tabular) {
 	t.Table.Hide(0)
-	t.Table.SetLinks(1, "/dcman/rack/view/%s", 1)
-	t.Table.SetLinks(2, "/dcman/rack/view/%s/%s", 1, 2)
-	t.Table.SetLinks(4, "/dcman/server/edit/%s", 0)
+	setLinks(t.Table, 1, "/rack/view/%s", 1)
+	setLinks(t.Table, 2, "/rack/view/%s/%s", 1, 2)
+	setLinks(t.Table, 4, "/server/edit/%s", 0)
 	t.Table.AddSort(1, false)
 	t.Table.AddSort(2, false)
 	t.Table.AddSort(3, true)
@@ -897,7 +952,7 @@ func VlansPage(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fmt.Println("vlans query error", err)
 	}
-	table.SetLinks(1, "/dcman/vlan/edit/%s/%s", 0, 1)
+	setLinks(table, 1, "/vlan/edit/%s/%s", 0, 1)
 	table.SetType("ip-address", 2, 3)
 	data := Tabular{
 		Title:       "VLANs",
@@ -918,7 +973,7 @@ func NetworkDevices(w http.ResponseWriter, r *http.Request) {
 		Datacenters: Datacenters,
 	}
 	table.Hide(0)
-	table.SetLinks(4, "/dcman/network/edit/%s", 0)
+	setLinks(table, 4, "/network/edit/%s", 0)
 	renderTemplate(w, r, "table", data)
 }
 
@@ -955,9 +1010,8 @@ func IPInternalAllPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func IPInternalDC(w http.ResponseWriter, r *http.Request) {
-	const plen = len(pathPrefix + "/ip/dc/")
 	const query = "select * from ipinside where dc=?"
-	dc := strings.ToUpper(r.URL.Path[plen:])
+	dc := strings.ToUpper(r.URL.Path)
 	table, _ := dbServer.Table(query, dc)
 	data := Tabular{
 		Title:       "Internal IPs for " + dc,
@@ -970,8 +1024,8 @@ func IPInternalDC(w http.ResponseWriter, r *http.Request) {
 
 func ShowIPs(w http.ResponseWriter, r *http.Request, t Tabular) {
 	t.Table.Hide(0, 1, 2)
-	t.Table.SetLinks(3, "/dcman/ip/dc/%s", 3)
-	t.Table.SetLinks(4, "/dcman/%s/edit/%s", 1, 0)
+	setLinks(t.Table, 3, "/ip/dc/%s", 3)
+	setLinks(t.Table, 4, "/%s/edit/%s", 1, 0)
 	t.Table.SetType("ip-address", 2)
 	t.Table.AddSort(2, false)
 	renderTemplate(w, r, "table", t)
@@ -1017,7 +1071,7 @@ func VMOrphans(w http.ResponseWriter, r *http.Request) {
 	query := "select * from vmbad"
 	table, _ := dbServer.Table(query)
 	table.Hide(0)
-	table.SetLinks(2, "/dcman/vm/orphan/%s", 0)
+	setLinks(table, 2, "/vm/orphan/%s", 0)
 	for _, row := range table.Rows {
 		if len(row[2]) == 0 {
 			row[2] = "*blank*"
@@ -1079,10 +1133,9 @@ func VMOrphaned(w http.ResponseWriter, r *http.Request) {
 		} else if action == "Delete" {
 			o.Delete()
 		}
-		http.Redirect(w, r, pathPrefix+"/vm/orphans", http.StatusSeeOther)
+		redirect(w, r, "/vm/orphans", http.StatusSeeOther)
 	} else {
-		const pref = len(pathPrefix + "/vm/orphan/")
-		id := r.URL.Path[pref:]
+		id := r.URL.Path
 		var vm Orphan
 		msg := ""
 		if err := dbServer.ObjectLoad(&vm, "where rowid=?", id); err != nil {
@@ -1095,16 +1148,15 @@ func VMOrphaned(w http.ResponseWriter, r *http.Request) {
 
 func VMListLinks(w http.ResponseWriter, r *http.Request, data Tabular) {
 	data.Table.Hide(0, 1)
-	data.Table.SetLinks(3, "/dcman/server/edit/%s", 0)
-	data.Table.SetLinks(4, "/dcman/vm/edit/%s", 1)
+	setLinks(data.Table, 3, "/server/edit/%s", 0)
+	setLinks(data.Table, 4, "/vm/edit/%s", 1)
 	renderTemplate(w, r, "table", data)
 }
 
 func VMListPage(w http.ResponseWriter, r *http.Request) {
 	const columns = "*"
 	const query = "select " + columns + " from vmlist where dc=?"
-	const plen = len(pathPrefix + "/vm/list/")
-	dc := strings.ToUpper(r.URL.Path[plen:])
+	dc := strings.ToUpper(r.URL.Path)
 	table, _ := dbServer.Table(query, dc)
 	data := Tabular{
 		Title:       "VMs",
@@ -1159,11 +1211,10 @@ func UserEdit(w http.ResponseWriter, r *http.Request) {
 		auditLog(user.ID, RemoteHost(r), action, u.Login)
 		http.Redirect(w, r, "/user/list", http.StatusSeeOther)
 	} else {
-		const pref = len(pathPrefix + "/user/edit/")
 		var edit User
 		title := "Add User"
-		if len(r.URL.Path) > pref {
-			id := r.URL.Path[pref:]
+		if len(r.URL.Path) > 0 {
+			id := r.URL.Path
 			edit, _ = UserByID(id)
 			title = "Edit User"
 		}
@@ -1185,10 +1236,9 @@ func UserEdit(w http.ResponseWriter, r *http.Request) {
 }
 
 func UserRun(w http.ResponseWriter, r *http.Request) {
-	const pref = len(pathPrefix + "/user/run/")
 	u := currentUser(r)
-	if u.Admin() && u.RealID == 0 && len(r.URL.Path) > pref {
-		if as, err := UserByID(r.URL.Path[pref:]); err == nil {
+	if u.Admin() && u.RealID == 0 && len(r.URL.Path) > 0 {
+		if as, err := UserByID(r.URL.Path); err == nil {
 			as.RealID = u.ID
 			Remember(w, &as)
 			auditLog(u.ID, RemoteHost(r), "Impersonate", as.Login)
@@ -1216,9 +1266,7 @@ func VMListing(w http.ResponseWriter, r *http.Request) {
 }
 
 func DatacenterPage(w http.ResponseWriter, r *http.Request) {
-	const pref = pathPrefix + "/dc/racks/"
-	const plen = len(pref)
-	dc := strings.ToUpper(r.URL.Path[plen:])
+	dc := strings.ToUpper(r.URL.Path)
 	datacenter := dcLookup[dc]
 	rx, err := dbServer.ObjectListQuery(Rack{}, "where did=? order by rack", datacenter.ID)
 	if err != nil {
@@ -1243,8 +1291,7 @@ func pingPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func DebugPage(w http.ResponseWriter, r *http.Request) {
-	const pref = len(pathPrefix + "/db/debug/")
-	what := r.URL.Path[pref:]
+	what := r.URL.Path
 	on, _ := strconv.ParseBool(what)
 	fmt.Println("DEBUG?", what, "ON:", on)
 	dbServer.Debug = true
@@ -1323,7 +1370,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 			auditLog(user.ID, remote_addr, "Login", "Login succeeded for "+username)
 			Authorized(w, true)
 			Remember(w, &user)
-			http.Redirect(w, r, pathPrefix+"/", 302)
+			redirect(w, r, "/", 302)
 			return
 		} else {
 			auditLog(0, remote_addr, "Login", "Invalid credentials for "+username)
@@ -1346,7 +1393,9 @@ var webHandlers = []HFunc{
 	{"/user/edit/", UserEdit},
 	{"/user/run/", UserRun},
 	{"/rack/add", RackEdit},
+	{"/dc/edit/", DCEdit},
 	{"/dc/racks/", DatacenterPage},
+	{"/dc/list", DCList},
 	{"/dc/all", ListingPage},
 	{"/dc/connections", ConnectionsPage},
 	{"/ip/dc/", IPInternalDC},

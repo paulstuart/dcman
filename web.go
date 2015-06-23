@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	gorilla "github.com/gorilla/handlers"
@@ -103,7 +104,6 @@ func renderPlainTemplate(w http.ResponseWriter, r *http.Request, tname string, d
 func currentUser(r *http.Request) User {
 	cookie, err := r.Cookie("dcuser")
 	if err != nil {
-		fmt.Println("cookie error for user", err)
 		return User{}
 	}
 	return userFromCookie(cookie.Value)
@@ -161,8 +161,7 @@ func (w *statusLoggingResponseWriter) WriteHeader(code int) {
 }
 
 func StaticPage(w http.ResponseWriter, r *http.Request) {
-	const skip = len(pathPrefix)
-	name := filepath.Join(assets_dir, r.URL.Path[skip:])
+	name := filepath.Join(assets_dir, r.URL.Path)
 	file, err := os.Open(name)
 	if err != nil {
 		http.NotFound(w, r)
@@ -180,46 +179,47 @@ func ErrorLog(r *http.Request, msg string, args ...interface{}) {
 	fmt.Fprintln(errorFile, time.Now().Format(log_layout), remote_addr, user.ID, msg, args)
 }
 
-// the site was originally designed to run at the web root
-// it's been updated to run at a path below that
-// -- this automatically does redirects for legacy links
-func usePrefix(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "POST" {
-		http.Redirect(w, r, pathPrefix+r.URL.Path, 307)
-	} else {
-		http.Redirect(w, r, pathPrefix+r.URL.Path, 302)
-	}
-}
-
 func oktaMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		const u = pathPrefix + "/login"
-		const s = pathPrefix + "/static"
 		if r.Method == "GET" {
-			// static pages should always be accessible (login page uses them!)
-			if !(len(r.URL.Path) > len(s) && r.URL.Path[:len(s)] == s) {
-				cookie, err := r.Cookie(cfg.SAML.OKTACookie)
-				//TODO: we should check the cookie value to be valid, not just any string
-				auth := (err == nil && len(cookie.Value) > 0)
-				if !(auth || r.URL.Path == u) {
-					http.Redirect(w, r, u, 302)
-					return
-				}
+			cookie, err := r.Cookie(cfg.SAML.OKTACookie)
+			//TODO: we should check the cookie value to be valid, not just any string
+			auth := (err == nil && len(cookie.Value) > 0)
+			if !auth {
+				redirect(w, r, "/login", 302)
+				return
 			}
 		}
 		next.ServeHTTP(w, r)
 	})
 }
 
+func redirect(w http.ResponseWriter, r *http.Request, path string, status int) {
+	http.Redirect(w, r, pathPrefix+path, status)
+}
+
+func notFound(w http.ResponseWriter, r *http.Request) {
+	redirect(w, r, "/error", http.StatusNotFound)
+}
+
 func webServer(handlers []HFunc) {
 	loadTemplates()
 	ip = MyIp()
-	http.HandleFunc("/", usePrefix)
 	for _, h := range handlers {
-		http.Handle(pathPrefix+h.Path, oktaMiddleware(h.Func))
+		p := pathPrefix + h.Path
+		switch {
+		case strings.HasPrefix(h.Path, "/login"):
+			http.Handle(p, http.StripPrefix(p, h.Func))
+		case strings.HasPrefix(h.Path, "/static/"):
+			http.Handle(p, http.StripPrefix(pathPrefix, h.Func))
+		case strings.HasPrefix(h.Path, "/data/"):
+			http.Handle(p, http.StripPrefix(p, h.Func))
+		default:
+			http.Handle(p, http.StripPrefix(p, oktaMiddleware(h.Func)))
+		}
 	}
 
-	http_server := fmt.Sprintf(":%d", http_port)
+	http_server := fmt.Sprintf(":%d", cfg.Main.Port)
 	if err := os.MkdirAll(logDir, 0755); err != nil {
 		log.Panic(err)
 	}

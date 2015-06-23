@@ -18,7 +18,6 @@ var (
 	Basedir, _        = os.Getwd() // get abs path now, as we will be changing dirs
 	log_layout        = "2006-01-02 15:04:05.999"
 	start_time        = time.Now()
-	http_port         = 8080
 	assets_dir        = "assets"
 	sqlDir            = "sql" // dir containing sql schemas, etc
 	sqlSchema         = sqlDir + "/schema.sql"
@@ -36,6 +35,7 @@ var (
 
 type MainConfig struct {
 	Name string `gcfg:"name"`
+	Port int    `gcfg:"port"`
 }
 
 type SAMLConfig struct {
