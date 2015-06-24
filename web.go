@@ -67,7 +67,6 @@ func loadTemplates() {
 		}
 		//fmt.Println("COMPILE: ", name)
 		t := template.New(name).Funcs(funcMap)
-		//t := template.New(name)
 		tmpl[name] = template.Must(t.ParseFiles(file, tdir+"/base.html"))
 	}
 }

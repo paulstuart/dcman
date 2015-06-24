@@ -17,16 +17,6 @@ $(document).ready(function() {
 {{end}}
 
 
-{{define "vm"}}
-<a href="/dcman/vm/edit/{{.ID}}">{{.Hostname}}</a>
-{{end}}
-
-{{define "vms"}}
-{{ $len := len . }}
-{{ range $v := . }}
-{{ template "vm" $v }}
-{{end}}
-{{end}}
 
 {{define "body"}}
 
@@ -40,8 +30,12 @@ $(document).ready(function() {
          {{ range .Servers }}
         <tr>
             <td>{{.DC}}</td>
-            <td><a href="/dcman/server/edit/{{.ID}}">{{.Hostname}}</a></td>
-            <td>{{ template "vms" .VMs }}</td>
+            <td><a href="{{$.Common.Prefix}}/server/edit/{{.ID}}">{{.Hostname}}</a></td>
+            <td>
+            {{ range $v := .VMs }}
+                <a href="{${.Common.Prefix}}/vm/edit/{{.ID}}">{{.Hostname}}</a>
+            {{end}}
+            </td>
         </tr>
         {{ end }}
      </tbody>

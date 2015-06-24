@@ -19,7 +19,7 @@
 
 <input type="button" value="Cancel"  onclick="javascript:window.history.go(-1)">
 <input type="hidden" name="ID" value="{{.VM.ID}}">
-{{if .User.Editor }}
+{{ if .Common.User.Editor }}
 <input type="submit" name="action" value="Update">
 <input type="submit" name="action" value="Delete">
 {{ else }}

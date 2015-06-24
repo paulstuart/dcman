@@ -3,8 +3,8 @@
 <head>
     <meta http-equiv="content-type" content="text/html;charset=utf-8"/>
     <title>Okta Login</title>
-    <link rel="stylesheet" type="text/css" href="/dcman/static/css/side-menu.css" media="screen" />
-    <link rel="stylesheet" type="text/css" href="/dcman/static/css/pure-menu.css" media="screen" />
+    <link rel="stylesheet" type="text/css" href="{{.Common.Prefix}}/static/css/side-menu.css" media="screen" />
+    <link rel="stylesheet" type="text/css" href="{{.Common.Prefix}}/static/css/pure-menu.css" media="screen" />
     <style>
 .invalid_login {
     text-align:  center;
@@ -30,7 +30,7 @@
         {{ end }}
         <div class="contents">
     
-<form action="/dcman/login" method="post" class="pure-form pure-form-aligned">
+<form action="{{.Common.Prefix}}/login" method="post" class="pure-form pure-form-aligned">
 <br/><br/><table align="center">
 <tr>
     <td><input type="text" name="username" placeholder="{{.Placeholder}}" required autofocus/></td>

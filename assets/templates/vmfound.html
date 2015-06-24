@@ -22,7 +22,7 @@ $(document).ready(function() {
          {{ range .VMs }}
         <tr>
             <td>{{ .Server.DC }}</td>
-            <td><a href="/dcman/vm/edit/{{.ID}}">{{.Hostname}}</a></td> 
+            <td><a href="{{.Common.Prefix}}/vm/edit/{{.ID}}">{{.Hostname}}</a></td> 
         </tr>
         {{ end }}
      </tbody>

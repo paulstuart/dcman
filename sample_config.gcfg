@@ -1,6 +1,7 @@
 [ main ]
 name        = Your Organization's Name
 port        = 8080
+prefix      = /url/prefix
 
 [ saml ]
 samlURL     = https://samlhost.example.com/saml/url

@@ -4,14 +4,14 @@
 <head>
     <meta http-equiv="content-type" content="text/html;charset=utf-8"/>
     <title>{{.Title}}</title>
-    <link rel="stylesheet" type="text/css" href="/dcman/static/css/reset.css" media="screen" />
-    <link rel="stylesheet" type="text/css" href="/dcman/static/css/style.css" media="screen" />
-    <link rel="stylesheet" type="text/css" href="/dcman/static/css/jquery.dataTables.css" media="screen" />
-    <link rel="stylesheet" type="text/css" href="/dcman/static/css/jquery.dataTables_themeroller.css" media="screen" />
-    <script type="text/javascript" src="/dcman/static/js/jquery-2.0.3.min.js"></script>
-    <script type="text/javascript" src="/dcman/static/js/main.js"></script>
-    <script type="text/javascript" src="/dcman/static/js/jquery.dataTables.js"></script>
-    <script type="text/javascript" src="/dcman/static/js/ip-address.js"></script>
+    <link rel="stylesheet" type="text/css" href="{{$.Common.Prefix}}/static/css/reset.css" media="screen" />
+    <link rel="stylesheet" type="text/css" href="{{$.Common.Prefix}}/static/css/style.css" media="screen" />
+    <link rel="stylesheet" type="text/css" href="{{$.Common.Prefix}}/static/css/jquery.dataTables.css" media="screen" />
+    <link rel="stylesheet" type="text/css" href="{{$.Common.Prefix}}/static/css/jquery.dataTables_themeroller.css" media="screen" />
+    <script type="text/javascript" src="{{$.Common.Prefix}}/static/js/jquery-2.0.3.min.js"></script>
+    <script type="text/javascript" src="{{$.Common.Prefix}}/static/js/main.js"></script>
+    <script type="text/javascript" src="{{$.Common.Prefix}}/static/js/jquery.dataTables.js"></script>
+    <script type="text/javascript" src="{{$.Common.Prefix}}/static/js/ip-address.js"></script>
     <script type="text/javascript">
     {{ template "javascript" .}}
     </script>
@@ -19,31 +19,31 @@
 <body>
 <nav>
     <ul>
-      <li><a href="/dcman/">Home</a>
+      <li><a href="{{$.Common.Prefix}}/">Home</a>
         <ul>
-            <li><a href="/dcman/ping">About</a></li>
+            <li><a href="{{$.Common.Prefix}}/ping">About</a></li>
         </ul>
     </li>
       <li><a>Servers</a>
         <ul>
-            <li><a href="/dcman/dc/all">List All</a></li>
-            {{ range .Datacenters }}
-            <li><a href="/dcman/dc/racks/{{.Name}}">{{.Location}}</a></li>
+            <li><a href="{{$.Common.Prefix}}/dc/all">List All</a></li>
+            {{ range .Common.Datacenters }}
+            <li><a href="{{$.Common.Prefix}}/dc/racks/{{.Name}}">{{.Location}}</a></li>
             {{ end }}
-            {{ if .User.Editor }}
-            <li><a href="/dcman/rack/add">Add Rack</a></li>
-            <li><a href="/dcman/server/dupes">Duplicate Servers</a></li>
+            {{ if .Common.User.Editor }}
+            <li><a href="{{.Common.Prefix}}/rack/add">Add Rack</a></li>
+            <li><a href="{{.Common.Prefix}}/server/dupes">Duplicate Servers</a></li>
             {{ end }}
         </ul>
       </li>
       <li><a>VMs</a>
         <ul>
-            <li><a href="/dcman/vm/all">List All</a></li>
-            <li><a href="/dcman/server/vms">By Server</a></li>
-            {{ range .Datacenters }}
-            <li><a href="/dcman/vm/list/{{.Name}}">{{.Location}}</a></li>
+            <li><a href="{{.Common.Prefix}}/vm/all">List All</a></li>
+            <li><a href="{{.Common.Prefix}}/server/vms">By Server</a></li>
+            {{ range .Common.Datacenters }}
+            <li><a href="{{$.Common.Prefix}}/vm/list/{{.Name}}">{{.Location}}</a></li>
             {{ end }}
-            <li><a href="/dcman/vm/orphans">Orphaned VMs</a></li>
+            <li><a href="{{$.Common.Prefix}}/vm/orphans">Orphaned VMs</a></li>
         </ul>
       </li>
       <li><a>Network</a>
@@ -51,44 +51,44 @@
             {{/*
             <li><a>Internal IPs</a>
             <ul>
-            <li><a href="/dcman/ip/internal/all">List All</a></li>
-            {{ range .Datacenters }}
-            <li><a href="/dcman/ip/internal/dc/{{.Name}}">{{.Location}}</a></li>
+            <li><a href="{{$.Common.Prefix}}/ip/internal/all">List All</a></li>
+            {{ range .Common.Datacenters }}
+            <li><a href="{{$.Common.Prefix}}/ip/internal/dc/{{.Name}}">{{.Location}}</a></li>
             {{ end }}
             </ul>
             */}}
-            <li><a href="/dcman/network/devices">Network Devices</a></li>
-            <li><a href="/dcman/ip/internal/all">Internal IPs</a></li>
-            <li><a href="/dcman/ip/public/all">Public IPs</a></li>
-            <li><a href="/dcman/network/vlans">VLANs</a></li>
+            <li><a href="{{$.Common.Prefix}}/network/devices">Network Devices</a></li>
+            <li><a href="{{$.Common.Prefix}}/ip/internal/all">Internal IPs</a></li>
+            <li><a href="{{$.Common.Prefix}}/ip/public/all">Public IPs</a></li>
+            <li><a href="{{$.Common.Prefix}}/network/vlans">VLANs</a></li>
             {{/*
-            <li><a href="/dcman/dc/connections">Connections</a></li>
+            <li><a href="{{$.Common.Prefix}}/dc/connections">Connections</a></li>
             */}}
         </ul>
       </li>
       <li><a>Data</a>
         <ul>
-            <li><a href="/dcman/data/upload">Load Server Data</a></li>
-            <li><a href="/dcman/data/servers.csv">Export Servers (CSV)</a></li>
-            <li><a href="/dcman/data/vms.csv">Export VMs (CSV)</a></li>
+            <li><a href="{{$.Common.Prefix}}/data/upload">Load Server Data</a></li>
+            <li><a href="{{$.Common.Prefix}}/data/servers.csv">Export Servers (CSV)</a></li>
+            <li><a href="{{$.Common.Prefix}}/data/vms.csv">Export VMs (CSV)</a></li>
         </ul>
       </li>
-    {{ if .User.Editor }}
+    {{ if .Common.User.Editor }}
       <li><a>Admin</a>
         <ul>
-            <li><a href="/dcman/dc/list">List Datacenters</a></li>
-            <li><a href="/dcman/dc/edit/">Add Datacenter</a></li>
-            <li><a href="/dcman/user/list">List Users</a></li>
+            <li><a href="{{$.Common.Prefix}}/dc/list">List Datacenters</a></li>
+            <li><a href="{{$.Common.Prefix}}/dc/edit/">Add Datacenter</a></li>
+            <li><a href="{{$.Common.Prefix}}/user/list">List Users</a></li>
             {{ if .User.Admin }}
-            <li><a href="/dcman/user/add">Add User</a></li>
+            <li><a href="{{$.Common.Prefix}}/user/add">Add User</a></li>
             {{ end }}
-            <li><a href="/dcman/audit/log">Audit Log</a></li>
+            <li><a href="{{$.Common.Prefix}}/audit/log">Audit Log</a></li>
         </ul>
       </li>
       {{ end }}
       <li>
         <div id="search">
-            <form name="finder" class="findit" method="POST" action="/dcman/search">
+            <form name="finder" class="findit" method="POST" action="{{$.Common.Prefix}}/search">
                 <select id="kind" name="kind">
                     <option value="server">Server hostname</option>
                     <option value="vm">VM hostname</option>
@@ -104,7 +104,7 @@
     </ul>
     <ul>
         <div class="login">
-            <a href="/dcman/logout">Logout {{.User.Login}}</a>
+            <a href="{{$.Common.Prefix}}/logout">Logout {{.User.Login}}</a>
         </div>
     </ul>
 </nav>
@@ -150,7 +150,7 @@
 
 {{define "rack" }}
 <div class="rackdiv">
-    <h2><a href="/dcman/rack/edit/{{.ID}}">Rack {{.Label}}</a></h2>{{ $ID := .Label }}
+    <h2><a href="{{$.Common.Prefix}}/rack/edit/{{.ID}}">Rack {{.Label}}</a></h2>{{ $ID := .Label }}
     <h2>{{if gt (len .VendorID) 0}}({{.VendorID}}){{else}}&nbsp;{{end}}</h2>
     <table id="racklayout">
      <thead>
@@ -162,11 +162,12 @@
      <tbody>
         {{ $RackLabel := .Label }}
         {{ $DC := .DC }}
+        {{ $prefix := .Common.Prefix }}
          {{ range .RackUnits }}
          <tr class="rackheight{{.Height}}">
-            <td>{{ if and (eq 0 .SID) (eq 0 .NID) }}<a href="/dcman/server/add/{{$DC}}/{{$RackLabel}}/{{.RU}}">{{.RU}}</a>{{else}}{{.RU}}{{ end }}</td>
-            <td> {{ if gt .SID 0 }} <a href="/dcman/server/edit/{{.SID}}">{{.Hostname}} {{if .Alias}} ({{.Alias}}){{end}}</a> 
-                {{ else if gt .NID 0 }} <a href="/dcman/network/edit/{{.NID}}">{{.Hostname}}</a> 
+            <td>{{ if and (eq 0 .SID) (eq 0 .NID) }}<a href="{{$prefix}}/server/add/{{$DC}}/{{$RackLabel}}/{{.RU}}">{{.RU}}</a>{{else}}{{.RU}}{{ end }}</td>
+            <td> {{ if gt .SID 0 }} <a href="{{$prefix}}/server/edit/{{.SID}}">{{.Hostname}} {{if .Alias}} ({{.Alias}}){{end}}</a> 
+                {{ else if gt .NID 0 }} <a href="{{$prefix}}/network/edit/{{.NID}}">{{.Hostname}}</a> 
                 {{ else }} {{.Hostname}} {{ end }} </td>
             <td>{{.IPMI}}</td>
             <td>{{.Internal}}</td>

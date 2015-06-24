@@ -1,8 +1,8 @@
-{{define "head"}}<title>{{.Title}}</title>{{end}}
+{{define "head"}}<title>{{.Common.Title}}</title>{{end}}
 {{define "javascript"}} {{end}}
 {{define "body"}}
 <div id="serverform" class="datacenter">
-<form method="post" action="/dcman/dc/edit/{{.Datacenter.ID}}" class="common" id="dcform">
+<form method="post" action="{{.Common.Prefix}}/dc/edit/{{.Datacenter.ID}}" class="common" id="dcform">
     <fieldset>
         <legend>General</legend>
         <label>Name<input type="text" name="Name" value="{{.Datacenter.Name}}" pattern=".+" required/></label><br/>
@@ -11,7 +11,7 @@
 
 <input type="hidden" name="ID" value="{{.Datacenter.ID}}">
 <input type="button" value="Cancel"  onclick="javascript:window.history.go(-1)">
-{{ if .User.Editor }}
+{{ if .Common.User.Editor }}
 {{ if eq .Datacenter.ID 0 }}
 <input type="submit" name="action" value="Add">
 {{ else }}

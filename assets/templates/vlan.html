@@ -1,4 +1,4 @@
-{{define "head"}}<title>{{.Title}}</title>{{end}}
+{{define "head"}}<title>{{.Common.Title}}</title>{{end}}
 {{define "javascript"}}
 {{end}}
 {{define "body"}}
@@ -15,9 +15,9 @@
 
 <input type="hidden" name="ID" value="{{.VLAN.ID}}">
 <input type="hidden" name="DID" value="{{.VLAN.DID}}">
-<input type="hidden" name="UID" value="{{.User.ID}}">
+<input type="hidden" name="UID" value="{{.Common.User.ID}}">
 <input type="button" value="Cancel"  onclick="javascript:window.history.go(-1)">
-{{ if .User.Editor }}
+{{ if .Common.User.Editor }}
 {{ if eq .VLAN.ID 0 }}
 <input type="submit" name="action" value="Add">
 {{ else }}

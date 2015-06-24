@@ -1,4 +1,4 @@
-{{define "head"}}<title>{{.Title}}</title>{{end}}
+{{define "head"}}<title>{{.Common.Title}}</title>{{end}}
 {{define "javascript"}}
 $(document).ready(function() {
 $('#rackunit').change(function() {
@@ -39,15 +39,15 @@ $('#rackunit').change(function() {
 
 {{ if gt .Router.ID 0 }}
     <fieldset>
-        <a href="/dcman/network/audit/{{ .Router.ID }}">Change History</a>
+        <a href="{{.Common.Prefix}}/network/audit/{{ .Router.ID }}">Change History</a>
     </fieldset>
 {{end}}
 
 <input type="hidden" name="ID" value="{{.Router.ID}}">
 <input type="hidden" name="RID" value="{{.Router.RID}}">
-<input type="hidden" name="UID" value="{{.User.ID}}">
+<input type="hidden" name="UID" value="{{.Common.User.ID}}">
 <input type="button" value="Cancel"  onclick="javascript:window.history.go(-1)">
-{{ if .User.Editor }}
+{{ if .Common.User.Editor }}
 {{ if eq .Router.ID 0 }}
 <input type="submit" value="Add">
 {{ else }}

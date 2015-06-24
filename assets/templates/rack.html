@@ -1,4 +1,4 @@
-{{define "head"}}<title>{{.Title}}</title>{{end}}
+{{define "head"}}<title>{{.Common.Title}}</title>{{end}}
 {{define "javascript"}}
 $(document).ready(function() {
 
@@ -12,7 +12,7 @@ $(document).ready(function() {
     };
     $.ajax({
       type: "POST",
-      url: "/dcman/rack/network",
+      url: "{{.Common.Prefix}}/rack/network",
       data: data,
       error: function(jqXHR, textStatus, errorThrown) {
         alert("Error: " + jqXHR.responseText)
@@ -37,7 +37,7 @@ $(document).ready(function() {
     };
     $.ajax({
       type: "POST",
-      url: "/dcman/rack/network",
+      url: "{{.Common.Prefix}}/rack/network",
       data: data,
       error: function(jqXHR, textStatus, errorThrown) {
         alert("Error: " + jqXHR.responseText)
@@ -87,7 +87,7 @@ $(".rvlan").change(function () {
 <input type="hidden" name="DID" value="{{.Rack.DID}}">
 <input type="hidden" name="UID" value="{{.User.ID}}">
 <input type="button" value="Cancel"  onclick="javascript:window.history.go(-1)">
-{{ if .User.Editor }}
+{{ if .Common.User.Editor }}
 {{ if eq .Rack.ID 0 }}
 <input type="submit" name="action" value="Add">
 {{ else }}
@@ -111,7 +111,7 @@ $(".rvlan").change(function () {
             <td><input type="text" class="rvlan" id="VID_{{.VID}}" name="VID_{{.VID}}" value="{{.VID}}"/></td>
             <td><input type="text" class="rvlan" id="FirstIP_{{.VID}}" name="FirstIP_{{.VID}}" value="{{.FirstIP}}"/></td>
             <td><input type="text" class="rvlan" id="LastIP_{{.VID}}" name="LastIP_{{.VID}}" value="{{.LastIP}}"/></td>
-            {{ if $.User.Editor }}
+            {{ if $.Common.User.Editor }}
             <td><input type="button" id="rn_{{.VID}}" class="modify_rn" value="Delete"></td>
             {{ end }}
         </tr>
@@ -120,7 +120,7 @@ $(".rvlan").change(function () {
             <td><input type="text" id="VID_new" name="VID_new" value=""/></td>
             <td><input type="text" id="FirstIP_new" name="FirstIP_new" value=""/></td>
             <td><input type="text" id="LastIP_new" name="LastIP_new" value=""/></td>
-            {{ if $.User.Editor }}
+            {{ if $.Common.User.Editor }}
             <td><input type="button" id="rn_add" value="Add"></td>
             {{ end }}
         </tr>

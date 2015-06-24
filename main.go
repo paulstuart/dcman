@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	version           = "1.2.0"
+	version           = "1.3.0"
 	Hostname, _       = os.Hostname()
 	Basedir, _        = os.Getwd() // get abs path now, as we will be changing dirs
 	log_layout        = "2006-01-02 15:04:05.999"
@@ -27,6 +27,7 @@ var (
 	Datacenters       []Datacenter
 	systemLocation, _ = time.LoadLocation("Local")
 	dbServer          dbu.DBU
+	pathPrefix        string
 	cfg               = struct {
 		Main MainConfig
 		SAML SAMLConfig
@@ -34,8 +35,9 @@ var (
 )
 
 type MainConfig struct {
-	Name string `gcfg:"name"`
-	Port int    `gcfg:"port"`
+	Name   string `gcfg:"name"`
+	Port   int    `gcfg:"port"`
+	Prefix string `gcfg:"prefix"`
 }
 
 type SAMLConfig struct {
@@ -49,7 +51,6 @@ type SAMLConfig struct {
 }
 
 const (
-	pathPrefix     = "/dcman"
 	sessionMinutes = 120
 	secretKey      = "Team players only! But that's ok, we can all work together"
 	configFile     = "config.gcfg"
@@ -67,6 +68,9 @@ func init() {
 		if err != nil {
 			log.Fatalf("Failed to parse gcfg data: %s", err)
 		}
+	}
+	if len(cfg.Main.Prefix) > 0 {
+		pathPrefix = cfg.Main.Prefix
 	}
 }
 

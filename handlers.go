@@ -19,17 +19,14 @@ type Fail struct {
 type Tuple [2]string
 
 type Tabular struct {
-	Title       string
-	Table       *dbu.Table
-	User        User
-	Datacenters []Datacenter
+	Common
+	Table *dbu.Table
 }
 
 type RackData struct {
-	Title  string
+	Common
 	RackID string
 	DC     string
-	User   User
 	Server []Tuple
 }
 
@@ -42,41 +39,37 @@ type Totals struct {
 // for templates
 //
 
+type Common struct {
+	Title, Prefix string
+	Datacenters   []Datacenter
+	User          User
+}
 type Summary struct {
-	Title       string
-	Datacenters []Datacenter
-	User        User
-	Physical    Totals
-	Profiles    Totals
-	VMs         []Totals
+	Common
+	Physical Totals
+	Profiles Totals
+	VMs      []Totals
 }
 
 type DCRacks struct {
-	Title       string
-	Datacenters []Datacenter
-	User        User
-	DC          string
-	Racks       []Rack
-}
-
-type BasicInfo struct {
-	Title       string
-	Datacenters []Datacenter
-	User        User
+	Common
+	DC    string
+	Racks []Rack
 }
 
 type ServerInfo struct {
-	Title       string
-	User        User
-	Datacenters []Datacenter
-	Servers     []Server
+	Common
+	Servers []Server
 }
 
 type VMInfo struct {
-	Title       string
-	User        User
-	Datacenters []Datacenter
-	VMs         []VM
+	Common
+	VMs []VM
+}
+
+type VMTmpl struct {
+	Common
+	VM VM
 }
 
 const (
@@ -92,6 +85,15 @@ var (
 	sCols = strings.Split(serverCols, ",")
 )
 
+func NewCommon(r *http.Request, title string) Common {
+	return Common{
+		Title:       title,
+		Prefix:      pathPrefix,
+		Datacenters: Datacenters,
+		User:        currentUser(r),
+	}
+}
+
 func HomePage(w http.ResponseWriter, r *http.Request) {
 	t, _ := dbServer.Table("select * from server_summary")
 	physical := Totals{"Physical Servers", t}
@@ -99,16 +101,18 @@ func HomePage(w http.ResponseWriter, r *http.Request) {
 	profiles := Totals{"Profiles", p}
 	vms := []Totals{}
 	for _, dc := range Datacenters {
-		e, _ := dbServer.Table("select * from vm_summary where dc=?", dc.Name)
+		e, err := dbServer.Table("select * from vm_summary where dc=?", dc.Name)
+		if err != nil {
+			fmt.Println("DB ERR:", err)
+		}
+		fmt.Println("DC:", dc.Name, "CNT:", len(e.Rows))
 		vms = append(vms, Totals{dc.Location, e})
 	}
 	data := Summary{
-		Title:       cfg.Main.Name + " DC Manager",
-		Datacenters: Datacenters,
-		User:        currentUser(r),
-		Physical:    physical,
-		Profiles:    profiles,
-		VMs:         vms,
+		Common:   NewCommon(r, cfg.Main.Name+" DC Manager"),
+		Physical: physical,
+		Profiles: profiles,
+		VMs:      vms,
 	}
 	renderTemplate(w, r, "index", data)
 }
@@ -138,10 +142,8 @@ func ProfileView(w http.ResponseWriter, r *http.Request) {
 	setLinks(t, 4, "/profile/view?profile=%s", 4)
 	t.SetType("ip-address", 3, 4)
 	data := Tabular{
-		Title:       "Profile List",
-		Datacenters: Datacenters,
-		User:        currentUser(r),
-		Table:       t,
+		Common: NewCommon(r, "Profile List"),
+		Table:  t,
 	}
 	renderTemplate(w, r, "table", data)
 }
@@ -157,11 +159,7 @@ func DataUpload(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintln(w, "ok")
 		}
 	} else {
-		data := BasicInfo{
-			Title:       "Upload server data",
-			Datacenters: Datacenters,
-			User:        currentUser(r),
-		}
+		data := NewCommon(r, "Upload server data")
 		renderTemplate(w, r, "upload", data)
 	}
 }
@@ -177,10 +175,8 @@ func ServerFind(w http.ResponseWriter, r *http.Request) {
 			ShowServer(w, r, s[0])
 		} else {
 			data := ServerInfo{
-				Title:       "servers matching: " + h,
-				User:        currentUser(r),
-				Datacenters: Datacenters,
-				Servers:     s,
+				Common:  NewCommon(r, "servers matching: "+h),
+				Servers: s,
 			}
 			renderTemplate(w, r, "found", data)
 		}
@@ -233,10 +229,8 @@ func searchIPs(w http.ResponseWriter, r *http.Request, ip string) {
 		}
 	} else {
 		data := Tabular{
-			Title:       "Internal IPs",
-			Table:       table,
-			User:        currentUser(r),
-			Datacenters: Datacenters,
+			Common: NewCommon(r, "Internal IPs"),
+			Table:  table,
 		}
 		ShowIPs(w, r, data)
 	}
@@ -250,10 +244,8 @@ func searchServers(w http.ResponseWriter, r *http.Request, hostname string) {
 		ShowServer(w, r, s[0])
 	} else {
 		data := ServerInfo{
-			Title:       "servers matching: " + hostname,
-			User:        currentUser(r),
-			Datacenters: Datacenters,
-			Servers:     s,
+			Common:  NewCommon(r, "servers matching: "+hostname),
+			Servers: s,
 		}
 		renderTemplate(w, r, "found", data)
 	}
@@ -269,10 +261,8 @@ func searchVMs(w http.ResponseWriter, r *http.Request, hostname string) {
 			ShowVM(w, r, v[0])
 		} else {
 			data := VMInfo{
-				Title:       "VMs matching: " + hostname,
-				User:        currentUser(r),
-				Datacenters: Datacenters,
-				VMs:         v,
+				Common: NewCommon(r, "VMs matching: "+hostname),
+				VMs:    v,
 			}
 			renderTemplate(w, r, "vmfound", data)
 		}
@@ -294,10 +284,8 @@ func showIP(w http.ResponseWriter, r *http.Request, ip string) {
 		}
 	} else {
 		data := Tabular{
-			Title:       "Internal IPs",
-			Table:       table,
-			User:        currentUser(r),
-			Datacenters: Datacenters,
+			Common: NewCommon(r, "Internal IPs"),
+			Table:  table,
 		}
 		ShowIPs(w, r, data)
 	}
@@ -323,10 +311,8 @@ func VMFind(w http.ResponseWriter, r *http.Request) {
 			ShowVM(w, r, v[0])
 		} else {
 			data := VMInfo{
-				Title:       "VMs matching: " + h,
-				User:        currentUser(r),
-				Datacenters: Datacenters,
-				VMs:         v,
+				Common: NewCommon(r, "VMs matching: "+h),
+				VMs:    v,
 			}
 			renderTemplate(w, r, "vmfound", data)
 		}
@@ -447,28 +433,25 @@ func RackEdit(w http.ResponseWriter, r *http.Request) {
 		redirect(w, r, "/dc/racks/"+dc, http.StatusSeeOther)
 	} else {
 		var rack Rack
-		bits := strings.Split(r.URL.Path, "/")
-		if bits[1] == "add" {
+		if len(r.URL.Path) == 0 {
 			rack = Rack{RUs: 45}
-		} else if len(bits) < 3 {
-			notFound(w, r)
-			return
 		} else {
-			rack, _ = getRack("where id=?", bits[2])
+			var err error
+			rack, err = getRack("where id=?", r.URL.Path)
+			if err != nil {
+				notFound(w, r)
+				return
+			}
 		}
 		dc := dcIDs[rack.DID]
 		data := struct {
-			Title       string
-			DC          string
-			User        User
-			Datacenters []Datacenter
-			Rack        Rack
+			Common
+			DC   string
+			Rack Rack
 		}{
-			Title:       fmt.Sprintf("Edit Rack: %d (%s)", rack.Label, dc.Name),
-			DC:          dc.Name,
-			Rack:        rack,
-			User:        currentUser(r),
-			Datacenters: Datacenters,
+			Common: NewCommon(r, fmt.Sprintf("Edit Rack: %d (%s)", rack.Label, dc.Name)),
+			DC:     dc.Name,
+			Rack:   rack,
 		}
 		renderTemplate(w, r, "rack", data)
 	}
@@ -482,10 +465,8 @@ func ShowRacks(w http.ResponseWriter, r *http.Request, bits ...string) {
 		return
 	}
 	data := Tabular{
-		Title:       "Physical Servers",
-		Table:       table,
-		User:        currentUser(r),
-		Datacenters: Datacenters,
+		Common: NewCommon(r, "Physical Servers"),
+		Table:  table,
 	}
 	ShowListing(w, r, data)
 }
@@ -508,10 +489,8 @@ func ServerAudit(w http.ResponseWriter, r *http.Request) {
 		table, _ := dbServer.Table(query, id)
 		skip := []string{"rowid", "id", "uid", "login", "modified", "remote_addr"}
 		data := Tabular{
-			Title:       "Audit History",
-			Table:       table.Diff(true, skip...),
-			User:        currentUser(r),
-			Datacenters: Datacenters,
+			Common: NewCommon(r, "Audit History"),
+			Table:  table.Diff(true, skip...),
 		}
 		renderTemplate(w, r, "server_audit", data)
 	}
@@ -526,10 +505,8 @@ func VMAudit(w http.ResponseWriter, r *http.Request) {
 		table, _ := dbServer.Table(query, id)
 		skip := []string{"rowid", "id", "uid", "login", "modified", "remote_addr"}
 		data := Tabular{
-			Title:       "Audit History",
-			Table:       table.Diff(true, skip...),
-			User:        currentUser(r),
-			Datacenters: Datacenters,
+			Common: NewCommon(r, "Audit History"),
+			Table:  table.Diff(true, skip...),
 		}
 		renderTemplate(w, r, "server_audit", data)
 	}
@@ -544,10 +521,8 @@ func NetworkAudit(w http.ResponseWriter, r *http.Request) {
 		table, _ := dbServer.Table(query, id)
 		skip := []string{"rowid", "id", "uid", "login", "modified", "remote_addr"}
 		data := Tabular{
-			Title:       "Audit History",
-			Table:       table.Diff(true, skip...),
-			User:        currentUser(r),
-			Datacenters: Datacenters,
+			Common: NewCommon(r, "Audit History"),
+			Table:  table.Diff(true, skip...),
 		}
 		renderTemplate(w, r, "server_audit", data)
 	}
@@ -564,7 +539,7 @@ func NetworkAdd(w http.ResponseWriter, r *http.Request) {
 			fmt.Println("insert error:", err)
 		}
 		dc := r.FormValue("DC")
-		http.Redirect(w, r, "/dc/racks/"+dc, http.StatusSeeOther)
+		redirect(w, r, "/dc/racks/"+dc, http.StatusSeeOther)
 	} else {
 		bits := strings.Split(r.URL.Path, "/")
 		if len(bits) < 2 {
@@ -584,7 +559,6 @@ func NetworkAdd(w http.ResponseWriter, r *http.Request) {
 
 func NetworkNext(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Path
-	fmt.Println("NEXT ID:", id)
 	i, _ := strconv.ParseInt(id, 0, 64)
 	next, _ := NextIPs(i)
 	j, _ := json.Marshal(next)
@@ -631,7 +605,7 @@ func NetworkEdit(w http.ResponseWriter, r *http.Request) {
 			n.Delete()
 		}
 		dc := r.FormValue("DC")
-		http.Redirect(w, r, "/dc/racks/"+dc, http.StatusSeeOther)
+		redirect(w, r, "/dc/racks/"+dc, http.StatusSeeOther)
 	} else {
 		i := strings.LastIndex(r.URL.Path, "/")
 		id, err := strconv.Atoi(r.URL.Path[i+1:])
@@ -651,17 +625,13 @@ func NetworkEdit(w http.ResponseWriter, r *http.Request) {
 func ShowRouter(w http.ResponseWriter, r *http.Request, router Router) {
 	dc := router.DC()
 	data := struct {
-		Title       string
-		DC          string
-		Router      Router
-		User        User
-		Datacenters []Datacenter
+		Common
+		DC     string
+		Router Router
 	}{
-		Title:       router.Hostname + " in " + dc,
-		Router:      router,
-		DC:          dc,
-		User:        currentUser(r),
-		Datacenters: Datacenters,
+		Common: NewCommon(r, router.Hostname+" in "+dc),
+		Router: router,
+		DC:     dc,
 	}
 	renderTemplate(w, r, "router", data)
 }
@@ -675,32 +645,24 @@ func ShowServer(w http.ResponseWriter, r *http.Request, server Server) {
 		}
 	}
 	data := struct {
-		Title       string
-		Server      Server
-		User        User
-		Datacenters []Datacenter
-		IPs         map[string]string
+		Common
+		Server Server
+		IPs    map[string]string
 	}{
-		Title:       server.Hostname,
-		Server:      server,
-		User:        currentUser(r),
-		Datacenters: Datacenters,
-		IPs:         IPs,
+		Common: NewCommon(r, server.Hostname),
+		Server: server,
+		IPs:    IPs,
 	}
 	renderTemplate(w, r, "server", data)
 }
 
 func ShowVM(w http.ResponseWriter, r *http.Request, vm VM) {
 	data := struct {
-		Title       string
-		User        User
-		VM          VM
-		Datacenters []Datacenter
+		Common
+		VM VM
 	}{
-		Title:       "VM: " + vm.Hostname,
-		User:        currentUser(r),
-		VM:          vm,
-		Datacenters: Datacenters,
+		Common: NewCommon(r, "VM: "+vm.Hostname),
+		VM:     vm,
 	}
 	renderTemplate(w, r, "vm", data)
 }
@@ -724,17 +686,9 @@ func VMAdd(w http.ResponseWriter, r *http.Request) {
 		} else {
 			id, _ := strconv.ParseInt(bits[2], 0, 64)
 			vm := VM{SID: id}
-			data := struct {
-				Title       string
-				User        User
-				Datacenters []Datacenter
-				SID         string
-				VM          VM
-			}{
-				Title:       "Add VM",
-				User:        currentUser(r),
-				Datacenters: Datacenters,
-				VM:          vm,
+			data := VMTmpl{
+				Common: NewCommon(r, "Add VM"),
+				VM:     vm,
 			}
 			renderTemplate(w, r, "vm", data)
 		}
@@ -761,28 +715,18 @@ func VMEdit(w http.ResponseWriter, r *http.Request) {
 		}
 		redirect(w, r, url, http.StatusSeeOther)
 	} else {
-		bits := strings.Split(r.URL.Path, "/")
-		if len(bits) < 2 {
+		id, err := strconv.ParseInt(r.URL.Path, 0, 64)
+		if err != nil {
+			fmt.Println("Bad VM ID:", err)
 			notFound(w, r)
-		} else {
-			id, err := strconv.ParseInt(bits[2], 0, 64)
-			if err != nil {
-				fmt.Println("Bad VM ID:", err)
-			}
-			vm, _ := getVM("where id=?", id)
-			data := struct {
-				Title       string
-				User        User
-				VM          VM
-				Datacenters []Datacenter
-			}{
-				Title:       "VM: " + vm.Hostname,
-				User:        currentUser(r),
-				VM:          vm,
-				Datacenters: Datacenters,
-			}
-			renderTemplate(w, r, "vm", data)
+			return
 		}
+		vm, _ := getVM("where id=?", id)
+		data := VMTmpl{
+			Common: NewCommon(r, "VM: "+vm.Hostname),
+			VM:     vm,
+		}
+		renderTemplate(w, r, "vm", data)
 	}
 }
 
@@ -817,15 +761,11 @@ func DCEdit(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		data := struct {
-			Title       string
-			User        User
-			Datacenter  Datacenter
-			Datacenters []Datacenter
+			Common
+			Datacenter Datacenter
 		}{
-			Title:       "DC: " + dc.Location,
-			User:        currentUser(r),
-			Datacenter:  dc,
-			Datacenters: Datacenters,
+			Common:     NewCommon(r, "DC: "+dc.Location),
+			Datacenter: dc,
 		}
 		renderTemplate(w, r, "dc", data)
 	}
@@ -840,10 +780,8 @@ func DCList(w http.ResponseWriter, r *http.Request) {
 	table.Hide(0)
 	setLinks(table, 1, "/dc/edit/%s", 0)
 	data := Tabular{
-		Title:       "Datacenters",
-		Table:       table,
-		User:        currentUser(r),
-		Datacenters: Datacenters,
+		Common: NewCommon(r, "Datacenters"),
+		Table:  table,
 	}
 	renderTemplate(w, r, "table", data)
 }
@@ -875,15 +813,11 @@ func VlanEdit(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			data := struct {
-				Title       string
-				User        User
-				VLAN        VLAN
-				Datacenters []Datacenter
+				Common
+				VLAN VLAN
 			}{
-				Title:       fmt.Sprintf("VLAN: %d (%s) ", vlan.Name, bits[0]),
-				User:        currentUser(r),
-				VLAN:        vlan,
-				Datacenters: Datacenters,
+				Common: NewCommon(r, fmt.Sprintf("VLAN: %d (%s) ", vlan.Name, bits[0])),
+				VLAN:   vlan,
 			}
 			renderTemplate(w, r, "vlan", data)
 		}
@@ -894,10 +828,8 @@ func auditPage(w http.ResponseWriter, r *http.Request) {
 	const query = "select id,ts,ip,login,action,msg from audit_view order by id desc"
 	table, _ := dbServer.Table(query)
 	data := Tabular{
-		Title:       "Audit Log",
-		Table:       table,
-		User:        currentUser(r),
-		Datacenters: Datacenters,
+		Common: NewCommon(r, "Audit Log"),
+		Table:  table,
 	}
 	renderTemplate(w, r, "audit", data)
 }
@@ -906,10 +838,8 @@ func ListingPage(w http.ResponseWriter, r *http.Request) {
 	const query = "select id,dc,rack,ru,hostname,alias,profile,assigned,ip_ipmi,ip_internal,ip_public,note,asset_tag,vendor_sku,sn from sview"
 	table, _ := dbServer.Table(query)
 	data := Tabular{
-		Title:       "Physical Servers",
-		Table:       table,
-		User:        currentUser(r),
-		Datacenters: Datacenters,
+		Common: NewCommon(r, "Physical Servers"),
+		Table:  table,
 	}
 	ShowListing(w, r, data)
 }
@@ -922,10 +852,8 @@ func ServerDupes(w http.ResponseWriter, r *http.Request) {
 	    and a.id != b.id`
 	table, _ := dbServer.Table(query)
 	data := Tabular{
-		Title:       "Duplicate Servers",
-		Table:       table,
-		User:        currentUser(r),
-		Datacenters: Datacenters,
+		Common: NewCommon(r, "Duplicate Servers"),
+		Table:  table,
 	}
 	ShowListing(w, r, data)
 }
@@ -946,6 +874,14 @@ func ShowListing(w http.ResponseWriter, r *http.Request, t Tabular) {
 	renderTemplate(w, r, "table", t)
 }
 
+func renderTabular(w http.ResponseWriter, r *http.Request, table *dbu.Table, title string) {
+	data := Tabular{
+		Common: NewCommon(r, title),
+		Table:  table,
+	}
+	renderTemplate(w, r, "table", data)
+}
+
 func VlansPage(w http.ResponseWriter, r *http.Request) {
 	const query = "select dc,name,gateway,route,netmask from dcvlans"
 	table, err := dbServer.Table(query)
@@ -954,27 +890,15 @@ func VlansPage(w http.ResponseWriter, r *http.Request) {
 	}
 	setLinks(table, 1, "/vlan/edit/%s/%s", 0, 1)
 	table.SetType("ip-address", 2, 3)
-	data := Tabular{
-		Title:       "VLANs",
-		Table:       table,
-		User:        currentUser(r),
-		Datacenters: Datacenters,
-	}
-	renderTemplate(w, r, "table", data)
+	renderTabular(w, r, table, "VLANs")
 }
 
 func NetworkDevices(w http.ResponseWriter, r *http.Request) {
 	const query = "select id,dc,rack,ru,hostname,make,model,note from nview"
 	table, _ := dbServer.Table(query)
-	data := Tabular{
-		Title:       "Network Devices",
-		Table:       table,
-		User:        currentUser(r),
-		Datacenters: Datacenters,
-	}
 	table.Hide(0)
 	setLinks(table, 4, "/network/edit/%s", 0)
-	renderTemplate(w, r, "table", data)
+	renderTabular(w, r, table, "Network Devices")
 }
 
 func ConnectionsPage(w http.ResponseWriter, r *http.Request) {
@@ -982,10 +906,8 @@ func ConnectionsPage(w http.ResponseWriter, r *http.Request) {
 	const query = "select " + columns + " from dcview"
 	table, _ := dbServer.Table(query)
 	data := Tabular{
-		Title:       "Physical Server Connectionss",
-		Table:       table,
-		User:        currentUser(r),
-		Datacenters: Datacenters,
+		Common: NewCommon(r, "Physical Server Connections"),
+		Table:  table,
 	}
 	ShowListing(w, r, data)
 }
@@ -1001,10 +923,8 @@ func IPInternalAllPage(w http.ResponseWriter, r *http.Request) {
 	const query = "select * from ipinside"
 	table, _ := dbServer.Table(query)
 	data := Tabular{
-		Title:       "Internal IPs",
-		Table:       table,
-		User:        currentUser(r),
-		Datacenters: Datacenters,
+		Common: NewCommon(r, "Internal IPs"),
+		Table:  table,
 	}
 	ShowIPs(w, r, data)
 }
@@ -1014,10 +934,8 @@ func IPInternalDC(w http.ResponseWriter, r *http.Request) {
 	dc := strings.ToUpper(r.URL.Path)
 	table, _ := dbServer.Table(query, dc)
 	data := Tabular{
-		Title:       "Internal IPs for " + dc,
-		Table:       table,
-		User:        currentUser(r),
-		Datacenters: Datacenters,
+		Common: NewCommon(r, "Internal IPs for "+dc),
+		Table:  table,
 	}
 	ShowIPs(w, r, data)
 }
@@ -1035,10 +953,8 @@ func IPPublicAllPage(w http.ResponseWriter, r *http.Request) {
 	const query = "select * from ippublic"
 	table, _ := dbServer.Table(query)
 	data := Tabular{
-		Title:       "Public IPs",
-		Table:       table,
-		User:        currentUser(r),
-		Datacenters: Datacenters,
+		Common: NewCommon(r, "Public IPs"),
+		Table:  table,
 	}
 	ShowIPs(w, r, data)
 }
@@ -1059,10 +975,8 @@ func VMAllPage(w http.ResponseWriter, r *http.Request) {
 	}
 	table, _ := dbServer.Table(query)
 	data := Tabular{
-		Title:       "VMs",
-		Table:       table,
-		User:        currentUser(r),
-		Datacenters: Datacenters,
+		Common: NewCommon(r, "VMs"),
+		Table:  table,
 	}
 	VMListLinks(w, r, data)
 }
@@ -1077,13 +991,7 @@ func VMOrphans(w http.ResponseWriter, r *http.Request) {
 			row[2] = "*blank*"
 		}
 	}
-	data := Tabular{
-		Title:       "Orphaned VMs",
-		Table:       table,
-		User:        currentUser(r),
-		Datacenters: Datacenters,
-	}
-	renderTemplate(w, r, "table", data)
+	renderTabular(w, r, table, "Orphaned VMs")
 }
 
 func orphan(w http.ResponseWriter, r *http.Request, vm Orphan, errmsg string) {
@@ -1159,10 +1067,8 @@ func VMListPage(w http.ResponseWriter, r *http.Request) {
 	dc := strings.ToUpper(r.URL.Path)
 	table, _ := dbServer.Table(query, dc)
 	data := Tabular{
-		Title:       "VMs",
-		Table:       table,
-		User:        currentUser(r),
-		Datacenters: Datacenters,
+		Common: NewCommon(r, "VMs"),
+		Table:  table,
 	}
 	VMListLinks(w, r, data)
 }
@@ -1170,15 +1076,11 @@ func VMListPage(w http.ResponseWriter, r *http.Request) {
 func usersListPage(w http.ResponseWriter, r *http.Request) {
 	Users, _ := dbServer.ObjectList(User{})
 	data := struct {
-		Title       string
-		Users       []User
-		User        User
-		Datacenters []Datacenter
+		Common
+		Users []User
 	}{
-		Title:       "Datacenter Admins",
-		Users:       Users.([]User),
-		User:        currentUser(r),
-		Datacenters: Datacenters,
+		Common: NewCommon(r, "Datacenter Admins"),
+		Users:  Users.([]User),
 	}
 	renderTemplate(w, r, "user_list", data)
 }
@@ -1209,7 +1111,7 @@ func UserEdit(w http.ResponseWriter, r *http.Request) {
 		}
 		user := currentUser(r)
 		auditLog(user.ID, RemoteHost(r), action, u.Login)
-		http.Redirect(w, r, "/user/list", http.StatusSeeOther)
+		redirect(w, r, "/user/list", http.StatusSeeOther)
 	} else {
 		var edit User
 		title := "Add User"
@@ -1219,17 +1121,13 @@ func UserEdit(w http.ResponseWriter, r *http.Request) {
 			title = "Edit User"
 		}
 		data := struct {
-			Title       string
-			User        User
-			EditUser    User
-			Levels      []userLevel
-			Datacenters []Datacenter
+			Common
+			EditUser User
+			Levels   []userLevel
 		}{
-			Title:       title,
-			User:        currentUser(r),
-			EditUser:    edit,
-			Levels:      userLevels,
-			Datacenters: Datacenters,
+			Common:   NewCommon(r, title),
+			EditUser: edit,
+			Levels:   userLevels,
 		}
 		renderTemplate(w, r, "user_edit", data)
 	}
@@ -1246,21 +1144,17 @@ func UserRun(w http.ResponseWriter, r *http.Request) {
 			fmt.Println("RUN ERR:", err)
 		}
 	}
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func VMListing(w http.ResponseWriter, r *http.Request) {
 	serverVMs := ServerVMs{}.List()
 	data := struct {
-		Title       string
-		User        User
-		Servers     []ServerVMs
-		Datacenters []Datacenter
+		Common
+		Servers []ServerVMs
 	}{
-		Title:       "Server VMs",
-		User:        currentUser(r),
-		Servers:     serverVMs,
-		Datacenters: Datacenters,
+		Common:  NewCommon(r, "Server VMs"),
+		Servers: serverVMs,
 	}
 	renderTemplate(w, r, "servervms", data)
 }
@@ -1274,11 +1168,9 @@ func DatacenterPage(w http.ResponseWriter, r *http.Request) {
 	}
 	racks := rx.([]Rack)
 	data := DCRacks{
-		Title:       "Servers in " + dcLookup[dc].Location,
-		DC:          dc,
-		Racks:       racks,
-		Datacenters: Datacenters,
-		User:        currentUser(r),
+		Common: NewCommon(r, "Servers in "+dcLookup[dc].Location),
+		DC:     dc,
+		Racks:  racks,
 	}
 	renderTemplate(w, r, "datacenter", data)
 }
@@ -1301,15 +1193,11 @@ func DebugPage(w http.ResponseWriter, r *http.Request) {
 
 func ErrorPage(w http.ResponseWriter, r *http.Request, errmsg string) {
 	data := struct {
-		Title       string
-		Error       string
-		User        User
-		Datacenters []Datacenter
+		Common
+		Error string
 	}{
-		Title:       errmsg,
-		Error:       errmsg,
-		User:        currentUser(r),
-		Datacenters: Datacenters,
+		Common: NewCommon(r, errmsg),
+		Error:  errmsg,
 	}
 	renderTemplate(w, r, "fail", data)
 }
@@ -1324,11 +1212,11 @@ func logoutPage(w http.ResponseWriter, r *http.Request) {
 	auditLog(user.ID, RemoteHost(r), "Logout", user.Email)
 	Authorized(w, false)
 	Remember(w, nil)
-	http.Redirect(w, r, "/", 302)
+	redirect(w, r, "/", 302)
 }
 
 func ExcelPage(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, "/", 302)
+	redirect(w, r, "/", 302)
 	//w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 }
 
@@ -1377,7 +1265,15 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 			msg = "Invalid login credentials"
 		}
 	}
-	data := struct{ ErrorMsg, Placeholder string }{msg, cfg.SAML.PlaceHolder}
+	data := struct {
+		Common
+		ErrorMsg    string
+		Placeholder string
+	}{
+		Common:      NewCommon(r, "Login"),
+		ErrorMsg:    msg,
+		Placeholder: cfg.SAML.PlaceHolder,
+	}
 	renderPlainTemplate(w, r, "login", data)
 }
 

@@ -1,4 +1,4 @@
-{{define "head"}}<title>{{.Title}}</title>{{end}}
+{{define "head"}}<title>{{.Common.Title}}</title>{{end}}
 {{define "javascript"}}
 $(document).ready(function() {
     $("tr:even").css("background-color", "#eeeeee");
@@ -8,16 +8,16 @@ $(document).ready(function() {
 
 {{define "summary"}}
 <div class="summary">
-    <div class="totaltitle">{{.Title}}</div>
-<table>
+    <div class="totaltitle">{{.Physical.Title}}</div>
+    <table>
   <thead>
     <tr>
-      {{ range .Table.Columns }}<th>{{.}}</th>{{ end }}
+      {{ range .Physical.Table.Columns }}<th>{{.}}</th>{{ end }}
     </tr>
   </thead>
   <tbody>
-    {{ $cnt := .Table.LoopLen }}
-    {{ range $i,$row := .Table.Rows }}
+    {{ $cnt := .Physical.Table.LoopLen }}
+    {{ range $i,$row := .Physical.Table.Rows }}
     <tr>
         {{ range $row }}<td {{ if eq $i $cnt }}class="grandtotal"{{end}}>{{.}}</td>{{ end }}
     </tr>
@@ -29,41 +29,17 @@ $(document).ready(function() {
 
 {{define "profiles"}}
 <div class="summary">
-    <div class="totaltitle">{{.Title}}</div>
+    <div class="totaltitle">{{.Profiles.Title}}</div>
 <table>
   <thead>
     <tr>
-      {{ range .Table.Columns }}<th>{{.}}</th>{{ end }}
+      {{ range .Profiles.Table.Columns }}<th>{{.}}</th>{{ end }}
     </tr>
   </thead>
   <tbody>
-    {{ range .Table.Rows }}
+      {{ range .Profiles.Table.Rows }}
     {{ $profile := index . 0}}
-    <td><a href="/dcman/profile/view?profile={{$profile}}">{{if $profile}}{{$profile}}{{else}}*blank*{{end}}</a></td><td>{{ index . 1 }}</td></tr>
-    {{ end }}
-  </tbody>
-</table>
-</div>
-{{end}}
-
-{{define "vms"}}
-<div class="summary">
-    <div class="totaltitle">{{.Title}}</div>
-<table>
-  <thead>
-    <tr>
-        <th>{{index .Table.Columns 1}}</th><th>{{ index .Table.Columns 2 }}</th>
-    </tr>
-  </thead>
-  <tbody>
-    {{ $cnt := .Table.LoopLen }}
-    {{ range $i,$row := .Table.Rows }}
-    {{ if lt $i $cnt }}
-    {{ $profile := index $row 1 }}
-    <tr><td><a href="/dcman/vm/all?dc={{index $row 0}}&profile={{$profile}}">{{if $profile}}{{$profile}}{{else}}*blank*{{end}}</a></td><td>{{ index $row 2 }}</td></tr>
-    {{ else }}
-    <tr><td class="grandtotal">{{index $row 1}}</td><td class="grandtotal">{{ index $row 2 }}</td></tr>
-    {{ end }}
+    <td><a href="{{$.Common.Prefix}}/profile/view?profile={{$profile}}">{{if $profile}}{{$profile}}{{else}}*blank*{{end}}</a></td><td>{{ index . 1 }}</td></tr>
     {{ end }}
   </tbody>
 </table>
@@ -71,12 +47,32 @@ $(document).ready(function() {
 {{end}}
 
 {{define "body"}}
-<h1 class="title">{{.Title}}</h1>
+<h1 class="title">{{.Common.Title}}</h1>
 <div class="outer">
-{{template "summary" .Physical}}
-{{template "profiles" .Profiles}}
-{{ range .VMs }}
-  {{template "vms" .}}
+  {{template "summary" .}}
+  {{template "profiles" .}}
+  {{ range .VMs }}
+  <div class="summary">
+    <div class="totaltitle">{{.Title}}</div>
+    <table>
+      <thead>
+        <tr>
+          <th>{{index .Table.Columns 1}}</th><th>{{ index .Table.Columns 2 }}</th>
+        </tr>
+      </thead>
+      <tbody>
+      {{ $cnt := .Table.LoopLen }}
+      {{ range $i,$row := .Table.Rows }}
+        {{ if lt $i $cnt }}
+        {{ $profile := index $row 1 }}
+        <tr><td><a href="{{$.Common.Prefix}}/vm/all?dc={{index $row 0}}&profile={{$profile}}">{{if $profile}}{{$profile}}{{else}}*blank*{{end}}</a></td><td>{{ index $row 2 }}</td></tr>
+        {{ else }}
+        <tr><td class="grandtotal">{{index $row 1}}</td><td class="grandtotal">{{ index $row 2 }}</td></tr>
+        {{ end }}
+      {{ end }}
+    </tbody>
+   </table>
+  </div>
 {{end}}
 </div>
 {{end}}

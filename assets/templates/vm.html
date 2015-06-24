@@ -1,4 +1,4 @@
-{{define "head"}}<title>{{.Title}}</title>{{end}}
+{{define "head"}}<title>{{.Common.Title}}</title>{{end}}
 {{define "javascript"}}
 {{end}}
 {{define "body"}}
@@ -6,7 +6,7 @@
 <form method="post" id="vmform" class="common">
     <fieldset>
         <legend>VM</legend>
-        <label>Server <a href="/dcman/server/edit/{{.VM.SID}}">{{.VM.Server.Hostname}}</a></label><br/>
+        <label>Server <a href="{{.Common.Prefix}}/server/edit/{{.VM.SID}}">{{.VM.Server.Hostname}}</a></label><br/>
         <label>Hostname<input type="text" name="Hostname" value="{{.VM.Hostname}}"  pattern=".+" required/></label><br/>
         <label>Profile<input type="text" name="Profile" value="{{.VM.Profile}}"/></label><br/>
         <label>Private IP<input type="text" name="Private" value="{{.VM.Private}}" pattern=".+" required/></label><br/>
@@ -16,14 +16,14 @@
     </fieldset>
 {{ if gt .VM.ID 0 }}
     <fieldset>
-        <a href="/dcman/vm/audit/{{ .VM.ID }}">Change History</a>
+        <a href="{{.Common.Prefix}}/vm/audit/{{ .VM.ID }}">Change History</a>
     </fieldset>
 {{end}}
 
 <input type="hidden" name="ID" value="{{.VM.ID}}">
 <input type="hidden" name="SID" value="{{.VM.SID}}">
 <input type="button" value="Cancel"  onclick="javascript:window.history.go(-1)">
-{{if .User.Editor }}
+{{ if .Common.User.Editor }}
 {{if eq .VM.ID 0}}
 <input type="submit" name="action" value="Add">
 {{else}}
