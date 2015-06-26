@@ -241,12 +241,16 @@ func notFound(w http.ResponseWriter, r *http.Request) {
 	redirect(w, r, "/error", http.StatusNotFound)
 }
 
+func goHome(w http.ResponseWriter, r *http.Request) {
+	redirect(w, r, "/", 301)
+}
+
 func webServer(handlers []HFunc) {
 	loadTemplates()
 	for _, h := range handlers {
 		p := pathPrefix + h.Path
 		switch {
-		case strings.HasPrefix(h.Path, "/login"):
+		case strings.HasPrefix(p, "/login"):
 			http.Handle(p, http.StripPrefix(p, h.Func))
 		case strings.HasPrefix(h.Path, "/static/"):
 			http.Handle(p, http.StripPrefix(pathPrefix, h.Func))
@@ -257,6 +261,9 @@ func webServer(handlers []HFunc) {
 		default:
 			http.Handle(p, http.StripPrefix(p, oktaMiddleware(h.Func)))
 		}
+	}
+	if len(pathPrefix) > 0 {
+		http.HandleFunc("/", goHome)
 	}
 
 	if err := os.MkdirAll(logDir, 0755); err != nil {
