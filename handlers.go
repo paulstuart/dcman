@@ -105,8 +105,9 @@ func HomePage(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			fmt.Println("DB ERR:", err)
 		}
-		fmt.Println("DC:", dc.Name, "CNT:", len(e.Rows))
-		vms = append(vms, Totals{dc.Location, e})
+		if len(e.Rows) > 0 {
+			vms = append(vms, Totals{dc.Location, e})
+		}
 	}
 	data := Summary{
 		Common:   NewCommon(r, cfg.Main.Name+" DC Manager"),
@@ -589,6 +590,11 @@ func VMsTab(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	w.Header().Set("Content-Disposition", "attachment")
 	dbServer.StreamTab(w, vmExportQuery)
+}
+
+func ServersJSON(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	dbServer.StreamJSON(w, serverExportQuery)
 }
 
 func NetworkEdit(w http.ResponseWriter, r *http.Request) {
@@ -1234,7 +1240,7 @@ func Authorized(w http.ResponseWriter, yes bool) {
 
 func Remember(w http.ResponseWriter, u *User) {
 	c := &http.Cookie{
-		Name: "dcuser",
+		Name: cookieID,
 		Path: "/",
 	}
 	if u != nil {
@@ -1275,6 +1281,25 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		Placeholder: cfg.SAML.PlaceHolder,
 	}
 	renderPlainTemplate(w, r, "login", data)
+}
+
+func APIAudit(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "POST" {
+		r.ParseForm()
+		var a Audit
+		for k, v := range r.Form {
+			fmt.Println("K:", k, "V:", v)
+		}
+		objFromForm(&a, r.Form)
+		a.IP = RemoteHost(r)
+		err := dbServer.Replace(&a)
+		if err != nil {
+			fmt.Println("AUDIT ERR:", err)
+		}
+	} else if r.Method == "GET" {
+		data := struct{ URL string }{"http://" + ip + http_server + r.URL.Path}
+		renderTextTemplate(w, r, "audit.sh", data)
+	}
 }
 
 var webHandlers = []HFunc{
@@ -1331,8 +1356,10 @@ var webHandlers = []HFunc{
 	{"/excel", ExcelPage},
 	{"/data/servers.csv", ServersCSV},
 	{"/data/servers.tab", ServersTab},
+	{"/data/servers.json", ServersJSON},
 	{"/data/vms.csv", VMsCSV},
 	{"/data/vms.tab", VMsTab},
 	{"/data/upload", DataUpload},
+	{"/api/audit", APIAudit},
 	{"/", HomePage},
 }

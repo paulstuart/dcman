@@ -7,10 +7,12 @@ import (
 	"net"
 	"net/http"
 	_ "net/http/pprof"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	ttext "text/template"
 	"time"
 
 	gorilla "github.com/gorilla/handlers"
@@ -20,12 +22,15 @@ const (
 	logDir    = "logs"
 	accessLog = "access.log"
 	errorLog  = "error.log"
+	cookieID  = "dcuser"
 )
 
 var (
-	secure_url, insecure_url, ip string
-	tmpl                         map[string]*template.Template
-	tdir                         = "assets/templates"
+	ip          = MyIp()
+	htmlTmpl    map[string]*template.Template
+	textTmpl    map[string]*ttext.Template
+	tdir        = "assets/templates"
+	http_server string
 	//cookie_store                 = sessions.NewCookieStore([]byte("I can has cookies!"))
 	errorFile *os.File
 )
@@ -54,8 +59,9 @@ func loadTemplates() {
 	funcMap := template.FuncMap{
 		"isTrue": isTrue,
 	}
-	tmpl = make(map[string]*template.Template)
-	files, err := filepath.Glob(tdir + "/*.html")
+	htmlTmpl = make(map[string]*template.Template)
+	textTmpl = make(map[string]*ttext.Template)
+	files, err := filepath.Glob(tdir + "/*.*")
 	if err != nil {
 		panic(err)
 	}
@@ -65,9 +71,13 @@ func loadTemplates() {
 			//fmt.Println("skipping base.html")
 			continue
 		}
-		//fmt.Println("COMPILE: ", name)
-		t := template.New(name).Funcs(funcMap)
-		tmpl[name] = template.Must(t.ParseFiles(file, tdir+"/base.html"))
+		if strings.HasSuffix(name, ".html") {
+			t := template.New(name).Funcs(funcMap)
+			htmlTmpl[name] = template.Must(t.ParseFiles(file, tdir+"/base.html"))
+			continue
+		}
+		t := ttext.New(name)
+		textTmpl[name] = ttext.Must(t.ParseFiles(file))
 	}
 }
 
@@ -82,26 +92,42 @@ func isTrue(in interface{}) string {
 	return "false"
 }
 
+// render a template that inherits the "base" template
 func renderTemplate(w http.ResponseWriter, r *http.Request, tname string, data interface{}) {
-	name := string(tname + ".html")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	err := tmpl[name].ExecuteTemplate(w, "base", data)
+	name := string(tname + ".html")
+	err := htmlTmpl[name].ExecuteTemplate(w, "base", data)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
+// render a template with no inheritence
 func renderPlainTemplate(w http.ResponseWriter, r *http.Request, tname string, data interface{}) {
-	name := string(tname + ".html")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	err := tmpl[name].Execute(w, data)
+	name := string(tname + ".html")
+	err := htmlTmpl[name].Execute(w, data)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func renderTextTemplate(w http.ResponseWriter, r *http.Request, tname string, data interface{}) {
+	w.Header().Set("Content-Type", "text/plain")
+	t := textTmpl[tname]
+	if t == nil {
+		http.Error(w, "no template found for: "+tname, http.StatusInternalServerError)
+		log.Println("no template found for: ", tname)
+		return
+	}
+	err := t.Execute(w, data)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
 func currentUser(r *http.Request) User {
-	cookie, err := r.Cookie("dcuser")
+	cookie, err := r.Cookie(cookieID)
 	if err != nil {
 		return User{}
 	}
@@ -128,7 +154,7 @@ func internalLoginPage(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/", 302)
 		}
 	} else {
-		err := tmpl["login.html"].ExecuteTemplate(w, "base", nil)
+		err := htmlTmpl["login.html"].ExecuteTemplate(w, "base", nil)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -149,15 +175,17 @@ func init() {
 	tdir, _ = filepath.Abs(tdir)             // CWD may change at runtime
 }
 
+/*
 type statusLoggingResponseWriter struct {
-	status int
 	http.ResponseWriter
+	status int
 }
 
 func (w *statusLoggingResponseWriter) WriteHeader(code int) {
 	w.status = code
 	w.ResponseWriter.WriteHeader(code)
 }
+*/
 
 func StaticPage(w http.ResponseWriter, r *http.Request) {
 	name := filepath.Join(assets_dir, r.URL.Path)
@@ -176,6 +204,18 @@ func ErrorLog(r *http.Request, msg string, args ...interface{}) {
 	user := currentUser(r)
 	remote_addr := RemoteHost(r)
 	fmt.Fprintln(errorFile, time.Now().Format(log_layout), remote_addr, user.ID, msg, args)
+}
+
+func userMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.User == nil {
+			user := currentUser(r)
+			if user.ID > 0 {
+				r.URL.User = url.User(user.Login)
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 func oktaMiddleware(next http.Handler) http.Handler {
@@ -203,7 +243,6 @@ func notFound(w http.ResponseWriter, r *http.Request) {
 
 func webServer(handlers []HFunc) {
 	loadTemplates()
-	ip = MyIp()
 	for _, h := range handlers {
 		p := pathPrefix + h.Path
 		switch {
@@ -213,12 +252,13 @@ func webServer(handlers []HFunc) {
 			http.Handle(p, http.StripPrefix(pathPrefix, h.Func))
 		case strings.HasPrefix(h.Path, "/data/"):
 			http.Handle(p, http.StripPrefix(p, h.Func))
+		case strings.HasPrefix(h.Path, "/api/"):
+			http.Handle(p, h.Func)
 		default:
 			http.Handle(p, http.StripPrefix(p, oktaMiddleware(h.Func)))
 		}
 	}
 
-	http_server := fmt.Sprintf(":%d", cfg.Main.Port)
 	if err := os.MkdirAll(logDir, 0755); err != nil {
 		log.Panic(err)
 	}
@@ -233,8 +273,9 @@ func webServer(handlers []HFunc) {
 		log.Panic("Error opening error log:", err)
 	}
 
-	fmt.Println("serve up web:", http_server)
-	err = http.ListenAndServe(http_server, gorilla.CompressHandler(gorilla.LoggingHandler(accessLog, http.DefaultServeMux)))
+	http_server = fmt.Sprintf(":%d", cfg.Main.Port)
+	fmt.Printf("serve up web: http://%s%s/\n", ip, http_server)
+	err = http.ListenAndServe(http_server, gorilla.CompressHandler(userMiddleware(gorilla.LoggingHandler(accessLog, http.DefaultServeMux))))
 	if err != nil {
 		panic(err)
 	}

@@ -368,6 +368,8 @@ func objFromForm(obj interface{}, values map[string][]string) {
 			default:
 				fmt.Println("unhandled field type for:", f.Name, "type:", b.Type())
 			}
+		} else {
+			fmt.Println("NO MATCH:", f.Name)
 		}
 	}
 }
@@ -722,4 +724,18 @@ func NextIPs(rid int64) (map[string]string, error) {
 		next[strconv.Itoa(int(rn.VID))] = ipToString(rn.next)
 	}
 	return next, err
+}
+
+type Audit struct {
+	Hostname string `sql:"hostname" table:"auditing"`
+	IP       string `sql:"remote_addr"`
+	IPs      string `sql:"ips"`
+	Eth0     string `sql:"eth0"`
+	Eth1     string `sql:"eth1"`
+	SN       string `sql:"sn"`
+	Asset    string `sql:"asset"`
+	IPMI_IP  string `sql:"ipmi_ip"`
+	IPMI_MAC string `sql:"ipmi_mac"`
+	CPU      string `sql:"cpu"`
+	Mem      string `sql:"mem"`
 }
