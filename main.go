@@ -72,6 +72,7 @@ func init() {
 	if len(cfg.Main.Prefix) > 0 {
 		pathPrefix = cfg.Main.Prefix
 	}
+	authCookie = cfg.SAML.OKTACookie
 }
 
 func MyIp() string {

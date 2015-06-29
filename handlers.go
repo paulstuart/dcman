@@ -1228,7 +1228,7 @@ func ExcelPage(w http.ResponseWriter, r *http.Request) {
 
 func Authorized(w http.ResponseWriter, yes bool) {
 	c := &http.Cookie{
-		Name: cfg.SAML.OKTACookie,
+		Name: authCookie,
 		Path: "/",
 	}
 	if yes {

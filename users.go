@@ -5,6 +5,10 @@ import (
 	"fmt"
 )
 
+var (
+	ErrEmptyCookie = fmt.Errorf("user cookie is empty!")
+)
+
 func UserByID(id interface{}) (User, error) {
 	return getUser("where id=?", id)
 }
@@ -33,7 +37,7 @@ func (user *User) Cookie() string {
 
 func (user *User) FromCookie(cookie string) error {
 	if len(cookie) == 0 {
-		return fmt.Errorf("user cookie is empty!")
+		return ErrEmptyCookie
 	}
 	plain, err := stringDecrypt(cookie)
 	if err != nil {

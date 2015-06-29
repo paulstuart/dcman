@@ -32,7 +32,8 @@ var (
 	tdir        = "assets/templates"
 	http_server string
 	//cookie_store                 = sessions.NewCookieStore([]byte("I can has cookies!"))
-	errorFile *os.File
+	errorFile  *os.File
+	authCookie string
 )
 
 type HFunc struct {
@@ -48,8 +49,9 @@ func RemoteHost(r *http.Request) string {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "REMOTE ADDR ERR:", err)
 	}
+	// check if running on same host
 	if len(remote_addr) > 0 && remote_addr[0] == ':' {
-		remote_addr = MyIp()
+		remote_addr = ip
 	}
 	return remote_addr
 }
@@ -145,13 +147,13 @@ func internalLoginPage(w http.ResponseWriter, r *http.Request) {
 		login := r.Form["login"][0]
 		password := r.Form["password"][0]
 		if !Authenticate(login, password) {
-			http.Redirect(w, r, "/loginfail", 302)
+			http.Redirect(w, r, "/loginfail", http.StatusFound)
 		} else {
 			expires := time.Now()
 			expires = expires.Add(time.Duration(time.Hour) * 24 * 365)
 			c := http.Cookie{Name: "login", Value: login, Expires: expires}
 			http.SetCookie(w, &c)
-			http.Redirect(w, r, "/", 302)
+			http.Redirect(w, r, "/", http.StatusFound)
 		}
 	} else {
 		err := htmlTmpl["login.html"].ExecuteTemplate(w, "base", nil)
@@ -218,14 +220,16 @@ func userMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func oktaMiddleware(next http.Handler) http.Handler {
+func authorized(a string) bool {
+	return len(cookie.Value) > 0
+}
+
+func authMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "GET" {
-			cookie, err := r.Cookie(cfg.SAML.OKTACookie)
-			//TODO: we should check the cookie value to be valid, not just any string
-			auth := (err == nil && len(cookie.Value) > 0)
-			if !auth {
-				redirect(w, r, "/login", 302)
+			cookie, err := r.Cookie(authCookie)
+			if err != nil || !authorized(cookie.Value) {
+				redirect(w, r, "/login", http.StatusFound)
 				return
 			}
 		}
@@ -242,7 +246,7 @@ func notFound(w http.ResponseWriter, r *http.Request) {
 }
 
 func goHome(w http.ResponseWriter, r *http.Request) {
-	redirect(w, r, "/", 301)
+	redirect(w, r, "/", http.StatusMovedPermanently)
 }
 
 func webServer(handlers []HFunc) {
@@ -250,14 +254,14 @@ func webServer(handlers []HFunc) {
 	for _, h := range handlers {
 		p := pathPrefix + h.Path
 		switch {
-		case strings.HasPrefix(p, "/login"):
-			http.Handle(p, http.StripPrefix(p, h.Func))
 		case strings.HasPrefix(h.Path, "/static/"):
 			http.Handle(p, http.StripPrefix(pathPrefix, h.Func))
 		case strings.HasPrefix(h.Path, "/data/"):
 			http.Handle(p, http.StripPrefix(p, h.Func))
 		case strings.HasPrefix(h.Path, "/api/"):
 			http.Handle(p, h.Func)
+		case strings.HasPrefix(h.Path, "/login"):
+			http.Handle(p, http.StripPrefix(p, h.Func))
 		default:
 			http.Handle(p, http.StripPrefix(p, oktaMiddleware(h.Func)))
 		}
