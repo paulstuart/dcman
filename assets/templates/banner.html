@@ -1,0 +1,20 @@
+{{define "head"}}<title>{{.Common.Title}}</title>{{end}}
+{{define "javascript"}}
+{{end}}
+{{define "body"}}
+<div class="banner-edit">
+<form method="post" id="bannerform" class="common">
+    <fieldset>
+        <label>Banner<input type="text" name="banner" value="{{.Common.Banner}}"/></label><br/>
+    </fieldset>
+
+<input type="button" value="Cancel"  onclick="javascript:window.history.go(-1)">
+{{ if .Common.User.Editor }}
+<input type="submit" name="action" value="Update">
+{{ else }}
+<div id="sorry">You must be logged in as an admin to modify this record</div>
+{{end}}
+</form>
+</div>
+{{end}}
+

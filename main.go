@@ -5,32 +5,37 @@ import (
 	"log"
 	"net"
 	"os"
+	"os/signal"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"code.google.com/p/gcfg"
+	"github.com/kardianos/osext"
 	dbu "github.com/paulstuart/dbutil"
 )
 
 var (
-	version           = "1.3.0"
+	version           = "1.3.1"
 	Hostname, _       = os.Hostname()
 	Basedir, _        = os.Getwd() // get abs path now, as we will be changing dirs
+	execDir, _        = osext.ExecutableFolder()
 	log_layout        = "2006-01-02 15:04:05.999"
 	start_time        = time.Now()
-	assets_dir        = "assets"
 	sqlDir            = "sql" // dir containing sql schemas, etc
 	sqlSchema         = sqlDir + "/schema.sql"
-	dbFile            = Basedir + "/inventory.db"
+	dbFile            = execDir + "/inventory.db"
 	dcLookup          = make(map[string]Datacenter)
 	dcIDs             = make(map[int64]Datacenter)
 	Datacenters       []Datacenter
 	systemLocation, _ = time.LoadLocation("Local")
 	dbServer          dbu.DBU
 	pathPrefix        string
+	bannerText        string
 	cfg               = struct {
-		Main MainConfig
-		SAML SAMLConfig
+		Main    MainConfig
+		Backups BackupConfig
+		SAML    SAMLConfig
 	}{}
 )
 
@@ -38,6 +43,14 @@ type MainConfig struct {
 	Name   string `gcfg:"name"`
 	Port   int    `gcfg:"port"`
 	Prefix string `gcfg:"prefix"`
+	Banner string `gcfg:"banner"`
+	//BackupDir  string `gcfg:"backup_dir"`
+	//BackupFreq int    `gcfg:"backup_freq"`
+}
+
+type BackupConfig struct {
+	Dir  string `gcfg:"dir"`
+	Freq int    `gcfg:"freq"`
 }
 
 type SAMLConfig struct {
@@ -57,22 +70,37 @@ const (
 )
 
 func init() {
+	f := configFile
 	if _, err := os.Stat(configFile); err != nil {
-		log.Fatal(err)
-	} else {
-		data, err := ioutil.ReadFile(configFile)
-		if err != nil {
+		f = filepath.Join(execDir, configFile)
+		if _, err := os.Stat(f); err != nil {
 			log.Fatal(err)
 		}
-		err = gcfg.ReadStringInto(&cfg, string(data))
-		if err != nil {
-			log.Fatalf("Failed to parse gcfg data: %s", err)
+	}
+	a := assetDir
+	if _, err := os.Stat(a); err != nil {
+		a = filepath.Join(execDir, assetDir)
+		if _, err := os.Stat(a); err != nil {
+			log.Fatal(err)
 		}
+		assetDir = a
+		sqlDir = filepath.Join(execDir, sqlDir)
+	}
+	tdir = filepath.Join(assetDir, "templates")
+
+	data, err := ioutil.ReadFile(f)
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = gcfg.ReadStringInto(&cfg, string(data))
+	if err != nil {
+		log.Fatalf("Failed to parse gcfg data: %s", err)
 	}
 	if len(cfg.Main.Prefix) > 0 {
 		pathPrefix = cfg.Main.Prefix
 	}
 	authCookie = cfg.SAML.OKTACookie
+	bannerText = cfg.Main.Banner
 }
 
 func MyIp() string {
@@ -93,6 +121,7 @@ func auditLog(uid int64, ip, action, msg string) {
 func dbPrep() {
 	var fresh bool
 	var err error
+	//log.Println("DBFILE:", dbFile)
 	if _, err = os.Stat(dbFile); os.IsNotExist(err) {
 		fresh = true
 	}
@@ -108,13 +137,65 @@ func dbPrep() {
 	}
 }
 
+func Backups(freq int, to string) {
+	if _, err := os.Stat(to); err != nil {
+		to = filepath.Join(execDir, to)
+		if _, err := os.Stat(to); err != nil {
+			log.Fatal(err)
+		}
+	}
+	layout := "2006-01-02_15-04-05"
+	t := time.NewTicker(time.Minute * time.Duration(freq))
+	for {
+		select {
+		case now := <-t.C:
+			/*
+				// affected, lastid, err
+				_, _, err := dbServer.Cmd("PRAGMA main.wal_checkpoint(FULL);")
+				if err != nil {
+					log.Println(err)
+				}
+				time.Sleep(time.Second)
+			*/
+			//v, _ := dbServer.Version()
+			//log.Println("VERSION", v, "BACKED UP", dbServer.BackedUp)
+			//if dbServer.Changed() {
+			to := filepath.Join(to, now.Format(layout)+".db")
+			dbServer.Backup(to)
+			//}
+		}
+	}
+
+}
+
+func init() {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, os.Kill)
+	go func() {
+		for sig := range c {
+			log.Println("Got signal:", sig)
+			// sig is a ^C, handle it
+			err := dbServer.Close()
+			if err != nil {
+				log.Println("CLOSE ERROR:", err)
+			}
+			os.Exit(1)
+		}
+	}()
+}
+
 func main() {
+	//log.Println(execDir)
+	//return
 	var err error
 
 	dbPrep()
 	dbServer, err = dbu.Open(dbFile, false)
 	if err != nil {
 		log.Fatalln(err)
+	}
+	if cfg.Backups.Freq > 0 {
+		go Backups(cfg.Backups.Freq, cfg.Backups.Dir)
 	}
 
 	LoadVLANs()

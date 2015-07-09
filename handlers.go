@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"strconv"
@@ -40,9 +41,9 @@ type Totals struct {
 //
 
 type Common struct {
-	Title, Prefix string
-	Datacenters   []Datacenter
-	User          User
+	Title, Prefix, Banner string
+	Datacenters           []Datacenter
+	User                  User
 }
 type Summary struct {
 	Common
@@ -91,6 +92,7 @@ func NewCommon(r *http.Request, title string) Common {
 		Prefix:      pathPrefix,
 		Datacenters: Datacenters,
 		User:        currentUser(r),
+		Banner:      bannerText,
 	}
 }
 
@@ -103,7 +105,7 @@ func HomePage(w http.ResponseWriter, r *http.Request) {
 	for _, dc := range Datacenters {
 		e, err := dbServer.Table("select * from vm_summary where dc=?", dc.Name)
 		if err != nil {
-			fmt.Println("DB ERR:", err)
+			log.Println("DB ERR:", err)
 		}
 		if len(e.Rows) > 0 {
 			vms = append(vms, Totals{dc.Location, e})
@@ -201,6 +203,8 @@ func SearchPage(w http.ResponseWriter, r *http.Request) {
 		case kind == "rack":
 			searchRack(w, r, what)
 		}
+	} else {
+		redirect(w, r, "/", http.StatusSeeOther)
 	}
 }
 
@@ -337,10 +341,9 @@ func ServerEdit(w http.ResponseWriter, r *http.Request) {
 				ErrorPage(w, r, "Hostname cannot be blank")
 				return
 			}
-			fmt.Println("ADD Server:", s)
 			s.ID, err = dbServer.ObjectInsert(s)
 			if err != nil {
-				fmt.Println("SERVERADD ERR:", err)
+				log.Println("SERVERADD ERR:", err)
 			}
 		} else if action == "Update" {
 			if len(s.Hostname) == 0 {
@@ -372,7 +375,7 @@ func ServerEdit(w http.ResponseWriter, r *http.Request) {
 			} else {
 				server, err := getServer("where id=?", bits[0])
 				if err != nil {
-					fmt.Println("server error:", err)
+					log.Println("server error:", err)
 				}
 				ShowServer(w, r, server)
 			}
@@ -389,12 +392,12 @@ func RackNetwork(w http.ResponseWriter, r *http.Request) {
 		OriginalVID := r.Form.Get("OriginalVID")
 		if action == "Add" {
 			if _, err := dbServer.ObjectInsert(rn); err != nil {
-				fmt.Println("Racknet add error:", err)
+				log.Println("Racknet add error:", err)
 			}
 		} else if action == "Update" {
 			const q = "update racknet set vid=?,first_ip=?,last_ip=? where rid=? and vid=?"
 			if _, err := dbServer.Exec(q, rn.VID, rn.FirstIP, rn.LastIP, rn.RID, OriginalVID); err != nil {
-				fmt.Println("Racknet update error:", err)
+				log.Println("Racknet update error:", err)
 			}
 		} else if action == "Delete" {
 			const q = "delete from racknet where rid=? and vid=?"
@@ -425,7 +428,7 @@ func RackEdit(w http.ResponseWriter, r *http.Request) {
 			err = dbServer.ObjectDelete(rack)
 		}
 		if err != nil {
-			fmt.Println("RACK", action, "Error:", err)
+			log.Println("RACK", action, "Error:", err)
 		} else {
 			ip := strings.Split(r.RemoteAddr, ":")[0]
 			user := currentUser(r)
@@ -461,7 +464,7 @@ func RackEdit(w http.ResponseWriter, r *http.Request) {
 func ShowRacks(w http.ResponseWriter, r *http.Request, bits ...string) {
 	table, err := RackTable(bits...)
 	if err != nil {
-		fmt.Println("RACK ERR", err)
+		log.Println("RACK ERR", err)
 		notFound(w, r)
 		return
 	}
@@ -537,7 +540,7 @@ func NetworkAdd(w http.ResponseWriter, r *http.Request) {
 		n.Modified = time.Now()
 		_, err := n.Insert()
 		if err != nil {
-			fmt.Println("insert error:", err)
+			log.Println("insert error:", err)
 		}
 		dc := r.FormValue("DC")
 		redirect(w, r, "/dc/racks/"+dc, http.StatusSeeOther)
@@ -616,12 +619,12 @@ func NetworkEdit(w http.ResponseWriter, r *http.Request) {
 		i := strings.LastIndex(r.URL.Path, "/")
 		id, err := strconv.Atoi(r.URL.Path[i+1:])
 		if err != nil {
-			fmt.Println("NETWORK ERROR:", err)
+			log.Println("NETWORK ERROR:", err)
 			notFound(w, r)
 		} else {
 			router, err := getRouter("where id=?", id)
 			if err != nil {
-				fmt.Println("get router error:", err)
+				log.Println("get router error:", err)
 			}
 			ShowRouter(w, r, router)
 		}
@@ -647,7 +650,7 @@ func ShowServer(w http.ResponseWriter, r *http.Request, server Server) {
 	if len(server.IPInternal) == 0 {
 		IPs, _ = NextIPs(server.RID)
 		for k, v := range IPs {
-			fmt.Println("VLAN:", k, "IP:", v)
+			log.Println("VLAN:", k, "IP:", v)
 		}
 	}
 	data := struct {
@@ -677,27 +680,25 @@ func VMAdd(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		r.ParseForm()
 		var v VM
-		url := "/vm/all"
 		objFromForm(&v, r.Form)
 		var err error
 		if v.ID, err = dbServer.ObjectInsert(v); err != nil {
-			fmt.Println("VM ADD ERROR:", err)
-			url = fmt.Sprintf("/server/edit/%d", v.SID)
+			log.Println("VM ADD ERROR:", err)
 		}
+		url := fmt.Sprintf("/server/edit/%d", v.SID)
 		redirect(w, r, url, http.StatusSeeOther)
 	} else {
-		bits := strings.Split(r.URL.Path, "/")
-		if len(bits) < 2 {
+		if len(r.URL.Path) < 1 {
 			notFound(w, r)
-		} else {
-			id, _ := strconv.ParseInt(bits[2], 0, 64)
-			vm := VM{SID: id}
-			data := VMTmpl{
-				Common: NewCommon(r, "Add VM"),
-				VM:     vm,
-			}
-			renderTemplate(w, r, "vm", data)
+			return
 		}
+		id, _ := strconv.ParseInt(r.URL.Path, 0, 64)
+		vm := VM{SID: id}
+		data := VMTmpl{
+			Common: NewCommon(r, "Add VM"),
+			VM:     vm,
+		}
+		renderTemplate(w, r, "vm", data)
 	}
 }
 
@@ -723,7 +724,7 @@ func VMEdit(w http.ResponseWriter, r *http.Request) {
 	} else {
 		id, err := strconv.ParseInt(r.URL.Path, 0, 64)
 		if err != nil {
-			fmt.Println("Bad VM ID:", err)
+			log.Println("Bad VM ID:", err)
 			notFound(w, r)
 			return
 		}
@@ -759,11 +760,11 @@ func DCEdit(w http.ResponseWriter, r *http.Request) {
 		if len(r.URL.Path) > 0 {
 			id, err := strconv.ParseInt(r.URL.Path, 0, 64)
 			if err != nil {
-				fmt.Println("Bad DC ID:", err)
+				log.Println("Bad DC ID:", err)
 			}
 			dc.ID = id
 			if err := dbServer.FindSelf(&dc); err != nil {
-				fmt.Println("DC not found:", err)
+				log.Println("DC not found:", err)
 			}
 		}
 		data := struct {
@@ -781,7 +782,7 @@ func DCList(w http.ResponseWriter, r *http.Request) {
 	const query = "select id,name,location from datacenters"
 	table, err := dbServer.Table(query)
 	if err != nil {
-		fmt.Println("dc query error", err)
+		log.Println("dc query error", err)
 	}
 	table.Hide(0)
 	setLinks(table, 1, "/dc/edit/%s", 0)
@@ -796,7 +797,6 @@ func VlanEdit(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		r.ParseForm()
 		var v VLAN
-		fmt.Println("FORM", r.Form)
 		objFromForm(&v, r.Form)
 		action := r.Form.Get("action")
 		if action == "Add" {
@@ -814,7 +814,7 @@ func VlanEdit(w http.ResponseWriter, r *http.Request) {
 		} else {
 			vlan, err := dcVLAN(bits[0], bits[1])
 			if err != nil {
-				fmt.Println("VLAN ERR", err)
+				log.Println("VLAN ERR", err)
 				notFound(w, r)
 				return
 			}
@@ -892,7 +892,7 @@ func VlansPage(w http.ResponseWriter, r *http.Request) {
 	const query = "select dc,name,gateway,route,netmask from dcvlans"
 	table, err := dbServer.Table(query)
 	if err != nil {
-		fmt.Println("vlans query error", err)
+		log.Println("vlans query error", err)
 	}
 	setLinks(table, 1, "/vlan/edit/%s/%s", 0, 1)
 	table.SetType("ip-address", 2, 3)
@@ -1053,7 +1053,7 @@ func VMOrphaned(w http.ResponseWriter, r *http.Request) {
 		var vm Orphan
 		msg := ""
 		if err := dbServer.ObjectLoad(&vm, "where rowid=?", id); err != nil {
-			fmt.Println("ORPHAN ERR", err)
+			log.Println("ORPHAN ERR", err)
 			msg = err.Error()
 		}
 		orphan(w, r, vm, msg)
@@ -1106,13 +1106,13 @@ func UserEdit(w http.ResponseWriter, r *http.Request) {
 		var action string
 		if u.ID == 0 {
 			if _, err := userAdd(u); err != nil {
-				fmt.Println("Add error", err)
+				log.Println("Add error", err)
 			}
 			action = "added"
 		} else {
 			action = "modified"
 			if err := dbServer.ObjectUpdate(u); err != nil {
-				fmt.Println("update error:", err)
+				log.Println("update error:", err)
 			}
 		}
 		user := currentUser(r)
@@ -1147,7 +1147,7 @@ func UserRun(w http.ResponseWriter, r *http.Request) {
 			Remember(w, &as)
 			auditLog(u.ID, RemoteHost(r), "Impersonate", as.Login)
 		} else {
-			fmt.Println("RUN ERR:", err)
+			log.Println("RUN ERR:", err)
 		}
 	}
 	redirect(w, r, "/", http.StatusSeeOther)
@@ -1170,7 +1170,7 @@ func DatacenterPage(w http.ResponseWriter, r *http.Request) {
 	datacenter := dcLookup[dc]
 	rx, err := dbServer.ObjectListQuery(Rack{}, "where did=? order by rack", datacenter.ID)
 	if err != nil {
-		fmt.Println("error loading objects:", err)
+		log.Println("error loading objects:", err)
 	}
 	racks := rx.([]Rack)
 	data := DCRacks{
@@ -1191,7 +1191,7 @@ func pingPage(w http.ResponseWriter, r *http.Request) {
 func DebugPage(w http.ResponseWriter, r *http.Request) {
 	what := r.URL.Path
 	on, _ := strconv.ParseBool(what)
-	fmt.Println("DEBUG?", what, "ON:", on)
+	log.Println("DEBUG?", what, "ON:", on)
 	dbServer.Debug = true
 	w.Header().Set("Content-Type", "text/plain")
 	fmt.Fprintf(w, "db debug: %t\n", on)
@@ -1209,7 +1209,7 @@ func ErrorPage(w http.ResponseWriter, r *http.Request, errmsg string) {
 }
 
 func loginFailHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("FAIL!")
+	log.Println("FAIL!")
 	ErrorPage(w, r, "Login failed!")
 }
 
@@ -1283,18 +1283,46 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	renderPlainTemplate(w, r, "login", data)
 }
 
+func BannerHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "POST" {
+		r.ParseForm()
+		if b, ok := r.Form["banner"]; ok && len(b) > 0 {
+			bannerText = b[0]
+		}
+		redirect(w, r, "/", http.StatusSeeOther)
+	} else {
+		data := struct {
+			Common
+		}{
+			Common: NewCommon(r, "Edit Banner"),
+		}
+		renderTemplate(w, r, "banner", data)
+	}
+}
+
 func APIAudit(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		r.ParseForm()
 		var a Audit
-		for k, v := range r.Form {
-			fmt.Println("K:", k, "V:", v)
-		}
+		/*
+			for k, v := range r.Form {
+				log.Println("K:", k, "V:", v)
+			}
+		*/
 		objFromForm(&a, r.Form)
+		a.Hostname = strings.ToLower(a.Hostname)
+		a.FQDN = a.Hostname
+		i := strings.Index(a.Hostname, ".")
+		if i < 0 {
+			i = len(a.Hostname)
+		}
+		a.Hostname = a.Hostname[:i]
+		//log.Println(a.Hostname, a.VMs)
 		a.IP = RemoteHost(r)
+		log.Println(a.IP, a.Hostname)
 		err := dbServer.Replace(&a)
 		if err != nil {
-			fmt.Println("AUDIT ERR:", err)
+			log.Println("AUDIT ERR:", err)
 		}
 	} else if r.Method == "GET" {
 		data := struct{ URL string }{"http://" + ip + http_server + r.URL.Path}
@@ -1361,5 +1389,6 @@ var webHandlers = []HFunc{
 	{"/data/vms.tab", VMsTab},
 	{"/data/upload", DataUpload},
 	{"/api/audit", APIAudit},
+	{"/banner", BannerHandler},
 	{"/", HomePage},
 }

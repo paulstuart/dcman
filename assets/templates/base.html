@@ -81,6 +81,7 @@
             <li><a href="{{$.Common.Prefix}}/user/list">List Users</a></li>
             {{ if .User.Admin }}
             <li><a href="{{$.Common.Prefix}}/user/add">Add User</a></li>
+            <li><a href="{{$.Common.Prefix}}/banner">Edit Banner</a></li>
             {{ end }}
             <li><a href="{{$.Common.Prefix}}/audit/log">Audit Log</a></li>
         </ul>
@@ -108,6 +109,7 @@
         </div>
     </ul>
 </nav>
+{{ if .Common.Banner }}<div id="banner">{{.Common.Banner}}</div>{{ end }}
 {{ template "body" .}}
 </body>
 </html>

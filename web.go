@@ -19,21 +19,21 @@ import (
 )
 
 const (
-	logDir    = "logs"
 	accessLog = "access.log"
 	errorLog  = "error.log"
 	cookieID  = "dcuser"
 )
 
 var (
+	assetDir    = "assets"
+	tdir        string
+	logDir      = "logs"
 	ip          = MyIp()
 	htmlTmpl    map[string]*template.Template
 	textTmpl    map[string]*ttext.Template
-	tdir        = "assets/templates"
 	http_server string
-	//cookie_store                 = sessions.NewCookieStore([]byte("I can has cookies!"))
-	errorFile  *os.File
-	authCookie string
+	errorFile   *os.File
+	authCookie  string
 )
 
 type HFunc struct {
@@ -164,17 +164,12 @@ func internalLoginPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func FaviconPage(w http.ResponseWriter, r *http.Request) {
-	fav := filepath.Join(assets_dir, "static/images/favicon.ico")
+	fav := filepath.Join(assetDir, "static/images/favicon.ico")
 	http.ServeFile(w, r, fav)
 }
 
 func InvalidPage(w http.ResponseWriter, r *http.Request) {
 	http.NotFound(w, r)
-}
-
-func init() {
-	assets_dir, _ = filepath.Abs(assets_dir) // CWD may change at runtime
-	tdir, _ = filepath.Abs(tdir)             // CWD may change at runtime
 }
 
 /*
@@ -190,7 +185,7 @@ func (w *statusLoggingResponseWriter) WriteHeader(code int) {
 */
 
 func StaticPage(w http.ResponseWriter, r *http.Request) {
-	name := filepath.Join(assets_dir, r.URL.Path)
+	name := filepath.Join(assetDir, r.URL.Path)
 	file, err := os.Open(name)
 	if err != nil {
 		http.NotFound(w, r)
@@ -220,8 +215,8 @@ func userMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func authorized(a string) bool {
-	return len(cookie.Value) > 0
+func authorized(s string) bool {
+	return len(s) > 0
 }
 
 func authMiddleware(next http.Handler) http.Handler {
@@ -263,7 +258,7 @@ func webServer(handlers []HFunc) {
 		case strings.HasPrefix(h.Path, "/login"):
 			http.Handle(p, http.StripPrefix(p, h.Func))
 		default:
-			http.Handle(p, http.StripPrefix(p, oktaMiddleware(h.Func)))
+			http.Handle(p, http.StripPrefix(p, authMiddleware(h.Func)))
 		}
 	}
 	if len(pathPrefix) > 0 {

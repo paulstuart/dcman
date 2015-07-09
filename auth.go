@@ -92,8 +92,14 @@ func OktaAuth(username, password string) string {
 	*/
 
 	resp, err = client.PostForm(cfg.SAML.URL, data)
-	defer resp.Body.Close()
-	return SAMLSession(resp.Body)
+	if err != nil {
+		fmt.Println("POST ERR:", err)
+	}
+	if resp != nil {
+		defer resp.Body.Close()
+		return SAMLSession(resp.Body)
+	}
+	return ""
 }
 
 func Authenticate(username, password string) bool {
