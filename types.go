@@ -185,8 +185,8 @@ type Server struct {
 	CableEth0  string    `sql:"cable_eth0"`
 	CableEth1  string    `sql:"cable_eth1"`
 	CableIpmi  string    `sql:"cable_ipmi"`
-	MacPort0   string    `sql:"mac_port0"`
-	MacPort1   string    `sql:"mac_port1"`
+	MacPort0   string    `sql:"mac_eth0"`
+	MacPort1   string    `sql:"mac_eth1"`
 	MacIPMI    string    `sql:"mac_ipmi"`
 	CPU        string    `sql:"cpu"`
 	Modified   time.Time `sql:"modified"`
