@@ -198,6 +198,7 @@ func main() {
 		go Backups(cfg.Backups.Freq, cfg.Backups.Dir)
 	}
 
+	getColumns()
 	LoadVLANs()
 
 	dc, _ := dbServer.ObjectList(Datacenter{})

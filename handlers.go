@@ -74,17 +74,29 @@ type VMTmpl struct {
 }
 
 const (
-	serverCols          = "rack,ru,hostname,profile,ip_ipmi,ip_internal,ip_public,asset_tag,vendor_sku,sn,port_eth0,port_eth1,port_ipmi,cable_eth0,cable_eth1,cable_ipmi,cpu,memory,power"
-	serverQuery         = "select id," + serverCols + " from dcview where datacenter=? and hostname=?"
-	serverExportColumns = "dc,rack,ru,height,asset_tag,vendor_sku,sn,profile,hostname,ip_internal,ip_ipmi,port_eth0,port_eth1,port_ipmi,cable_eth0,cable_eth1,cable_ipmi,cpu,memory,mac_eth0,mac_eth1,mac_ipmi,note"
-	serverExportQuery   = "select " + serverExportColumns + " from sview"
-	vmExportColumns     = "dc,server,vm,profile,private,public,vip"
-	vmExportQuery       = "select " + vmExportColumns + " from vmlist"
+	vmExportColumns = "dc,server,vm,profile,private,public,vip"
+	vmExportQuery   = "select " + vmExportColumns + " from vmlist"
 )
 
 var (
-	sCols = strings.Split(serverCols, ",")
+	serverExportQuery string
 )
+
+// skip the audit info
+func getColumns() {
+	t, _ := dbServer.Table("select * from sview")
+	columns := make([]string, 0, len(t.Columns))
+	for _, c := range t.Columns {
+		switch {
+		case c == "modified":
+		case c == "uid":
+		case c == "remote_addr":
+		default:
+			columns = append(columns, c)
+		}
+	}
+	serverExportQuery = "select " + strings.Join(columns, ",") + " from sview"
+}
 
 func NewCommon(r *http.Request, title string) Common {
 	return Common{
@@ -597,7 +609,9 @@ func VMsTab(w http.ResponseWriter, r *http.Request) {
 
 func ServersJSON(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	dbServer.StreamJSON(w, serverExportQuery)
+	if err := dbServer.StreamJSON(w, serverExportQuery); err != nil {
+		log.Println("JSON error:", err)
+	}
 }
 
 func NetworkEdit(w http.ResponseWriter, r *http.Request) {
