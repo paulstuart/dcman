@@ -76,7 +76,7 @@ type VMTmpl struct {
 const (
 	serverCols          = "rack,ru,hostname,profile,ip_ipmi,ip_internal,ip_public,asset_tag,vendor_sku,sn,port_eth0,port_eth1,port_ipmi,cable_eth0,cable_eth1,cable_ipmi,cpu,memory,power"
 	serverQuery         = "select id," + serverCols + " from dcview where datacenter=? and hostname=?"
-	serverExportColumns = "dc,rack,ru,height,asset_tag,vendor_sku,sn,profile,hostname,ip_internal,ip_ipmi,port_eth0,port_eth1,port_ipmi,cable_eth0,cable_eth1,cable_ipmi,cpu,memory,mac_port0,mac_port1,mac_ipmi,note"
+	serverExportColumns = "dc,rack,ru,height,asset_tag,vendor_sku,sn,profile,hostname,ip_internal,ip_ipmi,port_eth0,port_eth1,port_ipmi,cable_eth0,cable_eth1,cable_ipmi,cpu,memory,mac_eth0,mac_eth1,mac_ipmi,note"
 	serverExportQuery   = "select " + serverExportColumns + " from sview"
 	vmExportColumns     = "dc,server,vm,profile,private,public,vip"
 	vmExportQuery       = "select " + vmExportColumns + " from vmlist"
