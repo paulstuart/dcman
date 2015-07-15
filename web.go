@@ -59,7 +59,8 @@ func RemoteHost(r *http.Request) string {
 func loadTemplates() {
 	//fmt.Println("LOAD TEMPLATES DIR:", tdir)
 	funcMap := template.FuncMap{
-		"isTrue": isTrue,
+		"isTrue":  isTrue,
+		"plusOne": plusOne,
 	}
 	htmlTmpl = make(map[string]*template.Template)
 	textTmpl = make(map[string]*ttext.Template)
@@ -92,6 +93,12 @@ func isTrue(in interface{}) string {
 		return "true"
 	}
 	return "false"
+}
+
+func plusOne(in interface{}) string {
+	val := in.(int)
+	val++
+	return strconv.Itoa(val)
 }
 
 // render a template that inherits the "base" template
@@ -151,7 +158,7 @@ func internalLoginPage(w http.ResponseWriter, r *http.Request) {
 		} else {
 			expires := time.Now()
 			expires = expires.Add(time.Duration(time.Hour) * 24 * 365)
-			c := http.Cookie{Name: "login", Value: login, Expires: expires}
+			c := http.Cookie{Name: "login", Value: login, Expires: expires, Path: "/"}
 			http.SetCookie(w, &c)
 			http.Redirect(w, r, "/", http.StatusFound)
 		}
@@ -224,6 +231,19 @@ func authMiddleware(next http.Handler) http.Handler {
 		if r.Method == "GET" {
 			cookie, err := r.Cookie(authCookie)
 			if err != nil || !authorized(cookie.Value) {
+				// stash url attempted to redirect after successful login
+				// not working right now, because we're stripping the registered path :-(
+				expires := time.Now()
+				expires = expires.Add(time.Duration(time.Hour) * 24 * 365)
+				path := r.URL.Path
+				if len(r.URL.RawQuery) > 0 {
+					path += "?" + r.URL.RawQuery
+				}
+				if len(path) > 0 {
+					c := http.Cookie{Name: "redirect", Value: path, Expires: expires, Path: "/"}
+					http.SetCookie(w, &c)
+				}
+
 				redirect(w, r, "/login", http.StatusFound)
 				return
 			}

@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	version           = "1.3.1"
+	version           = "1.3.2"
 	Hostname, _       = os.Hostname()
 	Basedir, _        = os.Getwd() // get abs path now, as we will be changing dirs
 	execDir, _        = osext.ExecutableFolder()
@@ -185,8 +185,6 @@ func init() {
 }
 
 func main() {
-	//log.Println(execDir)
-	//return
 	var err error
 
 	dbPrep()

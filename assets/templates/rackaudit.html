@@ -1,0 +1,180 @@
+{{define "head"}}<title>{{.Title}}</title>{{end}}
+{{define "javascript"}}
+
+var row_disable = function(i) {
+   document.getElementById("asset_" + i).disabled = true;
+   document.getElementById("height_" + i).disabled = true;
+   document.getElementById("buttons_" + i).className = "hide_buttons";
+}
+
+var row_enable = function(i) {
+   document.getElementById("asset_" + i).disabled = false;
+   document.getElementById("height_" + i).disabled = false;
+   var b = document.getElementById("buttons_" + i);
+   document.getElementById("buttons_" + i).className = "show_buttons";
+}
+
+
+var do_delete = function(e) {
+  var ru = e.target.id.substring(7); // trim "delete_"
+  //alert("delete id: " + e.target.id);
+  var hostname = $("#hostname_"+ru).text();
+  if (confirm("Really delete " + hostname + "?")) {
+    $.ajax({
+      type: "POST",
+      url: "{{.Common.Prefix}}/rack/updates",
+      data: {
+        action: "delete",
+        rid: {{.Rack.ID}},
+        ru: ru,
+      },
+      error: function(jqXHR, textStatus, errorThrown) {
+        alert("Error: " + jqXHR.responseText)
+        },
+        success: function() {
+           // e.target.parentNode.className = "rackheight0";
+           $("#hostname_"+ru).text("");
+           $("#ipmi_"+ru).text("");
+           $("#ip_"+ru).text("");
+           $("#ip_ping_"+ru).text("");
+           $("#ipmi_ping_"+ru).text("");
+        }
+    });
+  }
+}
+
+var do_update = function(e) {
+    var ru = e.target.id.substring(7); // trim "update_"
+    var asset = document.getElementById("asset_" + ru).value;
+    var height = document.getElementById("height_" + ru).value;
+    $.ajax({
+      type: "POST",
+      url: "{{.Common.Prefix}}/rack/updates",
+      data: {
+        action: "update",
+        rid: {{.Rack.ID}},
+        ru: ru,
+        height: height,
+        asset: asset
+      },
+      error: function(jqXHR, textStatus, errorThrown) {
+        alert("Error: " + jqXHR.responseText)
+      }
+    });
+}
+
+var do_prev = function(e) {
+  //alert("prev id: " + e.target.id);
+   var ru = e.target.id.substring(5); // trim "prev_"
+   // deactivate current row
+   row_disable(ru);
+   // find prev row
+   ru++;
+    for (var i=ru; i<50; i++) {
+       var r = document.getElementById("ru_" + i);
+       if (r && r.parentNode.className != "rackheight0") {
+           row_enable(i);
+           break;
+       }
+    }
+}
+
+var do_next = function(e) {
+   var ru = e.target.id.substring(5); // trim "next_"
+   // deactivate current row
+   row_disable(ru);
+   // find next row
+   ru--;
+    for (var i=ru; i>0; i--) {
+       var r = document.getElementById("ru_" + i);
+       if (r && r.parentNode.className != "rackheight0") {
+           row_enable(i);
+           break;
+       }
+    }
+}
+
+var do_next_server = function(e) {
+   var ru = e.target.id.substring(12); // trim "next_server_"
+   // deactivate current row
+   row_disable(ru);
+   // find next row
+   ru--;
+    for (var i=ru; i>0; i--) {
+       var r = document.getElementById("ru_" + i);
+       if (r && r.parentNode.className != "rackheight0") {
+           if ($("#hostname_"+i).text()) {
+               row_enable(i);
+               break;
+           }
+       }
+    }
+}
+
+$(document).ready(function() {
+    $("th").css("background-color", "#eeeeee");
+    $("tr:visible:even").css("background-color", "#ffffff");
+    $("tr:visible:odd").css("background-color", "#eeeeee");
+
+    // find top of rack 
+    for (var i=50; i>0; i--) {
+       var ru = document.getElementById("ru_" + i);
+       if (ru && ru.innerText.length > 0) {
+           document.getElementById("buttons_" + i).className = "show_buttons";
+           document.getElementById("asset_" + i).disabled = false;
+           document.getElementById("height_" + i).disabled = false;
+           break;
+       }
+    }
+    $(".b_delete").click(do_delete);
+    $(".b_update").click(do_update);
+    $(".b_prev").click(do_prev);
+    $(".b_next").click(do_next);
+    $(".b_next_server").click(do_next_server);
+} );
+{{end}}
+
+{{define "body"}}
+<h1 class="title">{{.Title}}</h1>
+<div class="rackdiv">
+    <table id="racklayout">
+     <thead>
+    <tr>
+        <th>RU</th><th>Height</th><th>Hostname</th><th>Asset Tag</th><th>IPMI</th><th>IPMI Online</th><th>Internal IP</th><th>IP Online</th><th>The Needful</th>
+    </tr>
+     </thead>
+     <tbody>
+         {{ range .Rack.RackUnits }}
+         <tr class="rackheight{{.Height}}">
+             <td id="ru_{{.RU}}">{{.RU}}</td>
+            <td><input type="text" class="height_field" id="height_{{.RU}}" value="{{.Height}}" size="2" disabled></td>
+            <td id="hostname_{{.RU}}">{{.Hostname}}</td>
+            <td><input type="text" class="asset_field" id="asset_{{.RU}}" value="{{.AssetTag}}" size="10" disabled></td>
+            <td id="ipmi_{{.RU}}">{{.IPMI}}</td>
+            {{ if .IPMI }}
+            <td id="ipmi_ping_{{.RU}}" class="pingok">{{ if index $.PingIPMI .IPMI}}ok{{end}}</td>
+            {{ else }}
+            <td></td>
+            {{ end }}
+            <td id="ip_{{.RU}}">{{.Internal}}</td>
+            {{ if .Internal }}
+            <td id="ip_ping_{{.RU}}" class="pingok">{{ if index $.PingIP .Internal}}ok{{end}}</td>
+            {{ else }}
+            <td></td>
+            {{ end }}
+            <td id="buttons_{{.RU}}" class="hide_buttons">
+                <button class="b_delete" id="delete_{{.RU}}">Delete</button>
+                <button class="b_update" id="update_{{.RU}}">Update</button>
+                <button class="b_prev" id="prev_{{.RU}}">Prev</button>
+                <button class="b_next" id="next_{{.RU}}">Next</button>
+                &nbsp;
+                <button class="b_prev_server" id="prev_server_{{.RU}}">Prev Server</button>
+                <button class="b_next_server" id="next_server_{{.RU}}">Next Server</button>
+            </td>
+        </tr>
+        {{ end }}
+     </tbody>
+</table>
+</div>
+{{end}}
+

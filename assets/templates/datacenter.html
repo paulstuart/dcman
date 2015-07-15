@@ -16,6 +16,7 @@ $(document).ready(function() {
 <div class="rackdiv">
     <h2><a href="{{$.Common.Prefix}}/rack/edit/{{.ID}}">Rack {{.Label}}</a></h2>{{ $ID := .Label }}
     <h2>{{if gt (len .VendorID) 0}}({{.VendorID}}){{else}}&nbsp;{{end}}</h2>
+    <h2><a href="{{$.Common.Prefix}}/rack/audit/{{.ID}}">Audit</a></h2>
     <table id="racklayout">
      <thead>
     <tr>
@@ -34,6 +35,22 @@ $(document).ready(function() {
                 {{ else }} {{.Hostname}} {{ end }} </td>
             <td>{{.IPMI}}</td>
             <td>{{.Internal}}</td>
+        </tr>
+        {{ end }}
+        {{ range $index, $pdu := .PDUs }}
+        {{ if not $index }}
+         <tr class="rackheight1">
+             <td></td>
+             <td>PDU</td>
+            <td>Hostname</td>
+            <td>IP</td>
+        </tr>
+        {{ end }}
+         <tr class="rackheight1">
+             <td></td>
+             <td>{{$index | plusOne}}</td>
+            <td>{{$pdu.Hostname}}</td>
+            <td>{{$pdu.IP}}</td>
         </tr>
         {{ end }}
      </tbody>

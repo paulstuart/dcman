@@ -40,6 +40,17 @@ CREATE TABLE "racks" (
     vendor_id text default ''
 );
 
+CREATE TABLE pdus (
+  id integer primary key AUTOINCREMENT,
+  rid int,
+  hostname text default '',
+  asset_tag text default '',
+  ip_address text default '',
+  netmask text default '',
+  gateway text default '',
+  dns text default ''
+);
+
 CREATE TABLE "kinds" (
     kid integer primary key AUTOINCREMENT,
     name text not null,

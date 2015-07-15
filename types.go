@@ -103,6 +103,7 @@ type RackUnit struct {
 	Height   int    `sql:"height"`
 	Hostname string `sql:"hostname"`
 	Alias    string `sql:"alias"`
+	AssetTag string `sql:"asset_tag"`
 	IPMI     string `sql:"ipmi"`
 	Internal string `sql:"internal"`
 }
@@ -110,6 +111,14 @@ type RackUnit struct {
 func (r Rack) Units() ([]RackUnit, error) {
 	RUs, err := dbServer.ObjectListQuery(RackUnit{}, "where rid=? order by ru asc", r.ID)
 	return RUs.([]RackUnit), err
+}
+
+func (r Rack) PDUs() ([]PDU, error) {
+	if r.ID == 0 {
+		return []PDU{}, nil
+	}
+	pdus, err := dbServer.ObjectListQuery(PDU{}, "where rid=?", r.ID)
+	return pdus.([]PDU), err
 }
 
 func (r Rack) RackUnits() []RackUnit {
@@ -200,6 +209,13 @@ func (s Server) InternalVLAN() string {
 		return "vlan error:" + err.Error()
 	}
 	return v.String()
+}
+
+func deleteServerFromRack(rid, ru string) error {
+	s := Server{}
+	query := fmt.Sprintf("delete from %s where rid=? and ru=?", s.TableName())
+	_, err := dbServer.Exec(query, rid, ru)
+	return err
 }
 
 type Router struct {
@@ -740,4 +756,15 @@ type Audit struct {
 	VMs      string `sql:"vms"`
 	Kernel   string `sql:"kernel"`
 	Release  string `sql:"release"`
+}
+
+type PDU struct {
+	ID       int64  `sql:"id" key:"true" table:"pdus"`
+	RID      int64  `sql:"rid"`
+	Hostname string `sql:"hostname"`
+	IP       string `sql:"ip_address"`
+	Netmask  string `sql:"netmask"`
+	Gateway  string `sql:"gateway"`
+	DNS      string `sql:"dns"`
+	AssetTag string `sql:"asset_tag"`
 }

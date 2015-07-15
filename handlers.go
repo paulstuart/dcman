@@ -395,6 +395,116 @@ func ServerEdit(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func RackAudit(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "POST" {
+		r.ParseForm()
+		var rn RackNet
+		objFromForm(&rn, r.Form)
+		action := r.Form.Get("action")
+		OriginalVID := r.Form.Get("OriginalVID")
+		if action == "Add" {
+			if _, err := dbServer.ObjectInsert(rn); err != nil {
+				log.Println("Racknet add error:", err)
+			}
+		} else if action == "Update" {
+			const q = "update racknet set vid=?,first_ip=?,last_ip=? where rid=? and vid=?"
+			if _, err := dbServer.Exec(q, rn.VID, rn.FirstIP, rn.LastIP, rn.RID, OriginalVID); err != nil {
+				log.Println("Racknet update error:", err)
+			}
+		} else if action == "Delete" {
+			const q = "delete from racknet where rid=? and vid=?"
+			dbServer.Exec(q, rn.RID, rn.VID)
+		}
+		user := currentUser(r)
+		auditLog(user.ID, RemoteHost(r), action, rn.String())
+		dc := r.FormValue("DC")
+		redirect(w, r, "/dc/racks/"+dc, http.StatusSeeOther)
+	} else if r.Method == "GET" {
+		rid, err := strconv.ParseInt(r.URL.Path, 0, 64)
+		if err != nil {
+			log.Println("bad rack id:", err)
+			notFound(w, r)
+			return
+		}
+		rack := Rack{}
+		if err := dbServer.ObjectLoad(&rack, "where id=?", rid); err != nil {
+			log.Println("rack id:", rid, "not found:", err)
+			notFound(w, r)
+			return
+		}
+		ips := []string{}
+		ipmis := []string{}
+		units, err := rack.Units()
+		if err != nil {
+			notFound(w, r)
+			return
+		}
+		for _, unit := range units {
+			if len(unit.IPMI) > 0 {
+				ipmis = append(ipmis, unit.IPMI)
+			}
+			if len(unit.Internal) > 0 {
+				ips = append(ips, unit.Internal)
+			}
+		}
+		data := struct {
+			Common
+			Rack     Rack
+			PingIPMI map[string]bool
+			PingIP   map[string]bool
+		}{
+			Common:   NewCommon(r, fmt.Sprintf("Audit rack: %d (%s)", rack.Label, rack.DC())),
+			Rack:     rack,
+			PingIPMI: bulkPing(pingTimeout, ipmis...),
+			PingIP:   bulkPing(pingTimeout, ips...),
+		}
+		renderTemplate(w, r, "rackaudit", data)
+	}
+}
+
+func rackItemUpdate(r *http.Request, rid, ru string) error {
+	asset := r.Form.Get("asset")
+	height, err := strconv.Atoi(r.Form.Get("height"))
+	if err != nil {
+		return err
+	}
+	server := Server{}
+	if err = dbServer.ObjectLoad(&server, "where rid=? and ru=?", rid, ru); err != nil {
+		return err
+	}
+	server.AssetTag = asset
+	server.Height = height
+	dbServer.Debug = true
+	err = dbServer.Save(&server)
+	dbServer.Debug = false
+	return err
+}
+
+func RackUpdates(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "POST" {
+		r.ParseForm()
+		action := r.Form.Get("action")
+		rid := r.Form.Get("rid")
+		ru := r.Form.Get("ru")
+		switch {
+		case action == "update":
+			if err := rackItemUpdate(r, rid, ru); err != nil {
+				log.Println("rack updates err:", err)
+				notFound(w, r)
+			}
+		case action == "delete":
+			if err := deleteServerFromRack(rid, ru); err != nil {
+				log.Println("rack delete item err:", err)
+				notFound(w, r)
+			}
+		default:
+			log.Println("rack updates invalid action:", action)
+			notFound(w, r)
+		}
+		//fmt.Fprint(w, "ok")
+	}
+}
+
 func RackNetwork(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		r.ParseForm()
@@ -442,9 +552,8 @@ func RackEdit(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Println("RACK", action, "Error:", err)
 		} else {
-			ip := strings.Split(r.RemoteAddr, ":")[0]
 			user := currentUser(r)
-			auditLog(user.ID, ip, action, rack.String())
+			auditLog(user.ID, RemoteHost(r), action, rack.String())
 		}
 		redirect(w, r, "/dc/racks/"+dc, http.StatusSeeOther)
 	} else {
@@ -470,6 +579,32 @@ func RackEdit(w http.ResponseWriter, r *http.Request) {
 			Rack:   rack,
 		}
 		renderTemplate(w, r, "rack", data)
+	}
+}
+
+func PDUEdit(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "POST" {
+		pdu := PDU{}
+		r.ParseForm()
+		objFromForm(&pdu, r.Form)
+		action := r.Form.Get("action")
+		var err error
+		switch {
+		case action == "Add":
+			_, err = dbServer.ObjectInsert(pdu)
+		case action == "Update":
+			err = dbServer.ObjectUpdate(pdu)
+		case action == "Delete":
+			err = dbServer.ObjectDelete(pdu)
+		}
+		if err != nil {
+			log.Println("PDU", action, "Error:", err)
+			fmt.Fprintln(w, err)
+		} else {
+			user := currentUser(r)
+			auditLog(user.ID, RemoteHost(r), action, pdu.IP)
+			fmt.Fprintln(w, "ok")
+		}
 	}
 }
 
@@ -1278,7 +1413,17 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 			auditLog(user.ID, remote_addr, "Login", "Login succeeded for "+username)
 			Authorized(w, true)
 			Remember(w, &user)
-			redirect(w, r, "/", 302)
+			// did we timeout and need to login before accessing a page?
+			c, err := r.Cookie("redirect")
+			if err == nil && len(c.Value) > 0 {
+				// clear it
+				c := http.Cookie{Name: "login", MaxAge: -1, Path: "/"}
+				http.SetCookie(w, &c)
+				log.Println("SAVED PATH:", c.Value)
+				redirect(w, r, c.Value, 302)
+			} else {
+				redirect(w, r, "/", 302)
+			}
 			return
 		} else {
 			auditLog(0, remote_addr, "Login", "Invalid credentials for "+username)
@@ -1355,7 +1500,7 @@ var webHandlers = []HFunc{
 	{"/user/add", UserEdit},
 	{"/user/edit/", UserEdit},
 	{"/user/run/", UserRun},
-	{"/rack/add", RackEdit},
+	{"/pdu/edit", PDUEdit},
 	{"/dc/edit/", DCEdit},
 	{"/dc/racks/", DatacenterPage},
 	{"/dc/list", DCList},
@@ -1365,7 +1510,11 @@ var webHandlers = []HFunc{
 	{"/ip/internal/all", IPInternalAllPage},
 	{"/ip/internal/list", IPInternalList},
 	{"/ip/public/all", IPPublicAllPage},
+	{"/rack/add", RackEdit},
+	{"/rack/audit/", RackAudit},
 	{"/rack/edit/", RackEdit},
+	{"/rack/network", RackNetwork},
+	{"/rack/updates", RackUpdates},
 	{"/rack/view/", RackView},
 	{"/server/find", ServerFind},
 	{"/server/vms", VMListing},
@@ -1380,7 +1529,6 @@ var webHandlers = []HFunc{
 	{"/network/audit/", NetworkAudit},
 	{"/network/vlans", VlansPage},
 	{"/vlan/edit/", VlanEdit},
-	{"/rack/network", RackNetwork},
 	{"/profile/view", ProfileView},
 	{"/vm/add/", VMAdd},
 	{"/vm/edit/", VMEdit},

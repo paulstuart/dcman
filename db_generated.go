@@ -199,7 +199,7 @@ func (o *Server) TableName() string {
 }
 
 func (o *Server) SelectFields() string {
-	return "id,note,ip_public,cable_eth1,mac_ipmi,ru,cable_ipmi,height,alias,profile,modified,ip_internal,cable_eth0,uid,hostname,asset_tag,port_eth1,vendor_sku,port_eth0,mac_port0,mac_port1,remote_addr,rid,assigned,sn,ip_ipmi,port_ipmi,cpu"
+	return "id,note,ip_public,cable_eth1,mac_ipmi,ru,cable_ipmi,height,alias,profile,modified,ip_internal,cable_eth0,uid,hostname,asset_tag,port_eth1,vendor_sku,port_eth0,mac_eth0,mac_eth1,remote_addr,rid,assigned,sn,ip_ipmi,port_ipmi,cpu"
 }
 func (o *Server) KeyField() string {
 	return "id"

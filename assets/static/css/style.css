@@ -390,6 +390,27 @@ display: inline-block;
   font-weight:bold;
 }
 
+td.pingok {
+  text-align: center;
+  font-weight: bold;
+}
+
+.hide_buttons {
+    visibility:hidden ;
+}
+
+.show_buttons {
+    visibility:visible ;
+}
+
+.height_field:focus {
+    outline: 0;
+}
+
+.asset_field {
+    outline: none;
+}
+
 div.userinfo > form > fieldset > label > input {
 /*
   float:left;
@@ -403,6 +424,14 @@ div.server, div.vm, div.rack {
   margin-left: auto; 
   margin-right: auto;
   }
+
+  /*
+div.rack {
+  padding: 1em;
+  margin-left: auto; 
+  margin-right: auto;
+  }
+      */
 
 form.common > fieldset {
     margin: 1em;

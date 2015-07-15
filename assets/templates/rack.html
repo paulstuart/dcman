@@ -55,10 +55,51 @@ $(".rvlan").change(function () {
     $("#rn_" + id).val("Update");
   });
 
+   $("#pdu_add").click(function() {
+    var data = {
+        RID: $("#RID").val(),
+        IP: $("#IP_new").val(),
+        Hostname: $("#Hostname_new").val(),
+        action: "Add"
+    };
+    $.ajax({
+      type: "POST",
+      url: "{{.Common.Prefix}}/pdu/edit",
+      data: data,
+      error: function(jqXHR, textStatus, errorThrown) {
+        alert("Error: " + jqXHR.responseText)
+      },
+      success: function(){ 
+       document.location.reload(); 
+      }
+    });
+  });
+
+   $(".modify_pdu").click(function() {
+    var id = this.id.split("_")[1];
+    var data = {
+        ID: id,
+        action: "Delete"
+    };
+    $.ajax({
+      type: "POST",
+      url: "{{.Common.Prefix}}/pdu/edit",
+      data: data,
+      error: function(jqXHR, textStatus, errorThrown) {
+        alert("Error: " + jqXHR.responseText)
+      },
+      success: function(){ 
+       document.location.reload(); 
+      }
+    });
+  });
+
 });
 
 {{end}}
 {{define "body"}}
+<div class="stacked">
+
 <div id="rackform" class="rack">
 <form method="post" class="common">
     <fieldset>
@@ -97,8 +138,9 @@ $(".rvlan").change(function () {
 {{ end }}
 </form>
 </div>
+
 <div id="racknets" class="rack">
-    <form method="post" class="common" method="/racknet/edit">
+    <form method="post" class="common">
     <input type="hidden" name="ID" id="RID" value="{{.Rack.ID}}">
     <fieldset>
         <legend>VLANs</legend>
@@ -125,9 +167,37 @@ $(".rvlan").change(function () {
             {{ end }}
         </tr>
         </table>
+    </fieldset>
     </form>
 
+</div>
+
+<div id="rack_pdus" class="rack">
+    <form class="common">
+    <fieldset>
+        <legend>PDUs</legend>
+        <table>
+        {{ range .Rack.PDUs }}
+        <tr>
+            <td><input type="text" class="pdu" id="Hostname_{{.ID}}" name="Hostname_{{.ID}}" value="{{.Hostname}}"/></td>
+            <td><input type="text" class="pdu" id="IP_{{.ID}}" name="IP_{{.ID}}" value="{{.IP}}"/></td>
+            {{ if $.Common.User.Editor }}
+            <td><input type="button" id="pdu_{{.ID}}" class="modify_pdu" value="Delete"></td>
+            {{ end }}
+        </tr>
+        {{ end }}
+        <tr>
+            <td><input type="text" id="Hostname_new" name="Hostname_new" value=""/></td>
+            <td><input type="text" id="IP_new" name="IP_new" value=""/></td>
+            {{ if $.Common.User.Editor }}
+            <td><input type="button" id="pdu_add" value="Add"></td>
+            {{ end }}
+        </tr>
+        </table>
     </fieldset>
+    </form>
+</div>
+
 </div>
 {{end}}
 
