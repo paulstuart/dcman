@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+
+	"github.com/paulstuart/secrets"
 )
 
 var (
@@ -27,7 +29,7 @@ func (user *User) Cookie() string {
 		fmt.Println("Marshal user", user, "Error", e1)
 		return ""
 	}
-	secret, e2 := stringEncrypt(string(text))
+	secret, e2 := secrets.EncryptString(string(text))
 	if e2 != nil {
 		fmt.Println("Encrypt text", text, "Error", e2)
 		return ""
@@ -39,7 +41,7 @@ func (user *User) FromCookie(cookie string) error {
 	if len(cookie) == 0 {
 		return ErrEmptyCookie
 	}
-	plain, err := stringDecrypt(cookie)
+	plain, err := secrets.DecryptString(cookie)
 	if err != nil {
 		return fmt.Errorf("Decrypt text: %s error: %s", cookie, err)
 	}
@@ -60,8 +62,7 @@ func userCookie(username string) string {
 
 func userFromCookie(cookie string) User {
 	u := &User{}
-	if err := u.FromCookie(cookie); err != nil {
-		fmt.Println("Cookie error:", err)
-	}
+	// ignore errors -- just return blank user if no cookie set
+	u.FromCookie(cookie)
 	return *u
 }

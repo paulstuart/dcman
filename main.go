@@ -12,7 +12,8 @@ import (
 
 	"code.google.com/p/gcfg"
 	"github.com/kardianos/osext"
-	dbu "github.com/paulstuart/dbutil"
+	"github.com/paulstuart/dbutil"
+	"github.com/paulstuart/secrets"
 )
 
 var (
@@ -29,7 +30,7 @@ var (
 	dcIDs             = make(map[int64]Datacenter)
 	Datacenters       []Datacenter
 	systemLocation, _ = time.LoadLocation("Local")
-	dbServer          dbu.DBU
+	dbServer          dbutil.DBU
 	pathPrefix        string
 	bannerText        string
 	cfg               = struct {
@@ -65,7 +66,6 @@ type SAMLConfig struct {
 
 const (
 	sessionMinutes = 120
-	secretKey      = "Team players only! But that's ok, we can all work together"
 	configFile     = "config.gcfg"
 )
 
@@ -101,6 +101,8 @@ func init() {
 	}
 	authCookie = cfg.SAML.OKTACookie
 	bannerText = cfg.Main.Banner
+	key, _ := secrets.KeyGen()
+	secrets.SetKey(key)
 }
 
 func MyIp() string {
@@ -125,7 +127,7 @@ func dbPrep() {
 	if _, err = os.Stat(dbFile); os.IsNotExist(err) {
 		fresh = true
 	}
-	db, err := dbu.Open(dbFile, true)
+	db, err := dbutil.Open(dbFile, true)
 	if err != nil {
 		panic(err)
 	}
@@ -188,7 +190,7 @@ func main() {
 	var err error
 
 	dbPrep()
-	dbServer, err = dbu.Open(dbFile, false)
+	dbServer, err = dbutil.Open(dbFile, false)
 	if err != nil {
 		log.Fatalln(err)
 	}
