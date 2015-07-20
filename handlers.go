@@ -396,30 +396,7 @@ func ServerEdit(w http.ResponseWriter, r *http.Request) {
 }
 
 func RackAudit(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "POST" {
-		r.ParseForm()
-		var rn RackNet
-		objFromForm(&rn, r.Form)
-		action := r.Form.Get("action")
-		OriginalVID := r.Form.Get("OriginalVID")
-		if action == "Add" {
-			if _, err := dbServer.ObjectInsert(rn); err != nil {
-				log.Println("Racknet add error:", err)
-			}
-		} else if action == "Update" {
-			const q = "update racknet set vid=?,first_ip=?,last_ip=? where rid=? and vid=?"
-			if _, err := dbServer.Exec(q, rn.VID, rn.FirstIP, rn.LastIP, rn.RID, OriginalVID); err != nil {
-				log.Println("Racknet update error:", err)
-			}
-		} else if action == "Delete" {
-			const q = "delete from racknet where rid=? and vid=?"
-			dbServer.Exec(q, rn.RID, rn.VID)
-		}
-		user := currentUser(r)
-		auditLog(user.ID, RemoteHost(r), action, rn.String())
-		dc := r.FormValue("DC")
-		redirect(w, r, "/dc/racks/"+dc, http.StatusSeeOther)
-	} else if r.Method == "GET" {
+	if r.Method == "GET" {
 		rid, err := strconv.ParseInt(r.URL.Path, 0, 64)
 		if err != nil {
 			log.Println("bad rack id:", err)
@@ -470,6 +447,12 @@ func rackItemUpdate(r *http.Request, rid, ru string) error {
 	}
 	server := Server{}
 	if err = dbServer.ObjectLoad(&server, "where rid=? and ru=?", rid, ru); err != nil {
+		// maybe it's a router?
+		if router, err2 := getRouter("where rid=? and ru=?", rid, ru); err2 == nil {
+			router.AssetTag = asset
+			router.Height = height
+			return dbServer.Save(&router)
+		}
 		return err
 	}
 	server.AssetTag = asset
