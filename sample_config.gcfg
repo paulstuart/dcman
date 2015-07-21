@@ -2,6 +2,13 @@
 name        = Your Organization's Name
 port        = 8080
 prefix      = /url/prefix
+banner      = this is a test
+readonly    = true
+key         = your secret key here
+
+[ backups ]
+freq  = 5 # frequently to test for write contention
+dir   = "backups"
 
 [ saml ]
 samlURL     = https://samlhost.example.com/saml/url
@@ -9,4 +16,6 @@ cookie      = common cookie
 loginURL    = https://login.example.com/login/url
 xsrfToken   = common xsrf token
 placeholder = first.last@example.com
+OKTACookie = name of okta cookie
+OKTAHash   = okta shared hash
 

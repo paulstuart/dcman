@@ -12,12 +12,12 @@ import (
 
 	"code.google.com/p/gcfg"
 	"github.com/kardianos/osext"
-	"github.com/paulstuart/dbutil"
 	"github.com/paulstuart/secrets"
 )
 
 var (
-	version           = "1.3.2"
+	version           = "1.3.3"
+	masterMode        = true
 	Hostname, _       = os.Hostname()
 	Basedir, _        = os.Getwd() // get abs path now, as we will be changing dirs
 	execDir, _        = osext.ExecutableFolder()
@@ -31,7 +31,6 @@ var (
 	dcIDs             = make(map[int64]Datacenter)
 	Datacenters       []Datacenter
 	systemLocation, _ = time.LoadLocation("Local")
-	dbServer          dbutil.DBU
 	pathPrefix        string
 	bannerText        string
 	cfg               = struct {
@@ -42,11 +41,13 @@ var (
 )
 
 type MainConfig struct {
-	Name    string `gcfg:"name"`
-	Port    int    `gcfg:"port"`
-	Prefix  string `gcfg:"prefix"`
-	Uploads string `gcfg:"uploads"`
-	Banner  string `gcfg:"banner"`
+	Name     string `gcfg:"name"`
+	Port     int    `gcfg:"port"`
+	Prefix   string `gcfg:"prefix"`
+	Uploads  string `gcfg:"uploads"`
+	Banner   string `gcfg:"banner"`
+	Key      string `gcfg:"key"`
+	ReadOnly bool   `gcfg:"readonly"`
 	//BackupDir  string `gcfg:"backup_dir"`
 	//BackupFreq int    `gcfg:"backup_freq"`
 }
@@ -105,8 +106,15 @@ func init() {
 		uploadDir = cfg.Main.Uploads
 	}
 	authCookie = cfg.SAML.OKTACookie
-	bannerText = cfg.Main.Banner
-	key, _ := secrets.KeyGen()
+	bannerText += cfg.Main.Banner
+
+	var key string
+	if len(cfg.Main.Key) > 0 {
+		key = cfg.Main.Key
+	} else {
+		key, _ = secrets.KeyGen()
+	}
+	log.Println("KEY:", key)
 	secrets.SetKey(key)
 }
 
@@ -121,58 +129,7 @@ func MyIp() string {
 }
 
 func auditLog(uid int64, ip, action, msg string) {
-	dbServer.Exec("insert into audit_log (uid,ip,action,msg) values(?,?,?,?)", uid, ip, strings.ToLower(action), msg)
-}
-
-// load schema if this is a new instance
-func dbPrep() {
-	var fresh bool
-	var err error
-	//log.Println("DBFILE:", dbFile)
-	if _, err = os.Stat(dbFile); os.IsNotExist(err) {
-		fresh = true
-	}
-	db, err := dbutil.Open(dbFile, true)
-	if err != nil {
-		panic(err)
-	}
-	if fresh {
-		err = db.File(sqlSchema)
-		if err != nil {
-			panic(err)
-		}
-	}
-}
-
-func Backups(freq int, to string) {
-	if _, err := os.Stat(to); err != nil {
-		to = filepath.Join(execDir, to)
-		if _, err := os.Stat(to); err != nil {
-			log.Fatal(err)
-		}
-	}
-	layout := "2006-01-02_15-04-05"
-	t := time.NewTicker(time.Minute * time.Duration(freq))
-	for {
-		select {
-		case now := <-t.C:
-			/*
-				// affected, lastid, err
-				_, _, err := dbServer.Cmd("PRAGMA main.wal_checkpoint(FULL);")
-				if err != nil {
-					log.Println(err)
-				}
-				time.Sleep(time.Second)
-			*/
-			//v, _ := dbServer.Version()
-			//log.Println("VERSION", v, "BACKED UP", dbServer.BackedUp)
-			//if dbServer.Changed() {
-			to := filepath.Join(to, now.Format(layout)+".db")
-			dbServer.Backup(to)
-			//}
-		}
-	}
-
+	dbExec("insert into audit_log (uid,ip,action,msg) values(?,?,?,?)", uid, ip, strings.ToLower(action), msg)
 }
 
 func init() {
@@ -182,7 +139,7 @@ func init() {
 		for sig := range c {
 			log.Println("Got signal:", sig)
 			// sig is a ^C, handle it
-			err := dbServer.Close()
+			err := dbClose()
 			if err != nil {
 				log.Println("CLOSE ERROR:", err)
 			}
@@ -195,7 +152,6 @@ func main() {
 	var err error
 
 	dbPrep()
-	dbServer, err = dbutil.Open(dbFile, false)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -206,7 +162,7 @@ func main() {
 	getColumns()
 	LoadVLANs()
 
-	dc, _ := dbServer.ObjectList(Datacenter{})
+	dc, _ := dbObjectList(Datacenter{})
 	Datacenters = dc.([]Datacenter)
 	for _, dc := range Datacenters {
 		dcLookup[dc.Name] = dc

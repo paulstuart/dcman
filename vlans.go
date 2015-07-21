@@ -35,7 +35,7 @@ func (v VLAN) Update() error {
 			break
 		}
 	}
-	return dbServer.ObjectUpdate(v)
+	return dbObjectUpdate(v)
 }
 
 func (v VLAN) Delete() error {
@@ -45,16 +45,16 @@ func (v VLAN) Delete() error {
 			break
 		}
 	}
-	return dbServer.ObjectDelete(v)
+	return dbObjectDelete(v)
 }
 
 func (v VLAN) Insert() (int64, error) {
 	vlans = append(vlans, v)
-	return dbServer.ObjectInsert(v)
+	return dbObjectInsert(v)
 }
 
 func LoadVLANs() {
-	v, _ := dbServer.ObjectList(VLAN{})
+	v, _ := dbObjectList(VLAN{})
 	vlans = v.([]VLAN)
 	for i := range vlans {
 		//	fmt.Println("D", vlans[i].DID, "G", vlans[i].Gateway, "M", vlans[i].Netmask)

@@ -73,16 +73,14 @@
             <li><a href="{{$.Common.Prefix}}/data/vms.csv">Export VMs (CSV)</a></li>
         </ul>
       </li>
-    {{ if .Common.User.Editor }}
+    {{ if .Common.User.Admin }}
       <li><a>Admin</a>
         <ul>
             <li><a href="{{$.Common.Prefix}}/dc/list">List Datacenters</a></li>
             <li><a href="{{$.Common.Prefix}}/dc/edit/">Add Datacenter</a></li>
             <li><a href="{{$.Common.Prefix}}/user/list">List Users</a></li>
-            {{ if .User.Admin }}
             <li><a href="{{$.Common.Prefix}}/user/add">Add User</a></li>
-            <li><a href="{{$.Common.Prefix}}/banner">Edit Banner</a></li>
-            {{ end }}
+            <li><a href="{{$.Common.Prefix}}/settings">System Settings</a></li>
             <li><a href="{{$.Common.Prefix}}/audit/log">Audit Log</a></li>
         </ul>
       </li>

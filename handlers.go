@@ -48,6 +48,7 @@ type Common struct {
 	Datacenters           []Datacenter
 	User                  User
 }
+
 type Summary struct {
 	Common
 	Physical Totals
@@ -87,7 +88,7 @@ var (
 
 // skip the audit info
 func getColumns() {
-	t, _ := dbServer.Table("select * from sview")
+	t, _ := dbTable("select * from sview")
 	columns := make([]string, 0, len(t.Columns))
 	for _, c := range t.Columns {
 		switch {
@@ -102,23 +103,30 @@ func getColumns() {
 }
 
 func NewCommon(r *http.Request, title string) Common {
+	var b string
+	if cfg.Main.ReadOnly {
+		b = " ** READ ONLY ** "
+	}
+	if len(bannerText) > 0 {
+		b = b + bannerText
+	}
 	return Common{
 		Title:       title,
 		Prefix:      pathPrefix,
 		Datacenters: Datacenters,
 		User:        currentUser(r),
-		Banner:      bannerText,
+		Banner:      b,
 	}
 }
 
 func HomePage(w http.ResponseWriter, r *http.Request) {
-	t, _ := dbServer.Table("select * from server_summary")
+	t, _ := dbTable("select * from server_summary")
 	physical := Totals{"Physical Servers", t}
-	p, _ := dbServer.Table("select profile,count(profile) as total from profiles group by profile;")
+	p, _ := dbTable("select profile,count(profile) as total from profiles group by profile;")
 	profiles := Totals{"Profiles", p}
 	vms := []Totals{}
 	for _, dc := range Datacenters {
-		e, err := dbServer.Table("select * from vm_summary where dc=?", dc.Name)
+		e, err := dbTable("select * from vm_summary where dc=?", dc.Name)
 		if err != nil {
 			log.Println("DB ERR:", err)
 		}
@@ -142,16 +150,16 @@ func ProfileView(w http.ResponseWriter, r *http.Request) {
 	dc := r.FormValue("dc")
 	switch {
 	case len(profile) > 0 && len(dc) > 0:
-		t, _ = dbServer.Table("select * from profiles where profile=? and dc=?", profile, dc)
+		t, _ = dbTable("select * from profiles where profile=? and dc=?", profile, dc)
 		setLinks(t, 2, "/profile/view?dc=%s", 2)
 	case len(profile) > 0:
-		t, _ = dbServer.Table("select * from profiles where profile=?", profile)
+		t, _ = dbTable("select * from profiles where profile=?", profile)
 		setLinks(t, 2, "/profile/view?dc=%s&profile=%s", 2, 4)
 	case len(dc) > 0:
-		t, _ = dbServer.Table("select * from profiles where dc=?", dc)
+		t, _ = dbTable("select * from profiles where dc=?", dc)
 		setLinks(t, 2, "/profile/view?dc=%s", 2)
 	default:
-		t, _ = dbServer.Table("select * from profiles")
+		t, _ = dbTable("select * from profiles")
 		setLinks(t, 2, "/profile/view?dc=%s", 2)
 	}
 
@@ -225,7 +233,7 @@ func SearchPage(w http.ResponseWriter, r *http.Request) {
 
 func searchIPMI(w http.ResponseWriter, r *http.Request, ip string) {
 	query := "select * from ipmstr where what='ipmi' and ip=?"
-	table, _ := dbServer.Table(query, ip)
+	table, _ := dbTable(query, ip)
 	if table == nil || len(table.Rows) == 0 {
 		ErrorPage(w, r, "No assets found matching IPMI address: "+ip)
 	} else if len(table.Rows) == 1 {
@@ -236,7 +244,7 @@ func searchIPMI(w http.ResponseWriter, r *http.Request, ip string) {
 
 func searchIPs(w http.ResponseWriter, r *http.Request, ip string) {
 	query := "select * from ipmstr where ip=?"
-	table, _ := dbServer.Table(query, ip)
+	table, _ := dbTable(query, ip)
 	if table == nil || len(table.Rows) == 0 {
 		ErrorPage(w, r, "No assets found matching ip: "+ip)
 	} else if len(table.Rows) == 1 {
@@ -291,7 +299,7 @@ func searchVMs(w http.ResponseWriter, r *http.Request, hostname string) {
 
 func showIP(w http.ResponseWriter, r *http.Request, ip string) {
 	query := "select * from ipmstr where ip=?"
-	table, _ := dbServer.Table(query, ip)
+	table, _ := dbTable(query, ip)
 	if table == nil || len(table.Rows) == 0 {
 		ErrorPage(w, r, "No assets found matching ip: "+ip)
 	} else if len(table.Rows) == 1 {
@@ -356,7 +364,7 @@ func ServerEdit(w http.ResponseWriter, r *http.Request) {
 				ErrorPage(w, r, "Hostname cannot be blank")
 				return
 			}
-			s.ID, err = dbServer.ObjectInsert(s)
+			s.ID, err = dbObjectInsert(s)
 			if err != nil {
 				log.Println("SERVERADD ERR:", err)
 			}
@@ -407,7 +415,7 @@ func RackAudit(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		rack := Rack{}
-		if err := dbServer.ObjectLoad(&rack, "where id=?", rid); err != nil {
+		if err := dbObjectLoad(&rack, "where id=?", rid); err != nil {
 			log.Println("rack id:", rid, "not found:", err)
 			notFound(w, r)
 			return
@@ -449,20 +457,18 @@ func rackItemUpdate(r *http.Request, rid, ru string) error {
 		return err
 	}
 	server := Server{}
-	if err = dbServer.ObjectLoad(&server, "where rid=? and ru=?", rid, ru); err != nil {
+	if err = dbObjectLoad(&server, "where rid=? and ru=?", rid, ru); err != nil {
 		// maybe it's a router?
 		if router, err2 := getRouter("where rid=? and ru=?", rid, ru); err2 == nil {
 			router.AssetTag = asset
 			router.Height = height
-			return dbServer.Save(&router)
+			return dbSave(&router)
 		}
 		return err
 	}
 	server.AssetTag = asset
 	server.Height = height
-	dbServer.Debug = true
-	err = dbServer.Save(&server)
-	dbServer.Debug = false
+	err = dbSave(&server)
 	return err
 }
 
@@ -499,17 +505,17 @@ func RackNetwork(w http.ResponseWriter, r *http.Request) {
 		action := r.Form.Get("action")
 		OriginalVID := r.Form.Get("OriginalVID")
 		if action == "Add" {
-			if _, err := dbServer.ObjectInsert(rn); err != nil {
+			if _, err := dbObjectInsert(rn); err != nil {
 				log.Println("Racknet add error:", err)
 			}
 		} else if action == "Update" {
 			const q = "update racknet set vid=?,first_ip=?,last_ip=? where rid=? and vid=?"
-			if _, err := dbServer.Exec(q, rn.VID, rn.FirstIP, rn.LastIP, rn.RID, OriginalVID); err != nil {
+			if err := dbExec(q, rn.VID, rn.FirstIP, rn.LastIP, rn.RID, OriginalVID); err != nil {
 				log.Println("Racknet update error:", err)
 			}
 		} else if action == "Delete" {
 			const q = "delete from racknet where rid=? and vid=?"
-			dbServer.Exec(q, rn.RID, rn.VID)
+			dbExec(q, rn.RID, rn.VID)
 		}
 		user := currentUser(r)
 		auditLog(user.ID, RemoteHost(r), action, rn.String())
@@ -528,12 +534,12 @@ func RackEdit(w http.ResponseWriter, r *http.Request) {
 		var err error
 		switch {
 		case action == "Add":
-			_, err = dbServer.ObjectInsert(rack)
+			_, err = dbObjectInsert(rack)
 			dc = rack.DC()
 		case action == "Update":
-			err = dbServer.ObjectUpdate(rack)
+			err = dbObjectUpdate(rack)
 		case action == "Delete":
-			err = dbServer.ObjectDelete(rack)
+			err = dbObjectDelete(rack)
 		}
 		if err != nil {
 			log.Println("RACK", action, "Error:", err)
@@ -577,11 +583,11 @@ func PDUEdit(w http.ResponseWriter, r *http.Request) {
 		var err error
 		switch {
 		case action == "Add":
-			_, err = dbServer.ObjectInsert(pdu)
+			_, err = dbObjectInsert(pdu)
 		case action == "Update":
-			err = dbServer.ObjectUpdate(pdu)
+			err = dbObjectUpdate(pdu)
 		case action == "Delete":
-			err = dbServer.ObjectDelete(pdu)
+			err = dbObjectDelete(pdu)
 		}
 		if err != nil {
 			log.Println("PDU", action, "Error:", err)
@@ -627,7 +633,7 @@ func ServerAudit(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		notFound(w, r)
 	} else {
-		table, _ := dbServer.Table(query, id)
+		table, _ := dbTable(query, id)
 		skip := []string{"rowid", "id", "uid", "login", "modified", "remote_addr"}
 		data := Tabular{
 			Common: NewCommon(r, "Audit History"),
@@ -643,7 +649,7 @@ func VMAudit(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		notFound(w, r)
 	} else {
-		table, _ := dbServer.Table(query, id)
+		table, _ := dbTable(query, id)
 		skip := []string{"rowid", "id", "uid", "login", "modified", "remote_addr"}
 		data := Tabular{
 			Common: NewCommon(r, "Audit History"),
@@ -659,7 +665,7 @@ func NetworkAudit(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		notFound(w, r)
 	} else {
-		table, _ := dbServer.Table(query, id)
+		table, _ := dbTable(query, id)
 		skip := []string{"rowid", "id", "uid", "login", "modified", "remote_addr"}
 		data := Tabular{
 			Common: NewCommon(r, "Audit History"),
@@ -711,30 +717,30 @@ func ServersCSV(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.Header().Set("Content-Disposition", "attachment")
-	dbServer.StreamCSV(w, serverExportQuery)
+	dbStreamCSV(w, serverExportQuery)
 }
 
 func ServersTab(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	w.Header().Set("Content-Disposition", "attachment")
-	dbServer.StreamTab(w, serverExportQuery)
+	dbStreamTab(w, serverExportQuery)
 }
 
 func VMsCSV(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	w.Header().Set("Content-Disposition", "attachment")
-	dbServer.StreamCSV(w, vmExportQuery)
+	dbStreamCSV(w, vmExportQuery)
 }
 
 func VMsTab(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	w.Header().Set("Content-Disposition", "attachment")
-	dbServer.StreamTab(w, vmExportQuery)
+	dbStreamTab(w, vmExportQuery)
 }
 
 func ServersJSON(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	if err := dbServer.StreamJSON(w, serverExportQuery); err != nil {
+	if err := dbStreamJSON(w, serverExportQuery); err != nil {
 		log.Println("JSON error:", err)
 	}
 }
@@ -821,7 +827,7 @@ func VMAdd(w http.ResponseWriter, r *http.Request) {
 		var v VM
 		objFromForm(&v, r.Form)
 		var err error
-		if v.ID, err = dbServer.ObjectInsert(v); err != nil {
+		if v.ID, err = dbObjectInsert(v); err != nil {
 			log.Println("VM ADD ERROR:", err)
 		}
 		url := fmt.Sprintf("/server/edit/%d", v.SID)
@@ -887,11 +893,11 @@ func DCEdit(w http.ResponseWriter, r *http.Request) {
 		dc.UID = user.ID
 		action := r.Form.Get("action")
 		if action == "Add" {
-			dbServer.Add(dc)
+			dbAdd(dc)
 		} else if action == "Update" {
-			dbServer.Save(dc)
+			dbSave(dc)
 		} else if action == "Delete" {
-			dbServer.Delete(dc)
+			dbDelete(dc)
 		}
 		redirect(w, r, "/dc/list", http.StatusSeeOther)
 	} else {
@@ -902,7 +908,7 @@ func DCEdit(w http.ResponseWriter, r *http.Request) {
 				log.Println("Bad DC ID:", err)
 			}
 			dc.ID = id
-			if err := dbServer.FindSelf(&dc); err != nil {
+			if err := dbFindSelf(&dc); err != nil {
 				log.Println("DC not found:", err)
 			}
 		}
@@ -919,7 +925,7 @@ func DCEdit(w http.ResponseWriter, r *http.Request) {
 
 func DCList(w http.ResponseWriter, r *http.Request) {
 	const query = "select id,name,location from datacenters"
-	table, err := dbServer.Table(query)
+	table, err := dbTable(query)
 	if err != nil {
 		log.Println("dc query error", err)
 	}
@@ -971,7 +977,7 @@ func VlanEdit(w http.ResponseWriter, r *http.Request) {
 
 func auditPage(w http.ResponseWriter, r *http.Request) {
 	const query = "select id,ts,ip,login,action,msg from audit_view order by id desc"
-	table, _ := dbServer.Table(query)
+	table, _ := dbTable(query)
 	data := Tabular{
 		Common: NewCommon(r, "Audit Log"),
 		Table:  table,
@@ -981,7 +987,7 @@ func auditPage(w http.ResponseWriter, r *http.Request) {
 
 func ListingPage(w http.ResponseWriter, r *http.Request) {
 	const query = "select id,dc,rack,ru,hostname,alias,profile,assigned,ip_ipmi,ip_internal,ip_public,note,asset_tag,vendor_sku,sn from sview"
-	table, _ := dbServer.Table(query)
+	table, _ := dbTable(query)
 	data := Tabular{
 		Common: NewCommon(r, "Physical Servers"),
 		Table:  table,
@@ -995,7 +1001,7 @@ func ServerDupes(w http.ResponseWriter, r *http.Request) {
 	where a.rid = b.rid
 	  and a.ru  = b.ru
 	    and a.id != b.id`
-	table, _ := dbServer.Table(query)
+	table, _ := dbTable(query)
 	data := Tabular{
 		Common: NewCommon(r, "Duplicate Servers"),
 		Table:  table,
@@ -1029,7 +1035,7 @@ func renderTabular(w http.ResponseWriter, r *http.Request, table *dbu.Table, tit
 
 func VlansPage(w http.ResponseWriter, r *http.Request) {
 	const query = "select dc,name,gateway,route,netmask from dcvlans"
-	table, err := dbServer.Table(query)
+	table, err := dbTable(query)
 	if err != nil {
 		log.Println("vlans query error", err)
 	}
@@ -1040,7 +1046,7 @@ func VlansPage(w http.ResponseWriter, r *http.Request) {
 
 func NetworkDevices(w http.ResponseWriter, r *http.Request) {
 	const query = "select id,dc,rack,ru,hostname,make,model,note from nview"
-	table, _ := dbServer.Table(query)
+	table, _ := dbTable(query)
 	table.Hide(0)
 	setLinks(table, 4, "/network/edit/%s", 0)
 	renderTabular(w, r, table, "Network Devices")
@@ -1049,7 +1055,7 @@ func NetworkDevices(w http.ResponseWriter, r *http.Request) {
 func ConnectionsPage(w http.ResponseWriter, r *http.Request) {
 	const columns = "id,datacenter,rack,ru,hostname,profile,ip_ipmi,ip_internal,ip_public,port_eth0,port_eth1,port_ipmi,cable_eth0,cable_eth1,cable_ipmi"
 	const query = "select " + columns + " from dcview"
-	table, _ := dbServer.Table(query)
+	table, _ := dbTable(query)
 	data := Tabular{
 		Common: NewCommon(r, "Physical Server Connections"),
 		Table:  table,
@@ -1066,7 +1072,7 @@ func IPInternalList(w http.ResponseWriter, r *http.Request) {
 
 func IPInternalAllPage(w http.ResponseWriter, r *http.Request) {
 	const query = "select * from ipinside"
-	table, _ := dbServer.Table(query)
+	table, _ := dbTable(query)
 	data := Tabular{
 		Common: NewCommon(r, "Internal IPs"),
 		Table:  table,
@@ -1077,7 +1083,7 @@ func IPInternalAllPage(w http.ResponseWriter, r *http.Request) {
 func IPInternalDC(w http.ResponseWriter, r *http.Request) {
 	const query = "select * from ipinside where dc=?"
 	dc := strings.ToUpper(r.URL.Path)
-	table, _ := dbServer.Table(query, dc)
+	table, _ := dbTable(query, dc)
 	data := Tabular{
 		Common: NewCommon(r, "Internal IPs for "+dc),
 		Table:  table,
@@ -1096,7 +1102,7 @@ func ShowIPs(w http.ResponseWriter, r *http.Request, t Tabular) {
 
 func IPPublicAllPage(w http.ResponseWriter, r *http.Request) {
 	const query = "select * from ippublic"
-	table, _ := dbServer.Table(query)
+	table, _ := dbTable(query)
 	data := Tabular{
 		Common: NewCommon(r, "Public IPs"),
 		Table:  table,
@@ -1118,7 +1124,7 @@ func VMAllPage(w http.ResponseWriter, r *http.Request) {
 	if len(args) > 0 {
 		query += " where " + strings.Join(args, " and ")
 	}
-	table, _ := dbServer.Table(query)
+	table, _ := dbTable(query)
 	data := Tabular{
 		Common: NewCommon(r, "VMs"),
 		Table:  table,
@@ -1128,7 +1134,7 @@ func VMAllPage(w http.ResponseWriter, r *http.Request) {
 
 func VMOrphans(w http.ResponseWriter, r *http.Request) {
 	query := "select * from vmbad"
-	table, _ := dbServer.Table(query)
+	table, _ := dbTable(query)
 	table.Hide(0)
 	setLinks(table, 2, "/vm/orphan/%s", 0)
 	for _, row := range table.Rows {
@@ -1164,7 +1170,7 @@ func VMOrphaned(w http.ResponseWriter, r *http.Request) {
 		action := r.Form.Get("action")
 		if action == "Update" {
 			const q = "select id from sview where dc=? and hostname=?"
-			id, err := dbServer.GetInt(q, o.DC, o.Server)
+			id, err := dbGetInt(q, o.DC, o.Server)
 			if err != nil {
 				orphan(w, r, o, "Can't find server "+o.Server)
 				return
@@ -1191,7 +1197,7 @@ func VMOrphaned(w http.ResponseWriter, r *http.Request) {
 		id := r.URL.Path
 		var vm Orphan
 		msg := ""
-		if err := dbServer.ObjectLoad(&vm, "where rowid=?", id); err != nil {
+		if err := dbObjectLoad(&vm, "where rowid=?", id); err != nil {
 			log.Println("ORPHAN ERR", err)
 			msg = err.Error()
 		}
@@ -1210,7 +1216,7 @@ func VMListPage(w http.ResponseWriter, r *http.Request) {
 	const columns = "*"
 	const query = "select " + columns + " from vmlist where dc=?"
 	dc := strings.ToUpper(r.URL.Path)
-	table, _ := dbServer.Table(query, dc)
+	table, _ := dbTable(query, dc)
 	data := Tabular{
 		Common: NewCommon(r, "VMs"),
 		Table:  table,
@@ -1219,7 +1225,7 @@ func VMListPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func usersListPage(w http.ResponseWriter, r *http.Request) {
-	Users, _ := dbServer.ObjectList(User{})
+	Users, _ := dbObjectList(User{})
 	data := struct {
 		Common
 		Users []User
@@ -1250,7 +1256,7 @@ func UserEdit(w http.ResponseWriter, r *http.Request) {
 			action = "added"
 		} else {
 			action = "modified"
-			if err := dbServer.ObjectUpdate(u); err != nil {
+			if err := dbObjectUpdate(u); err != nil {
 				log.Println("update error:", err)
 			}
 		}
@@ -1307,7 +1313,7 @@ func VMListing(w http.ResponseWriter, r *http.Request) {
 func DatacenterPage(w http.ResponseWriter, r *http.Request) {
 	dc := strings.ToUpper(r.URL.Path)
 	datacenter := dcLookup[dc]
-	rx, err := dbServer.ObjectListQuery(Rack{}, "where did=? order by rack", datacenter.ID)
+	rx, err := dbObjectListQuery(Rack{}, "where did=? order by rack", datacenter.ID)
 	if err != nil {
 		log.Println("error loading objects:", err)
 	}
@@ -1323,7 +1329,7 @@ func DatacenterPage(w http.ResponseWriter, r *http.Request) {
 func pingPage(w http.ResponseWriter, r *http.Request) {
 	status := "ok"
 	uptime := time.Since(start_time)
-	stats := strings.Join(dbServer.Stats(), "\n")
+	stats := strings.Join(dbStats(), "\n")
 	fmt.Fprintf(w, "status: %s\nversion: %s\nhostname: %s\nstarted:%s\nuptime: %s\ndb stats:\n%s\n", status, version, Hostname, start_time, uptime, stats)
 }
 
@@ -1331,7 +1337,7 @@ func DebugPage(w http.ResponseWriter, r *http.Request) {
 	what := r.URL.Path
 	on, _ := strconv.ParseBool(what)
 	log.Println("DEBUG?", what, "ON:", on)
-	dbServer.Debug = true
+	dbDebug(on)
 	w.Header().Set("Content-Type", "text/plain")
 	fmt.Fprintf(w, "db debug: %t\n", on)
 }
@@ -1432,18 +1438,27 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	renderPlainTemplate(w, r, "login", data)
 }
 
-func BannerHandler(w http.ResponseWriter, r *http.Request) {
+func SettingsHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		r.ParseForm()
 		if b, ok := r.Form["banner"]; ok && len(b) > 0 {
 			bannerText = b[0]
 		}
+		if _, ok := r.Form["mode"]; ok {
+			cfg.Main.ReadOnly = true
+		} else {
+			cfg.Main.ReadOnly = false
+		}
 		redirect(w, r, "/", http.StatusSeeOther)
 	} else {
+		common := NewCommon(r, "Edit System Settings")
+		common.Banner = bannerText
 		data := struct {
 			Common
+			ReadOnly bool
 		}{
-			Common: NewCommon(r, "Edit Banner"),
+			Common:   common,
+			ReadOnly: cfg.Main.ReadOnly,
 		}
 		renderTemplate(w, r, "banner", data)
 	}
@@ -1469,7 +1484,7 @@ func APIAudit(w http.ResponseWriter, r *http.Request) {
 		//log.Println(a.Hostname, a.VMs)
 		a.IP = RemoteHost(r)
 		log.Println(a.IP, a.Hostname)
-		err := dbServer.Replace(&a)
+		err := dbReplace(&a)
 		if err != nil {
 			log.Println("AUDIT ERR:", err)
 		}
@@ -1567,6 +1582,6 @@ var webHandlers = []HFunc{
 	{"/data/upload", DataUpload},
 	{"/api/audit", APIAudit},
 	{"/api/upload", APIUpload},
-	{"/banner", BannerHandler},
+	{"/settings", SettingsHandler},
 	{"/", HomePage},
 }

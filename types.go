@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	dbu "github.com/paulstuart/dbutil"
+	"github.com/paulstuart/dbutil"
 )
 
 var (
@@ -38,7 +38,7 @@ func (u User) Admin() bool {
 }
 
 func (u User) Editor() bool {
-	return u.Level > 0
+	return u.Level > 0 && !cfg.Main.ReadOnly
 }
 
 func (u User) Access() string {
@@ -62,7 +62,7 @@ type Datacenter struct {
 }
 
 func (d Datacenter) Count() int {
-	c, err := dbServer.GetInt("select count(*) from rackunits where dc=?", d.Name)
+	c, err := dbGetInt("select count(*) from rackunits where dc=?", d.Name)
 	if err != nil {
 		fmt.Println("ERR!", err)
 	}
@@ -109,7 +109,7 @@ type RackUnit struct {
 }
 
 func (r Rack) Units() ([]RackUnit, error) {
-	RUs, err := dbServer.ObjectListQuery(RackUnit{}, "where rid=? order by ru asc", r.ID)
+	RUs, err := dbObjectListQuery(RackUnit{}, "where rid=? order by ru asc", r.ID)
 	return RUs.([]RackUnit), err
 }
 
@@ -117,7 +117,7 @@ func (r Rack) PDUs() ([]PDU, error) {
 	if r.ID == 0 {
 		return []PDU{}, nil
 	}
-	pdus, err := dbServer.ObjectListQuery(PDU{}, "where rid=?", r.ID)
+	pdus, err := dbObjectListQuery(PDU{}, "where rid=?", r.ID)
 	return pdus.([]PDU), err
 }
 
@@ -168,7 +168,7 @@ func (s ServerVMs) VMs() []VMPair {
 }
 
 func (s ServerVMs) List() []ServerVMs {
-	vms, _ := dbServer.ObjectList(ServerVMs{})
+	vms, _ := dbObjectList(ServerVMs{})
 	return vms.([]ServerVMs)
 }
 
@@ -214,7 +214,7 @@ func (s Server) InternalVLAN() string {
 func deleteServerFromRack(rid, ru string) error {
 	s := Server{}
 	query := fmt.Sprintf("delete from %s where rid=? and ru=?", s.TableName())
-	_, err := dbServer.Exec(query, rid, ru)
+	err := dbExec(query, rid, ru)
 	return err
 }
 
@@ -246,7 +246,7 @@ type Rack struct {
 	YPos     string     `sql:"y_pos"`
 	UID      int        `sql:"uid"`
 	TS       *time.Time `sql:"ts" update:"false"`
-	Table    dbu.Table
+	Table    dbutil.Table
 }
 
 func (r Rack) DC() string {
@@ -274,14 +274,14 @@ func (r Router) String() string {
 }
 
 // arg 1 is dc, arg 2 is rack number
-func RackTable(args ...string) (Rack, *dbu.Table, error) {
+func RackTable(args ...string) (Rack, *dbutil.Table, error) {
 	if len(args) == 0 {
 		return Rack{}, nil, fmt.Errorf("No datacenter or rack number provided\n")
 	}
 	query := "select id,dc,rack,ru,hostname,alias,profile,assigned,ip_ipmi,ip_internal,ip_public,asset_tag,vendor_sku,sn from sview"
 	if len(args) == 1 {
 		query += " where dc=? order by dc,rack,ru desc"
-		table, err := dbServer.Table(query, args[0])
+		table, err := dbTable(query, args[0])
 		return Rack{}, table, err
 	}
 	dc := dcLookup[args[0]]
@@ -290,7 +290,7 @@ func RackTable(args ...string) (Rack, *dbu.Table, error) {
 		return Rack{}, nil, err
 	}
 	query += " where rid=? order by dc,rack,ru desc"
-	table, err := dbServer.Table(query, rack.ID)
+	table, err := dbTable(query, rack.ID)
 	return rack, table, err
 }
 
@@ -313,7 +313,7 @@ func (r RackNet) String() string {
 }
 
 func (r Rack) RackNets() []RackNet {
-	rn, _ := dbServer.ObjectListQuery(RackNet{}, "where rid=? order by vid", r.ID)
+	rn, _ := dbObjectListQuery(RackNet{}, "where rid=? order by vid", r.ID)
 	return rn.([]RackNet)
 }
 
@@ -351,7 +351,7 @@ type Orphan struct {
 }
 
 func (o Orphan) Delete() error {
-	_, err := dbServer.Exec("delete from vmdetail where rowid=?", o.ID)
+	err := dbExec("delete from vmdetail where rowid=?", o.ID)
 	if err != nil {
 		fmt.Println("Orphan delete error", err)
 	}
@@ -401,7 +401,7 @@ func normalColumns(words []string) {
 }
 
 func ServerColumns(words []string) error {
-	columns := dbu.GetColumns(Server{})
+	columns := dbutil.GetColumns(Server{})
 	for _, word := range words {
 		if key, ok := columns[word]; !ok {
 			// we will use these to calculate rack id
@@ -463,15 +463,15 @@ func ServerAdd(columns, words []string) error {
 		if err != nil {
 			fmt.Println("bad rack number for rack: %s (%s): %s", rack, dc, err)
 		}
-		rid, err = dbServer.ObjectInsert(Rack{DID: d.ID, Label: num})
+		rid, err = dbObjectInsert(Rack{DID: d.ID, Label: num})
 		if err != nil {
 			return fmt.Errorf("can't create rack: %s (%s): %s", rack, dc, err)
 		}
 	}
 	args = append(args, fmt.Sprintf("%d", rid))
 	params = append(params, "rid")
-	query := fmt.Sprintf("replace into servers (%s) values (%s)", strings.Join(params, ","), dbu.Placeholders(len(args)))
-	_, err := dbServer.Insert(query, args...)
+	query := fmt.Sprintf("replace into servers (%s) values (%s)", strings.Join(params, ","), dbutil.Placeholders(len(args)))
+	_, err := dbInsert(query, args...)
 	return err
 }
 
@@ -496,38 +496,38 @@ func LoadServers(data []string) error {
 }
 
 func serversByQuery(where string, args ...interface{}) []Server {
-	s, _ := dbServer.ObjectListQuery(Server{}, where, args...)
+	s, _ := dbObjectListQuery(Server{}, where, args...)
 	return s.([]Server)
 }
 
 func getServer(where string, args ...interface{}) (Server, error) {
 	var s Server
-	return s, dbServer.ObjectLoad(&s, where, args...)
+	return s, dbObjectLoad(&s, where, args...)
 }
 
 func getRouter(where string, args ...interface{}) (Router, error) {
 	var s Router
-	return s, dbServer.ObjectLoad(&s, where, args...)
+	return s, dbObjectLoad(&s, where, args...)
 }
 
 func getVM(where string, args ...interface{}) (VM, error) {
 	var v VM
-	return v, dbServer.ObjectLoad(&v, where, args...)
+	return v, dbObjectLoad(&v, where, args...)
 }
 
 func getVMs(serverID int64) []VM {
-	v, _ := dbServer.ObjectListQuery(VM{}, "where sid=?", serverID)
+	v, _ := dbObjectListQuery(VM{}, "where sid=?", serverID)
 	return v.([]VM)
 }
 
 func vmsByQuery(where string, args ...interface{}) []VM {
-	r, _ := dbServer.ObjectListQuery(VM{}, where, args...)
+	r, _ := dbObjectListQuery(VM{}, where, args...)
 	return r.([]VM)
 }
 
 func getRack(where string, args ...interface{}) (Rack, error) {
 	var r Rack
-	return r, dbServer.ObjectLoad(&r, where, args...)
+	return r, dbObjectLoad(&r, where, args...)
 }
 
 func RackID(dc int64, rack string) int64 {
@@ -545,7 +545,7 @@ func (v VM) Server() Server {
 }
 
 func (v VM) Delete() error {
-	return dbServer.ObjectDelete(v)
+	return dbObjectDelete(v)
 }
 
 func (s Server) Delete() error {
@@ -554,15 +554,15 @@ func (s Server) Delete() error {
 			return err
 		}
 	}
-	return dbServer.ObjectDelete(s)
+	return dbObjectDelete(s)
 }
 
 func (s Server) Update() error {
-	return dbServer.ObjectUpdate(s)
+	return dbObjectUpdate(s)
 }
 
 func (s Server) VMs() []VM {
-	v, _ := dbServer.ObjectListQuery(VM{}, "where sid=?", s.ID)
+	v, _ := dbObjectListQuery(VM{}, "where sid=?", s.ID)
 	return v.([]VM)
 }
 
@@ -600,40 +600,40 @@ func (r Router) Rack() int {
 }
 
 func (s Router) Insert() (int64, error) {
-	return dbServer.ObjectInsert(s)
+	return dbObjectInsert(s)
 }
 
 func (s Router) Delete() error {
-	return dbServer.ObjectDelete(s)
+	return dbObjectDelete(s)
 }
 
 func (s Router) Update() error {
-	return dbServer.ObjectUpdate(s)
+	return dbObjectUpdate(s)
 }
 
 func (s VM) Insert() (int64, error) {
-	return dbServer.ObjectInsert(s)
+	return dbObjectInsert(s)
 }
 
 func (s VM) Update() error {
-	return dbServer.ObjectUpdate(s)
+	return dbObjectUpdate(s)
 }
 
 func getUser(where string, args ...interface{}) (User, error) {
 	u := User{}
-	err := dbServer.ObjectLoad(&u, where, args...)
+	err := dbObjectLoad(&u, where, args...)
 	return u, err
 }
 
 func userUpdate(user User) error {
-	return dbServer.ObjectUpdate(user)
+	return dbObjectUpdate(user)
 }
 
 func userAdd(user User) (int64, error) {
 	if len(user.Password) == 0 {
 		user.Password = "n/a" // TODO: no longer using stored password , need to update schema
 	}
-	return dbServer.ObjectInsert(user)
+	return dbObjectInsert(user)
 }
 
 func ipFromString(in string) uint32 {
@@ -678,7 +678,7 @@ func (rn RackNets) Done() bool {
 
 func InternalIPs() IPList {
 	const query = "select * from ippool"
-	list, err := dbServer.Rows(query)
+	list, err := dbRows(query)
 	if err != nil {
 		fmt.Println("internal ips error", err)
 	}
@@ -696,7 +696,7 @@ func InternalIPs() IPList {
 func NextIPs(rid int64) (map[string]string, error) {
 	next := map[string]string{}
 
-	data, err := dbServer.ObjectListQuery(RackNet{}, "where rid=? order by min_ip", rid)
+	data, err := dbObjectListQuery(RackNet{}, "where rid=? order by min_ip", rid)
 	if err != nil {
 		fmt.Println("RACKNET ERR 1:", err)
 		return next, err

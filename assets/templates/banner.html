@@ -5,11 +5,12 @@
 <div class="banner-edit">
 <form method="post" id="bannerform" class="common">
     <fieldset>
-        <label>Banner<input type="text" name="banner" value="{{.Common.Banner}}"/></label><br/>
+        <label>Banner<input type="text" size="50" id="bannerinput" name="banner" value="{{.Common.Banner}}"/></label><br/>
+        <label>Read Only<input type="checkbox" name="mode" value="slave" {{if .ReadOnly}}checked{{end}}/></label><br/>
     </fieldset>
 
 <input type="button" value="Cancel"  onclick="javascript:window.history.go(-1)">
-{{ if .Common.User.Editor }}
+{{ if .Common.User.Admin }}
 <input type="submit" name="action" value="Update">
 {{ else }}
 <div id="sorry">You must be logged in as an admin to modify this record</div>
