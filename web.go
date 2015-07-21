@@ -1,9 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"html/template"
+	"io"
 	"log"
+	"mime/multipart"
 	"net"
 	"net/http"
 	_ "net/http/pprof"
@@ -82,6 +85,33 @@ func loadTemplates() {
 		t := ttext.New(name)
 		textTmpl[name] = ttext.Must(t.ParseFiles(file))
 	}
+}
+
+// Creates a new file upload http request with optional extra params
+func uploadFile(uri string, params map[string]string, paramName, path string) (*http.Request, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile(paramName, filepath.Base(path))
+	if err != nil {
+		return nil, err
+	}
+	_, err = io.Copy(part, file)
+
+	for key, val := range params {
+		_ = writer.WriteField(key, val)
+	}
+	err = writer.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	return http.NewRequest("POST", uri, body)
 }
 
 func isTrue(in interface{}) string {
@@ -177,6 +207,22 @@ func FaviconPage(w http.ResponseWriter, r *http.Request) {
 
 func InvalidPage(w http.ResponseWriter, r *http.Request) {
 	http.NotFound(w, r)
+}
+
+func saveMultipartFile(name string, file multipart.File) error {
+	if len(name) == 0 {
+		return fmt.Errorf("name not specified")
+	}
+	defer file.Close()
+
+	out, err := os.Create(name)
+	if err != nil {
+		return fmt.Errorf("Unable write to: %s. Check your write access privileges.", name)
+	}
+
+	defer out.Close()
+	_, err = io.Copy(out, file)
+	return err
 }
 
 /*

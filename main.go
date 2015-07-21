@@ -21,6 +21,7 @@ var (
 	Hostname, _       = os.Hostname()
 	Basedir, _        = os.Getwd() // get abs path now, as we will be changing dirs
 	execDir, _        = osext.ExecutableFolder()
+	uploadDir         = filepath.Join(execDir, "uploads")
 	log_layout        = "2006-01-02 15:04:05.999"
 	start_time        = time.Now()
 	sqlDir            = "sql" // dir containing sql schemas, etc
@@ -41,10 +42,11 @@ var (
 )
 
 type MainConfig struct {
-	Name   string `gcfg:"name"`
-	Port   int    `gcfg:"port"`
-	Prefix string `gcfg:"prefix"`
-	Banner string `gcfg:"banner"`
+	Name    string `gcfg:"name"`
+	Port    int    `gcfg:"port"`
+	Prefix  string `gcfg:"prefix"`
+	Uploads string `gcfg:"uploads"`
+	Banner  string `gcfg:"banner"`
 	//BackupDir  string `gcfg:"backup_dir"`
 	//BackupFreq int    `gcfg:"backup_freq"`
 }
@@ -98,6 +100,9 @@ func init() {
 	}
 	if len(cfg.Main.Prefix) > 0 {
 		pathPrefix = cfg.Main.Prefix
+	}
+	if len(cfg.Main.Uploads) > 0 {
+		uploadDir = cfg.Main.Uploads
 	}
 	authCookie = cfg.SAML.OKTACookie
 	bannerText = cfg.Main.Banner

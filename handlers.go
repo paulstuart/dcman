@@ -3,9 +3,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"log"
 	"net"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -42,6 +44,7 @@ type Totals struct {
 
 type Common struct {
 	Title, Prefix, Banner string
+	Heading               template.HTML
 	Datacenters           []Datacenter
 	User                  User
 }
@@ -592,7 +595,7 @@ func PDUEdit(w http.ResponseWriter, r *http.Request) {
 }
 
 func ShowRacks(w http.ResponseWriter, r *http.Request, bits ...string) {
-	table, err := RackTable(bits...)
+	rack, table, err := RackTable(bits...)
 	if err != nil {
 		log.Println("RACK ERR", err)
 		notFound(w, r)
@@ -601,6 +604,10 @@ func ShowRacks(w http.ResponseWriter, r *http.Request, bits ...string) {
 	data := Tabular{
 		Common: NewCommon(r, "Physical Servers"),
 		Table:  table,
+	}
+	if rack.ID > 0 {
+		heading := fmt.Sprintf(`Rack <a href="%s/rack/edit/%d">%d</a>`, cfg.Main.Prefix, rack.ID, rack.Label)
+		data.Common.Heading = template.HTML(heading)
 	}
 	ShowListing(w, r, data)
 }
@@ -1472,6 +1479,31 @@ func APIAudit(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func APIUpload(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "POST" {
+		r.ParseForm()
+		file, header, err := r.FormFile("file")
+		if err != nil {
+			fmt.Fprintln(w, err)
+			return
+		}
+
+		name := r.Form.Get("name")
+		if len(name) == 0 {
+			fmt.Fprintln(w, "'name' not specified")
+			return
+		}
+		name = filepath.Join(uploadDir, name)
+		if err = saveMultipartFile(name, file); err != nil {
+			fmt.Fprintln(w, err)
+			return
+		}
+
+		fmt.Fprintf(w, "File uploaded successfully : ")
+		fmt.Fprintf(w, header.Filename)
+	}
+}
+
 var webHandlers = []HFunc{
 	{"/favicon.ico", FaviconPage},
 	{"/static/", StaticPage},
@@ -1534,6 +1566,7 @@ var webHandlers = []HFunc{
 	{"/data/vms.tab", VMsTab},
 	{"/data/upload", DataUpload},
 	{"/api/audit", APIAudit},
+	{"/api/upload", APIUpload},
 	{"/banner", BannerHandler},
 	{"/", HomePage},
 }

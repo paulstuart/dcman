@@ -231,8 +231,8 @@ type Router struct {
 	MgmtIP     string    `sql:"ip_mgmt"`
 	PartNo     string    `sql:"sku"`
 	SerialNo   string    `sql:"sn"`
-	Modified   time.Time `sql:"modified"`
 	RemoteAddr string    `sql:"remote_addr"`
+	Modified   time.Time `sql:"modified"`
 	UID        int       `sql:"uid"`
 }
 
@@ -274,22 +274,24 @@ func (r Router) String() string {
 }
 
 // arg 1 is dc, arg 2 is rack number
-func RackTable(args ...string) (*dbu.Table, error) {
+func RackTable(args ...string) (Rack, *dbu.Table, error) {
 	if len(args) == 0 {
-		return nil, fmt.Errorf("No datacenter or rack number provided\n")
+		return Rack{}, nil, fmt.Errorf("No datacenter or rack number provided\n")
 	}
 	query := "select id,dc,rack,ru,hostname,alias,profile,assigned,ip_ipmi,ip_internal,ip_public,asset_tag,vendor_sku,sn from sview"
 	if len(args) == 1 {
 		query += " where dc=? order by dc,rack,ru desc"
-		return dbServer.Table(query, args[0])
+		table, err := dbServer.Table(query, args[0])
+		return Rack{}, table, err
 	}
 	dc := dcLookup[args[0]]
 	rack, err := getRack("where did=? and rack=?", dc.ID, args[1])
 	if err != nil {
-		return nil, err
+		return Rack{}, nil, err
 	}
 	query += " where rid=? order by dc,rack,ru desc"
-	return dbServer.Table(query, rack.ID)
+	table, err := dbServer.Table(query, rack.ID)
+	return rack, table, err
 }
 
 type RackNet struct {
