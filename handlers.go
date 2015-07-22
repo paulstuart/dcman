@@ -420,31 +420,37 @@ func RackAudit(w http.ResponseWriter, r *http.Request) {
 			notFound(w, r)
 			return
 		}
-		ips := []string{}
-		ipmis := []string{}
-		units, err := rack.Units()
-		if err != nil {
-			notFound(w, r)
-			return
-		}
-		for _, unit := range units {
-			if len(unit.IPMI) > 0 {
-				ipmis = append(ipmis, unit.IPMI)
+		/*
+			ips := []string{}
+			ipmis := []string{}
+			units, err := rack.Units()
+			if err != nil {
+				notFound(w, r)
+				return
 			}
-			if len(unit.Internal) > 0 {
-				ips = append(ips, unit.Internal)
+			for _, unit := range units {
+				if len(unit.IPMI) > 0 {
+					ipmis = append(ipmis, unit.IPMI)
+				}
+				if len(unit.Internal) > 0 {
+					ips = append(ips, unit.Internal)
+				}
 			}
-		}
+		*/
 		data := struct {
 			Common
-			Rack     Rack
-			PingIPMI map[string]bool
-			PingIP   map[string]bool
+			Rack Rack
+			/*
+				PingIPMI map[string]bool
+				PingIP   map[string]bool
+			*/
 		}{
-			Common:   NewCommon(r, fmt.Sprintf("Audit rack: %d (%s)", rack.Label, rack.DC())),
-			Rack:     rack,
-			PingIPMI: bulkPing(pingTimeout, ipmis...),
-			PingIP:   bulkPing(pingTimeout, ips...),
+			Common: NewCommon(r, fmt.Sprintf("Audit rack: %d (%s)", rack.Label, rack.DC())),
+			Rack:   rack,
+			/*
+				PingIPMI: bulkPing(pingTimeout, ipmis...),
+				PingIP:   bulkPing(pingTimeout, ips...),
+			*/
 		}
 		renderTemplate(w, r, "rackaudit", data)
 	}
@@ -1519,6 +1525,29 @@ func APIUpload(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func BulkPings(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	timeout := pingTimeout
+	if text := r.Form.Get("timeout"); len(text) > 0 {
+		if t, err := strconv.Atoi(text); err == nil {
+			timeout = t
+		}
+	}
+	if text := r.Form.Get("debug"); len(text) > 0 {
+		if debug, err := strconv.ParseBool(text); err == nil && debug {
+			for k, v := range r.Form {
+				log.Println("K:", k, "(", len(k), ") V:", v)
+			}
+		}
+	}
+	if ips, ok := r.Form["ips[]"]; ok && len(ips) > 0 {
+		pings := bulkPing(timeout, ips...)
+		j, _ := json.MarshalIndent(pings, " ", " ")
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, string(j))
+	}
+}
+
 var webHandlers = []HFunc{
 	{"/favicon.ico", FaviconPage},
 	{"/static/", StaticPage},
@@ -1582,6 +1611,7 @@ var webHandlers = []HFunc{
 	{"/data/upload", DataUpload},
 	{"/api/audit", APIAudit},
 	{"/api/upload", APIUpload},
+	{"/api/pings", BulkPings},
 	{"/settings", SettingsHandler},
 	{"/", HomePage},
 }

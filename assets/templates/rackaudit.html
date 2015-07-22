@@ -1,17 +1,97 @@
 {{define "head"}}<title>{{.Title}}</title>{{end}}
 {{define "javascript"}}
 
+var current_row;
+
 var row_disable = function(i) {
+    if (typeof i === 'undefined') {
+        return
+    }
    document.getElementById("asset_" + i).disabled = true;
    document.getElementById("height_" + i).disabled = true;
    document.getElementById("buttons_" + i).className = "hide_buttons";
 }
 
 var row_enable = function(i) {
+    if (typeof i === 'undefined') {
+        return
+    }
+   current_row = i;
    document.getElementById("asset_" + i).disabled = false;
    document.getElementById("height_" + i).disabled = false;
-   var b = document.getElementById("buttons_" + i);
    document.getElementById("buttons_" + i).className = "show_buttons";
+}
+
+var moveto = function(e) {
+  var bits = e.target.id.split("_");
+  var ru = bits[bits.length - 1]
+  row_disable(current_row);
+  row_enable(ru);
+}
+
+var get_ips = function() {
+    var ips = {};
+    for (var i=50; i>0; i--) {
+       var ru = $("#ru_" + i).text();
+       var ip = $("#ip_" + i).text();
+       if (ip.length > 0) {
+          ips[ip]=ru;
+       }
+    }
+    return ips;
+}    
+
+var get_ipmis = function() {
+    var ips = {};
+    for (var i=50; i>0; i--) {
+       var ru = $("#ru_" + i).text();
+       var ipmi = $("#ipmi_" + i).text();
+       if (ipmi.length > 0) {
+          ips[ipmi]=ru;
+       }
+    }
+    return ips;
+}    
+
+
+var pings = function() {
+    var ips = get_ips();
+    var ipmis = get_ipmis();
+
+    var iplist = [];
+    for (var ip in ips) {
+       iplist.push(ip);
+    }
+    for (var ip in ipmis) {
+       iplist.push(ip);
+    }
+
+    $.ajax({
+        type: "POST",
+        url: "{{.Common.Prefix}}/api/pings?debug=false",
+        data: {
+          ips: iplist,
+        },
+        error: function(jqXHR, textStatus, errorThrown) {
+          alert("IP Error: " + jqXHR.responseText)
+        },
+        success: function(data) {
+           for (var k in data) {
+                if (data.hasOwnProperty(k)) {
+                    var ok = data[k] ? "ok" : "";
+                    var ru = ips[k];
+                    if (typeof ru !== 'undefined') {
+                        $("#ip_ping_"+ru).text(ok);
+                        continue;
+                    } 
+                    ru = ipmis[k];
+                    if (typeof ru !== 'undefined') {
+                        $("#ipmi_ping_"+ru).text(ok);
+                    }
+                }
+            }
+        }
+    });
 }
 
 
@@ -80,7 +160,7 @@ var do_prev = function(e) {
 }
 
 var do_next = function(e) {
-   var ru = e.target.id.substring(5); // trim "next_"
+var ru = e.target.id.substring(5); // trim "next_"
    // deactivate current row
    row_disable(ru);
    // find next row
@@ -120,9 +200,7 @@ $(document).ready(function() {
     for (var i=50; i>0; i--) {
        var ru = document.getElementById("ru_" + i);
        if (ru && ru.innerText.length > 0) {
-           document.getElementById("buttons_" + i).className = "show_buttons";
-           document.getElementById("asset_" + i).disabled = false;
-           document.getElementById("height_" + i).disabled = false;
+           row_enable(i); 
            break;
        }
     }
@@ -131,6 +209,8 @@ $(document).ready(function() {
     $(".b_prev").click(do_prev);
     $(".b_next").click(do_next);
     $(".b_next_server").click(do_next_server);
+    $(".auditcell").click(moveto);
+    pings();
 } );
 {{end}}
 
@@ -146,22 +226,14 @@ $(document).ready(function() {
      <tbody>
          {{ range .Rack.RackUnits }}
          <tr class="rackheight{{.Height}}">
-             <td id="ru_{{.RU}}">{{.RU}}</td>
-            <td><input type="text" class="height_field" id="height_{{.RU}}" value="{{.Height}}" size="2" disabled></td>
-            <td id="hostname_{{.RU}}">{{.Hostname}}</td>
-            <td><input type="text" class="asset_field" id="asset_{{.RU}}" value="{{.AssetTag}}" size="10" disabled></td>
-            <td id="ipmi_{{.RU}}">{{.IPMI}}</td>
-            {{ if .IPMI }}
-            <td id="ipmi_ping_{{.RU}}" class="pingok">{{ if index $.PingIPMI .IPMI}}ok{{end}}</td>
-            {{ else }}
-            <td></td>
-            {{ end }}
-            <td id="ip_{{.RU}}">{{.Internal}}</td>
-            {{ if .Internal }}
-            <td id="ip_ping_{{.RU}}" class="pingok">{{ if index $.PingIP .Internal}}ok{{end}}</td>
-            {{ else }}
-            <td></td>
-            {{ end }}
+            <td id="ru_{{.RU}}" class="auditcell">{{.RU}}</td>
+            <td class="auditcell"><input type="text" class="height_field" id="height_{{.RU}}" value="{{.Height}}" size="2" disabled></td>
+            <td class="auditcell" id="hostname_{{.RU}}">{{.Hostname}}</td>
+            <td class="auditcell"><input type="text" class="asset_field" id="asset_{{.RU}}" value="{{.AssetTag}}" size="10" disabled></td>
+            <td class="auditcell" id="ipmi_{{.RU}}">{{.IPMI}}</td>
+            <td class="auditcell pingok" id="ipmi_ping_{{.RU}}"></td>
+            <td class="auditcell" id="ip_{{.RU}}">{{.Internal}}</td>
+            <td class="auditcell pingok" id="ip_ping_{{.RU}}"></td>
             <td id="buttons_{{.RU}}" class="hide_buttons">
                 <button class="b_delete" id="delete_{{.RU}}">Delete</button>
                 <button class="b_update" id="update_{{.RU}}">Update</button>
