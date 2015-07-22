@@ -35,6 +35,18 @@ var moveto = function(e) {
   row_enable(ru);
 }
 
+var do_up = function(e) {
+  var bits = e.target.id.split("_");
+  var ru = bits[bits.length - 1]
+  move_unit(ru, 1);
+}
+
+var do_down = function(e) {
+  var bits = e.target.id.split("_");
+  var ru = bits[bits.length - 1]
+  move_unit(ru, -1);
+}
+
 var get_ips = function() {
     var ips = {};
     for (var i=50; i>0; i--) {
@@ -136,11 +148,6 @@ var do_update = function(e) {
     var height = document.getElementById("height_" + ru).value;
     var hostname = document.getElementById("hostname_" + ru).value;
     var note = document.getElementById("note_" + ru).value;
-    /*
-    var ip = $("#ip_" + ru).text();
-    var ipmi = $("#ipmi_" + ru).text();
-    var action = (ip.length > 0 || ipmi.length > 0) ? "update" : "add";
-    */
     var sid = $("#sid_" + ru).text();
     var action = (sid > 0) ? "update" : "add";
     $.ajax({
@@ -158,6 +165,49 @@ var do_update = function(e) {
       },
       error: function(jqXHR, textStatus, errorThrown) {
         alert("Error: " + jqXHR.responseText)
+      }
+    });
+}
+
+var adjust_up = function() {
+    adjust(1);
+}
+
+var adjust_dn = function() {
+    adjust(-1);
+}
+
+var adjust = function(amount) {
+    $.ajax({
+      type: "POST",
+      url: "{{.Common.Prefix}}/rack/adjust",
+      data: {
+        adjust: amount,
+        rid: {{.Rack.ID}}
+      },
+      error: function(jqXHR, textStatus, errorThrown) {
+        alert("Error: " + jqXHR.responseText)
+        },
+      success: function() {
+        location.reload(true);
+      }
+    });
+}
+
+var move_unit = function(ru, amount) {
+    $.ajax({
+      type: "POST",
+      url: "{{.Common.Prefix}}/rack/move",
+      data: {
+        adjust: amount,
+        ru: ru,
+        rid: {{.Rack.ID}}
+      },
+      error: function(jqXHR, textStatus, errorThrown) {
+        alert("Error: " + jqXHR.responseText)
+        },
+      success: function() {
+        location.reload(true);
       }
     });
 }
@@ -229,6 +279,15 @@ $(document).ready(function() {
     $(".b_next").click(do_next);
     $(".b_next_server").click(do_next_server);
     $(".auditcell").click(moveto);
+    $(".b_up").click(do_up);
+    $(".b_dn").click(do_down);
+    $("#adjust_up").click(adjust_up);
+
+    if ($("#sid_1").text() > 0) {
+        $("#adjust_dn").prop("disabled",true);
+    } else {
+        $("#adjust_dn").click(adjust_dn);
+    }
     pings();
 } );
 {{end}}
@@ -258,6 +317,8 @@ $(document).ready(function() {
             <td id="buttons_{{.RU}}" class="hide_buttons">
                 <button class="b_delete" id="delete_{{.RU}}">Delete</button>
                 <button class="b_update" id="update_{{.RU}}">Update</button>
+                <button class="b_up"     id="up_{{.RU}}">Move unit up</button>
+                <button class="b_dn"     id="dn_{{.RU}}">Move unit down</button>
                 {{/*
                 <button class="b_prev" id="prev_{{.RU}}">Prev</button>
                 <button class="b_next" id="next_{{.RU}}">Next</button>
@@ -271,6 +332,8 @@ $(document).ready(function() {
         {{ end }}
      </tbody>
 </table>
+    <button class="adjust" id="adjust_up">Move all units up by 1</button>
+    <button class="adjust" id="adjust_dn">Move all units down by 1</button>
 </div>
 {{end}}
 

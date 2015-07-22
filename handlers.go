@@ -406,6 +406,31 @@ func ServerEdit(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func RackAdjust(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "POST" {
+		r.ParseForm()
+		adjust := r.Form.Get("adjust")
+		rid := r.Form.Get("rid")
+		q1 := "update servers set ru=ru+? where rid=?"
+		if err := dbExec(q1, adjust, rid); err != nil {
+			log.Println("rack adjust err:", err)
+		}
+	}
+}
+
+func RackMoveUnit(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "POST" {
+		r.ParseForm()
+		adjust := r.Form.Get("adjust")
+		ru := r.Form.Get("ru")
+		rid := r.Form.Get("rid")
+		q1 := "update servers set ru=ru+? where rid=? and ru=?"
+		if err := dbExec(q1, adjust, rid, ru); err != nil {
+			log.Println("rack adjust err:", err)
+		}
+	}
+}
+
 func RackAudit(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		rid, err := strconv.ParseInt(r.URL.Path, 0, 64)
@@ -1609,8 +1634,10 @@ var webHandlers = []HFunc{
 	{"/ip/internal/list", IPInternalList},
 	{"/ip/public/all", IPPublicAllPage},
 	{"/rack/add", RackEdit},
+	{"/rack/adjust", RackAdjust},
 	{"/rack/audit/", RackAudit},
 	{"/rack/edit/", RackEdit},
+	{"/rack/move", RackMoveUnit},
 	{"/rack/network", RackNetwork},
 	{"/rack/updates", RackUpdates},
 	{"/rack/view/", RackView},
