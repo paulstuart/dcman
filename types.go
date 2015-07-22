@@ -104,8 +104,10 @@ type RackUnit struct {
 	Hostname string `sql:"hostname"`
 	Alias    string `sql:"alias"`
 	AssetTag string `sql:"asset_tag"`
+	SerialNo string `sql:"sn"`
 	IPMI     string `sql:"ipmi"`
 	Internal string `sql:"internal"`
+	Note     string `sql:"note"`
 }
 
 func (r Rack) Units() ([]RackUnit, error) {

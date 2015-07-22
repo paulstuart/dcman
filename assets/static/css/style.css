@@ -407,8 +407,12 @@ td.pingok {
     outline: 0;
 }
 
-.asset_field {
+.asset_field .hostname_field {
     outline: none;
+}
+
+.hidecell {
+     display: none;
 }
 
 div.userinfo > form > fieldset > label > input {

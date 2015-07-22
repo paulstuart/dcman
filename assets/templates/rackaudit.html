@@ -9,6 +9,9 @@ var row_disable = function(i) {
     }
    document.getElementById("asset_" + i).disabled = true;
    document.getElementById("height_" + i).disabled = true;
+   document.getElementById("sn_" + i).disabled = true;
+   document.getElementById("note_" + i).disabled = true;
+   document.getElementById("hostname_" + i).disabled = true;
    document.getElementById("buttons_" + i).className = "hide_buttons";
 }
 
@@ -19,6 +22,9 @@ var row_enable = function(i) {
    current_row = i;
    document.getElementById("asset_" + i).disabled = false;
    document.getElementById("height_" + i).disabled = false;
+   document.getElementById("sn_" + i).disabled = false;
+   document.getElementById("note_" + i).disabled = false;
+   document.getElementById("hostname_" + i).disabled = false;
    document.getElementById("buttons_" + i).className = "show_buttons";
 }
 
@@ -126,15 +132,28 @@ var do_delete = function(e) {
 var do_update = function(e) {
     var ru = e.target.id.substring(7); // trim "update_"
     var asset = document.getElementById("asset_" + ru).value;
+    var sn = document.getElementById("sn_" + ru).value;
     var height = document.getElementById("height_" + ru).value;
+    var hostname = document.getElementById("hostname_" + ru).value;
+    var note = document.getElementById("note_" + ru).value;
+    /*
+    var ip = $("#ip_" + ru).text();
+    var ipmi = $("#ipmi_" + ru).text();
+    var action = (ip.length > 0 || ipmi.length > 0) ? "update" : "add";
+    */
+    var sid = $("#sid_" + ru).text();
+    var action = (sid > 0) ? "update" : "add";
     $.ajax({
       type: "POST",
       url: "{{.Common.Prefix}}/rack/updates",
       data: {
-        action: "update",
+        action: action,
         rid: {{.Rack.ID}},
         ru: ru,
         height: height,
+        hostname: hostname,
+        sn: sn,
+        note: note,
         asset: asset
       },
       error: function(jqXHR, textStatus, errorThrown) {
@@ -220,7 +239,7 @@ $(document).ready(function() {
     <table id="racklayout">
      <thead>
     <tr>
-        <th>RU</th><th>Height</th><th>Hostname</th><th>Asset Tag</th><th>IPMI</th><th>IPMI Online</th><th>Internal IP</th><th>IP Online</th><th>The Needful</th>
+        <th>RU</th><th>Height</th><th>Hostname</th><th>Asset Tag</th><th>SN</th><th>IPMI</th><th>IPMI Online</th><th>Internal IP</th><th>IP Online</th><th>Note</th><th>The Needful</th>
     </tr>
      </thead>
      <tbody>
@@ -228,21 +247,26 @@ $(document).ready(function() {
          <tr class="rackheight{{.Height}}">
             <td id="ru_{{.RU}}" class="auditcell">{{.RU}}</td>
             <td class="auditcell"><input type="text" class="height_field" id="height_{{.RU}}" value="{{.Height}}" size="2" disabled></td>
-            <td class="auditcell" id="hostname_{{.RU}}">{{.Hostname}}</td>
+            <td class="auditcell"><input type="text" class="hostname_field" id="hostname_{{.RU}}" value="{{.Hostname}}"></td>
             <td class="auditcell"><input type="text" class="asset_field" id="asset_{{.RU}}" value="{{.AssetTag}}" size="10" disabled></td>
+            <td class="auditcell"><input type="text" class="asset_field" id="sn_{{.RU}}" value="{{.SerialNo}}" size="10" disabled></td>
             <td class="auditcell" id="ipmi_{{.RU}}">{{.IPMI}}</td>
             <td class="auditcell pingok" id="ipmi_ping_{{.RU}}"></td>
             <td class="auditcell" id="ip_{{.RU}}">{{.Internal}}</td>
             <td class="auditcell pingok" id="ip_ping_{{.RU}}"></td>
+            <td class="auditcell"><input type="text" class="asset_field" id="note_{{.RU}}" value="{{.Note}}" size="20"></td>
             <td id="buttons_{{.RU}}" class="hide_buttons">
                 <button class="b_delete" id="delete_{{.RU}}">Delete</button>
                 <button class="b_update" id="update_{{.RU}}">Update</button>
+                {{/*
                 <button class="b_prev" id="prev_{{.RU}}">Prev</button>
                 <button class="b_next" id="next_{{.RU}}">Next</button>
                 &nbsp;
                 <button class="b_prev_server" id="prev_server_{{.RU}}">Prev Server</button>
                 <button class="b_next_server" id="next_server_{{.RU}}">Next Server</button>
+                */}}
             </td>
+            <td class="hidecell" id="sid_{{.RU}}">{{.SID}}</td>
         </tr>
         {{ end }}
      </tbody>

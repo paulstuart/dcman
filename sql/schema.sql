@@ -468,9 +468,9 @@ CREATE VIEW nview as
 
 CREATE VIEW rackunits as
 select * from (
-select dc, rack, 0 as nid, id as sid, rid, ru, height, hostname, ip_ipmi as ipmi, ip_internal as internal  from sview
-union
-select dc, rack, id as nid, 0 as sid, rid, ru, height,  hostname, '' as ipmi, ip_mgmt as ip_internal from nview
+    select dc, rack, 0 as nid, id as sid, rid, ru, height, hostname, alias, ip_ipmi as ipmi, ip_internal as internal, asset_tag, sn, note  from sview
+    union
+    select dc, rack, id as nid, 0 as sid, rid, ru, height,  hostname, '' as alias, '' as ipmi, ip_mgmt as ip_internal, asset_tag, sn, note from nview
 ) order by rid, ru desc;
 
 CREATE VIEW inside_ip as
@@ -665,5 +665,6 @@ CREATE VIEW vmload as
 
 CREATE VIEW vmbad as 
 select rowid,* from vmdetail where rowid not in (select did from vmload);
+
 
 COMMIT;

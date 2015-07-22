@@ -79,33 +79,38 @@ func dbAdd(o dbutil.DBObject) error {
 	}
 	return datastore.Add(o)
 }
+
 func dbBackedUp() {}
+
 func dbBackup(to string) error {
 	if datastore.DB == nil {
 		return ErrNoDB
 	}
 	return datastore.Backup(to)
 }
+
 func dbChanged() {}
+
 func dbClose() error {
 	if datastore.DB == nil {
 		return ErrNoDB
 	}
 	return datastore.Close()
 }
+
 func dbCmd() {}
+
 func dbDelete(o dbutil.DBObject) error {
 	if err := writable(); err != nil {
 		return err
 	}
 	return datastore.Delete(o)
 }
+
 func dbDebug(enable bool) {
-	if datastore.DB == nil {
-		return
-	}
 	datastore.Debug = enable
 }
+
 func dbExec(query string, args ...interface{}) error {
 	if err := writable(); err != nil {
 		return err
@@ -113,12 +118,14 @@ func dbExec(query string, args ...interface{}) error {
 	_, err := datastore.Exec(query, args...)
 	return err
 }
+
 func dbFindSelf(o dbutil.DBObject) error {
 	if err := readable(); err != nil {
 		return err
 	}
 	return datastore.FindSelf(o)
 }
+
 func dbGetInt(q string, args ...interface{}) (int, error) {
 	if err := readable(); err != nil {
 		return -1, err
@@ -132,24 +139,28 @@ func dbInsert(q string, args ...interface{}) (i int64, e error) {
 	}
 	return datastore.Insert(q, args...)
 }
+
 func dbObjectDelete(obj interface{}) error {
 	if err := writable(); err != nil {
 		return err
 	}
 	return datastore.ObjectDelete(obj)
 }
+
 func dbObjectInsert(obj interface{}) (int64, error) {
 	if err := writable(); err != nil {
 		return -1, err
 	}
 	return datastore.ObjectInsert(obj)
 }
+
 func dbObjectList(kind interface{}) (interface{}, error) {
 	if err := readable(); err != nil {
 		return nil, err
 	}
 	return datastore.ObjectList(kind)
 }
+
 func dbObjectListQuery(kind interface{}, extra string, args ...interface{}) (interface{}, error) {
 	if err := readable(); err != nil {
 		return nil, err
@@ -163,6 +174,7 @@ func dbObjectLoad(obj interface{}, extra string, args ...interface{}) error {
 	}
 	return datastore.ObjectLoad(obj, extra, args...)
 }
+
 func dbObjectUpdate(obj interface{}) error {
 	if err := writable(); err != nil {
 		return err

@@ -457,7 +457,10 @@ func RackAudit(w http.ResponseWriter, r *http.Request) {
 }
 
 func rackItemUpdate(r *http.Request, rid, ru string) error {
+	hostname := r.Form.Get("hostname")
 	asset := r.Form.Get("asset")
+	note := r.Form.Get("note")
+	sn := r.Form.Get("sn")
 	height, err := strconv.Atoi(r.Form.Get("height"))
 	if err != nil {
 		return err
@@ -466,16 +469,47 @@ func rackItemUpdate(r *http.Request, rid, ru string) error {
 	if err = dbObjectLoad(&server, "where rid=? and ru=?", rid, ru); err != nil {
 		// maybe it's a router?
 		if router, err2 := getRouter("where rid=? and ru=?", rid, ru); err2 == nil {
+			router.Hostname = hostname
 			router.AssetTag = asset
 			router.Height = height
+			router.SerialNo = sn
+			router.Note = note
 			return dbSave(&router)
 		}
 		return err
 	}
+	server.Hostname = hostname
 	server.AssetTag = asset
+	server.Note = note
+	server.SerialNo = sn
 	server.Height = height
 	err = dbSave(&server)
 	return err
+}
+
+func rackItemAdd(r *http.Request, rid_string, ru_string string) error {
+	height, err := strconv.Atoi(r.Form.Get("height"))
+	if err != nil {
+		return err
+	}
+	ru, err := strconv.Atoi(ru_string)
+	if err != nil {
+		return err
+	}
+	rid, err := strconv.ParseInt(rid_string, 0, 64)
+	if err != nil {
+		return err
+	}
+	server := Server{
+		RU:       ru,
+		RID:      rid,
+		Hostname: r.Form.Get("hostname"),
+		AssetTag: r.Form.Get("asset"),
+		SerialNo: r.Form.Get("sn"),
+		Note:     r.Form.Get("note"),
+		Height:   height,
+	}
+	return dbAdd(&server)
 }
 
 func RackUpdates(w http.ResponseWriter, r *http.Request) {
@@ -493,6 +527,11 @@ func RackUpdates(w http.ResponseWriter, r *http.Request) {
 		case action == "delete":
 			if err := deleteServerFromRack(rid, ru); err != nil {
 				log.Println("rack delete item err:", err)
+				notFound(w, r)
+			}
+		case action == "add":
+			if err := rackItemAdd(r, rid, ru); err != nil {
+				log.Println("rack add err:", err)
 				notFound(w, r)
 			}
 		default:
