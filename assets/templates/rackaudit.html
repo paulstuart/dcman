@@ -28,22 +28,16 @@ var row_enable = function(i) {
    document.getElementById("buttons_" + i).className = "show_buttons";
 }
 
-var moveto = function(e) {
-  var bits = e.target.id.split("_");
-  var ru = bits[bits.length - 1]
-  row_disable(current_row);
-  row_enable(ru);
-}
 
 var do_up = function(e) {
   var bits = e.target.id.split("_");
-  var ru = bits[bits.length - 1]
+  var ru = bits[bits.length - 1];
   move_unit(ru, 1);
 }
 
 var do_down = function(e) {
   var bits = e.target.id.split("_");
-  var ru = bits[bits.length - 1]
+  var ru = bits[bits.length - 1];
   move_unit(ru, -1);
 }
 
@@ -115,7 +109,6 @@ var pings = function() {
 
 var do_delete = function(e) {
   var ru = e.target.id.substring(7); // trim "delete_"
-  //alert("delete id: " + e.target.id);
   var hostname = $("#hostname_"+ru).text();
   if (confirm("Really delete " + hostname + "?")) {
     $.ajax({
@@ -131,11 +124,14 @@ var do_delete = function(e) {
         },
         success: function() {
            // e.target.parentNode.className = "rackheight0";
-           $("#hostname_"+ru).text("");
            $("#ipmi_"+ru).text("");
            $("#ip_"+ru).text("");
            $("#ip_ping_"+ru).text("");
            $("#ipmi_ping_"+ru).text("");
+           $("#hostname_"+ru).val("");
+           $("#asset_"+ru).val("");
+           $("#sn_"+ru).val("");
+           $("#note_"+ru).val("");
         }
     });
   }
@@ -212,53 +208,6 @@ var move_unit = function(ru, amount) {
     });
 }
 
-var do_prev = function(e) {
-  //alert("prev id: " + e.target.id);
-   var ru = e.target.id.substring(5); // trim "prev_"
-   // deactivate current row
-   row_disable(ru);
-   // find prev row
-   ru++;
-    for (var i=ru; i<50; i++) {
-       var r = document.getElementById("ru_" + i);
-       if (r && r.parentNode.className != "rackheight0") {
-           row_enable(i);
-           break;
-       }
-    }
-}
-
-var do_next = function(e) {
-var ru = e.target.id.substring(5); // trim "next_"
-   // deactivate current row
-   row_disable(ru);
-   // find next row
-   ru--;
-    for (var i=ru; i>0; i--) {
-       var r = document.getElementById("ru_" + i);
-       if (r && r.parentNode.className != "rackheight0") {
-           row_enable(i);
-           break;
-       }
-    }
-}
-
-var do_next_server = function(e) {
-   var ru = e.target.id.substring(12); // trim "next_server_"
-   // deactivate current row
-   row_disable(ru);
-   // find next row
-   ru--;
-    for (var i=ru; i>0; i--) {
-       var r = document.getElementById("ru_" + i);
-       if (r && r.parentNode.className != "rackheight0") {
-           if ($("#hostname_"+i).text()) {
-               row_enable(i);
-               break;
-           }
-       }
-    }
-}
 
 $(document).ready(function() {
     $("th").css("background-color", "#eeeeee");
@@ -275,10 +224,6 @@ $(document).ready(function() {
     }
     $(".b_delete").click(do_delete);
     $(".b_update").click(do_update);
-    $(".b_prev").click(do_prev);
-    $(".b_next").click(do_next);
-    $(".b_next_server").click(do_next_server);
-    $(".auditcell").click(moveto);
     $(".b_up").click(do_up);
     $(".b_dn").click(do_down);
     $("#adjust_up").click(adjust_up);
@@ -288,6 +233,12 @@ $(document).ready(function() {
     } else {
         $("#adjust_dn").click(adjust_dn);
     }
+    $(".auditcell").click(function() {
+        var ru = $(this).parent('tr').attr('id').split("_")[1];
+        row_disable(current_row);
+        row_enable(ru);
+    });
+
     pings();
 } );
 {{end}}
@@ -303,7 +254,7 @@ $(document).ready(function() {
      </thead>
      <tbody>
          {{ range .Rack.RackUnits }}
-         <tr class="rackheight{{.Height}}">
+         <tr class="rackheight{{.Height}}" id="row_{{.RU}}">
             <td id="ru_{{.RU}}" class="auditcell">{{.RU}}</td>
             <td class="auditcell"><input type="text" class="height_field" id="height_{{.RU}}" value="{{.Height}}" size="2" disabled></td>
             <td class="auditcell"><input type="text" class="hostname_field" id="hostname_{{.RU}}" value="{{.Hostname}}"></td>
@@ -319,13 +270,6 @@ $(document).ready(function() {
                 <button class="b_update" id="update_{{.RU}}">Update</button>
                 <button class="b_up"     id="up_{{.RU}}">Move unit up</button>
                 <button class="b_dn"     id="dn_{{.RU}}">Move unit down</button>
-                {{/*
-                <button class="b_prev" id="prev_{{.RU}}">Prev</button>
-                <button class="b_next" id="next_{{.RU}}">Next</button>
-                &nbsp;
-                <button class="b_prev_server" id="prev_server_{{.RU}}">Prev Server</button>
-                <button class="b_next_server" id="next_server_{{.RU}}">Next Server</button>
-                */}}
             </td>
             <td class="hidecell" id="sid_{{.RU}}">{{.SID}}</td>
         </tr>
