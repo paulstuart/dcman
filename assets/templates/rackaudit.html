@@ -259,12 +259,12 @@ $(document).ready(function() {
             <td class="auditcell"><input type="text" class="height_field" id="height_{{.RU}}" value="{{.Height}}" size="2" disabled></td>
             <td class="auditcell"><input type="text" class="hostname_field" id="hostname_{{.RU}}" value="{{.Hostname}}"></td>
             <td class="auditcell"><input type="text" class="asset_field" id="asset_{{.RU}}" value="{{.AssetTag}}" size="10" disabled></td>
-            <td class="auditcell"><input type="text" class="asset_field" id="sn_{{.RU}}" value="{{.SerialNo}}" size="10" disabled></td>
+            <td class="auditcell"><input type="text" class="asset_field" id="sn_{{.RU}}" value="{{.SerialNo}}" size="15" disabled></td>
             <td class="auditcell" id="ipmi_{{.RU}}">{{.IPMI}}</td>
             <td class="auditcell pingok" id="ipmi_ping_{{.RU}}"></td>
             <td class="auditcell" id="ip_{{.RU}}">{{.Internal}}</td>
             <td class="auditcell pingok" id="ip_ping_{{.RU}}"></td>
-            <td class="auditcell"><input type="text" class="asset_field" id="note_{{.RU}}" value="{{.Note}}" size="20"></td>
+            <td class="auditcell"><input type="text" class="asset_field" id="note_{{.RU}}" value="{{.Note}}" size="30"></td>
             <td id="buttons_{{.RU}}" class="hide_buttons">
                 <button class="b_delete" id="delete_{{.RU}}">Delete</button>
                 <button class="b_update" id="update_{{.RU}}">Update</button>
