@@ -6,20 +6,29 @@
     <fieldset>
         <legend>General</legend>
         <label>Name<input type="text" name="Name" value="{{.Datacenter.Name}}" pattern=".+" required/></label><br/>
-        <label>Location<input type="text" name="Location" value="{{.Datacenter.Location}}"/></label><br/>
+        <label>Address<input type="text" name="Address" value="{{.Datacenter.Address}}"/></label><br/>
+        <label>City<input type="text" name="City" value="{{.Datacenter.City}}"/></label><br/>
+        <label>State<input type="text" name="State" value="{{.Datacenter.State}}"/></label><br/>
+        <label>Phone<input type="text" name="Phone" value="{{.Datacenter.Phone}}"/></label><br/>
+        <label>Web<input type="text" name="Web" value="{{.Datacenter.Web}}"/></label><br/>
+    </fieldset>
+
+    <fieldset>
+        <legend>Peer DCMan</legend>
+        <label>DCMan<input type="text" name="DCMan" value="{{.Datacenter.DCMan}}"/></label><br/>
     </fieldset>
 
 <input type="hidden" name="ID" value="{{.Datacenter.ID}}">
 <input type="button" value="Cancel"  onclick="javascript:window.history.go(-1)">
 {{ if .Common.User.Editor }}
-{{ if eq .Datacenter.ID 0 }}
-<input type="submit" name="action" value="Add">
-{{ else }}
-<input type="submit" name="action" value="Update">
-{{ if eq .Datacenter.Count 0 }}
-<input type="submit" name="action" value="Delete">
-{{ end }}
-{{ end }}
+  {{ if eq .Datacenter.ID 0 }}
+    <input type="submit" name="action" value="Add">
+  {{ else }}
+    <input type="submit" name="action" value="Update">
+    {{ if eq .Datacenter.Count 0 }}
+      <input type="submit" name="action" value="Delete">
+    {{ end }}
+  {{ end }}
 {{ else }}
 <div id="sorry">You must be logged in as an admin to modify this record</div>
 {{ end }}

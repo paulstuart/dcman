@@ -8,12 +8,20 @@ import (
 
 var (
 	vlans []VLAN // kept in memory as we'll access frequently
+
+	ErrNoVLAN = fmt.Errorf("No vlan found")
 )
+
+type VProfile struct {
+	VPID int64 `sql:"vpid" key:"true" table:"vlan_profiles"`
+	Name int   `sql:"name"`
+}
 
 type VLAN struct {
 	ID      int64  `sql:"id" key:"true" table:"vlans"`
 	DID     int64  `sql:"did"`
 	Name    int    `sql:"name"`
+	Profile string `sql:"profile"`
 	Gateway string `sql:"gateway"`
 	Route   string `sql:"route"`
 	Netmask string `sql:"netmask"`
@@ -57,19 +65,19 @@ func LoadVLANs() {
 	v, _ := dbObjectList(VLAN{})
 	vlans = v.([]VLAN)
 	for i := range vlans {
-		//	fmt.Println("D", vlans[i].DID, "G", vlans[i].Gateway, "M", vlans[i].Netmask)
 		vlans[i].Calc()
 	}
 }
 
-func (v *VLAN) Calc() {
+func (v *VLAN) Calc() error {
 	mask := net.ParseIP(v.Netmask).To4()
 	v.ipnet.IP = net.ParseIP(v.Gateway)
 	if len(mask) == 4 {
 		v.ipnet.Mask = net.IPv4Mask(mask[0], mask[1], mask[2], mask[3])
 	} else {
-		fmt.Println("Bad mask", v.Netmask)
+		return fmt.Errorf("Bad mask: %s", v.Netmask)
 	}
+	return nil
 }
 
 func dcVLAN(dc, name string) (VLAN, error) {
@@ -80,21 +88,25 @@ func dcVLAN(dc, name string) (VLAN, error) {
 			return vlan, nil
 		}
 	}
-	return VLAN{}, fmt.Errorf("No vlan found for dc:%s vlan:%s", dc, name)
+	return VLAN{}, ErrNoVLAN
+}
+
+func ipVLAN(addr string) (VLAN, error) {
+	ip := net.ParseIP(addr)
+	for _, vlan := range vlans {
+		if vlan.ipnet.Contains(ip) {
+			return vlan, nil
+		}
+	}
+	return VLAN{}, ErrNoVLAN
 }
 
 func findVLAN(did int64, addr string) (VLAN, error) {
 	ip := net.ParseIP(addr)
-	//fmt.Println("FIND VLAN DID", did, "ADDR", addr, "IP", ip)
 	for _, vlan := range vlans {
-		/*
-			if vlan.DID == did {
-				fmt.Println("VLAN", vlan.ipnet.String())
-			}
-		*/
 		if vlan.DID == did && vlan.ipnet.Contains(ip) {
 			return vlan, nil
 		}
 	}
-	return VLAN{}, fmt.Errorf("No vlan found for ip: %s", addr)
+	return VLAN{}, ErrNoVLAN
 }

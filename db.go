@@ -130,7 +130,7 @@ func dbGetInt(q string, args ...interface{}) (int, error) {
 	if err := readable(); err != nil {
 		return -1, err
 	}
-	return dbGetInt(q, args...)
+	return datastore.GetInt(q, args...)
 }
 
 func dbInsert(q string, args ...interface{}) (i int64, e error) {

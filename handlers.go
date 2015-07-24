@@ -131,7 +131,7 @@ func HomePage(w http.ResponseWriter, r *http.Request) {
 			log.Println("DB ERR:", err)
 		}
 		if len(e.Rows) > 0 {
-			vms = append(vms, Totals{dc.Location, e})
+			vms = append(vms, Totals{dc.City, e})
 		}
 	}
 	data := Summary{
@@ -986,23 +986,45 @@ func DCEdit(w http.ResponseWriter, r *http.Request) {
 			Common
 			Datacenter Datacenter
 		}{
-			Common:     NewCommon(r, "DC: "+dc.Location),
+			Common:     NewCommon(r, "DC: "+dc.City),
 			Datacenter: dc,
 		}
 		renderTemplate(w, r, "dc", data)
 	}
 }
 
+func MacTable(w http.ResponseWriter, r *http.Request) {
+	sx, err := dbObjectList(Server{})
+	if err != nil {
+		log.Println("error loading objects:", err)
+	}
+	w.Header().Set("Content-Type", "text/plain")
+	servers := sx.([]Server)
+	for _, s := range servers {
+		p := s.IPPublic
+		if len(p) == 0 {
+			p = "-"
+		}
+		if len(s.MacPort0) > 0 {
+			if v, err := ipVLAN(s.IPInternal); err == nil {
+				fmt.Fprintf(w, "%s  %-15s %s  %-25s %-15s  %s\n", s.MacPort0, s.Hostname, strings.ToLower(s.DC()), v.Profile, s.IPInternal, p)
+			}
+		}
+	}
+}
+
 func DCList(w http.ResponseWriter, r *http.Request) {
-	const query = "select id,name,location from datacenters"
+	const query = "select id,name,city from datacenters"
 	table, err := dbTable(query)
 	if err != nil {
 		log.Println("dc query error", err)
 	}
 	table.Hide(0)
 	setLinks(table, 1, "/dc/edit/%s", 0)
+	common := NewCommon(r, "Datacenters")
+	common.Heading = template.HTML(fmt.Sprintf(`Datacenters <a href="%s/dc/edit/">Add</a>`, pathPrefix))
 	data := Tabular{
-		Common: NewCommon(r, "Datacenters"),
+		Common: common,
 		Table:  table,
 	}
 	renderTemplate(w, r, "table", data)
@@ -1014,8 +1036,13 @@ func VlanEdit(w http.ResponseWriter, r *http.Request) {
 		var v VLAN
 		objFromForm(&v, r.Form)
 		action := r.Form.Get("action")
+		fmt.Println("VLAN ACTION:", action, "VLAN:", v)
 		if action == "Add" {
-			v.Insert()
+			if dc, ok := dcLookup[r.Form.Get("DC")]; ok {
+				v.DID = dc.ID
+				v.Insert()
+				LoadVLANs()
+			}
 		} else if action == "Update" {
 			v.Update()
 		} else if action == "Delete" {
@@ -1023,25 +1050,27 @@ func VlanEdit(w http.ResponseWriter, r *http.Request) {
 		}
 		redirect(w, r, "/network/vlans", http.StatusSeeOther)
 	} else {
+		var vlan VLAN
+		title := "Add VLAN"
 		bits := strings.Split(r.URL.Path, "/")
-		if len(bits) < 2 {
-			notFound(w, r)
-		} else {
-			vlan, err := dcVLAN(bits[0], bits[1])
+		if len(bits) == 2 {
+			var err error
+			vlan, err = dcVLAN(bits[0], bits[1])
 			if err != nil {
 				log.Println("VLAN ERR", err)
 				notFound(w, r)
 				return
 			}
-			data := struct {
-				Common
-				VLAN VLAN
-			}{
-				Common: NewCommon(r, fmt.Sprintf("VLAN: %d (%s) ", vlan.Name, bits[0])),
-				VLAN:   vlan,
-			}
-			renderTemplate(w, r, "vlan", data)
+			title = fmt.Sprintf("VLAN: %d (%s) ", vlan.Name, bits[0])
 		}
+		data := struct {
+			Common
+			VLAN VLAN
+		}{
+			Common: NewCommon(r, title),
+			VLAN:   vlan,
+		}
+		renderTemplate(w, r, "vlan", data)
 	}
 }
 
@@ -1104,14 +1133,19 @@ func renderTabular(w http.ResponseWriter, r *http.Request, table *dbu.Table, tit
 }
 
 func VlansPage(w http.ResponseWriter, r *http.Request) {
-	const query = "select dc,name,gateway,route,netmask from dcvlans"
+	const query = "select dc,name,profile,gateway,route,netmask from dcvlans"
 	table, err := dbTable(query)
 	if err != nil {
 		log.Println("vlans query error", err)
 	}
 	setLinks(table, 1, "/vlan/edit/%s/%s", 0, 1)
 	table.SetType("ip-address", 2, 3)
-	renderTabular(w, r, table, "VLANs")
+	data := Tabular{
+		Common: NewCommon(r, "VLANS"),
+		Table:  table,
+	}
+	data.Common.Heading = template.HTML(fmt.Sprintf(`Internal VLANs <a href=%s/vlan/edit/">(add)</a>`, pathPrefix))
+	renderTemplate(w, r, "table", data)
 }
 
 func NetworkDevices(w http.ResponseWriter, r *http.Request) {
@@ -1389,7 +1423,7 @@ func DatacenterPage(w http.ResponseWriter, r *http.Request) {
 	}
 	racks := rx.([]Rack)
 	data := DCRacks{
-		Common: NewCommon(r, "Servers in "+dcLookup[dc].Location),
+		Common: NewCommon(r, "Servers in "+dcLookup[dc].City),
 		DC:     dc,
 		Racks:  racks,
 	}
@@ -1485,7 +1519,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 				// clear it
 				c := http.Cookie{Name: "login", MaxAge: -1, Path: "/"}
 				http.SetCookie(w, &c)
-				log.Println("SAVED PATH:", c.Value)
+				//log.Println("SAVED PATH:", c.Value)
 				redirect(w, r, c.Value, 302)
 			} else {
 				redirect(w, r, "/", 302)
@@ -1615,24 +1649,40 @@ func BulkPings(w http.ResponseWriter, r *http.Request) {
 var webHandlers = []HFunc{
 	{"/favicon.ico", FaviconPage},
 	{"/static/", StaticPage},
-	{"/login", LoginHandler},
-	{"/loginfail", loginFailHandler},
-	{"/logout", logoutPage},
+	{"/api/audit", APIAudit},
+	{"/api/pings", BulkPings},
+	{"/api/upload", APIUpload},
 	{"/audit/log", auditPage},
-	{"/user/list", usersListPage},
-	{"/user/add", UserEdit},
-	{"/user/edit/", UserEdit},
-	{"/user/run/", UserRun},
-	{"/pdu/edit", PDUEdit},
-	{"/dc/edit/", DCEdit},
-	{"/dc/racks/", DatacenterPage},
-	{"/dc/list", DCList},
+	{"/data/mactable", MacTable},
+	{"/data/servers.csv", ServersCSV},
+	{"/data/servers.json", ServersJSON},
+	{"/data/servers.tab", ServersTab},
+	{"/data/upload", DataUpload},
+	{"/data/vms.csv", VMsCSV},
+	{"/data/vms.tab", VMsTab},
+	{"/db/debug/", DebugPage},
 	{"/dc/all", ListingPage},
 	{"/dc/connections", ConnectionsPage},
+	{"/dc/edit/", DCEdit},
+	{"/dc/list", DCList},
+	{"/dc/racks/", DatacenterPage},
+	{"/excel", ExcelPage},
 	{"/ip/dc/", IPInternalDC},
 	{"/ip/internal/all", IPInternalAllPage},
 	{"/ip/internal/list", IPInternalList},
 	{"/ip/public/all", IPPublicAllPage},
+	{"/loginfail", loginFailHandler},
+	{"/login", LoginHandler},
+	{"/logout", logoutPage},
+	{"/network/add/", NetworkAdd},
+	{"/network/audit/", NetworkAudit},
+	{"/network/devices", NetworkDevices},
+	{"/network/edit/", NetworkEdit},
+	{"/network/next/", NetworkNext},
+	{"/network/vlans", VlansPage},
+	{"/pdu/edit", PDUEdit},
+	{"/ping", pingPage},
+	{"/profile/view", ProfileView},
 	{"/rack/add", RackEdit},
 	{"/rack/adjust", RackAdjust},
 	{"/rack/audit/", RackAudit},
@@ -1641,43 +1691,27 @@ var webHandlers = []HFunc{
 	{"/rack/network", RackNetwork},
 	{"/rack/updates", RackUpdates},
 	{"/rack/view/", RackView},
-	{"/server/find", ServerFind},
-	{"/server/vms", VMListing},
-	{"/server/add/", ServerEdit},
-	{"/server/edit/", ServerEdit},
-	{"/server/audit/", ServerAudit},
-	{"/server/dupes", ServerDupes},
-	{"/network/devices", NetworkDevices},
-	{"/network/add/", NetworkAdd},
-	{"/network/edit/", NetworkEdit},
-	{"/network/next/", NetworkNext},
-	{"/network/audit/", NetworkAudit},
-	{"/network/vlans", VlansPage},
-	{"/vlan/edit/", VlanEdit},
-	{"/profile/view", ProfileView},
-	{"/vm/add/", VMAdd},
-	{"/vm/edit/", VMEdit},
-	{"/vm/find", VMFind},
-	{"/vm/all", VMAllPage},
-	{"/vm/list/", VMListPage},
-	{"/vm/audit/", VMAudit},
-	{"/vm/orphans", VMOrphans},
-	{"/vm/orphan/", VMOrphaned},
-	{"/db/debug/", DebugPage},
-	{"/ping", pingPage},
 	{"/reload", reloadPage},
 	{"/search", SearchPage},
-	//{"/password", PasswordReset},
-	{"/excel", ExcelPage},
-	{"/data/servers.csv", ServersCSV},
-	{"/data/servers.tab", ServersTab},
-	{"/data/servers.json", ServersJSON},
-	{"/data/vms.csv", VMsCSV},
-	{"/data/vms.tab", VMsTab},
-	{"/data/upload", DataUpload},
-	{"/api/audit", APIAudit},
-	{"/api/upload", APIUpload},
-	{"/api/pings", BulkPings},
+	{"/server/add/", ServerEdit},
+	{"/server/audit/", ServerAudit},
+	{"/server/dupes", ServerDupes},
+	{"/server/edit/", ServerEdit},
+	{"/server/find", ServerFind},
+	{"/server/vms", VMListing},
 	{"/settings", SettingsHandler},
+	{"/user/add", UserEdit},
+	{"/user/edit/", UserEdit},
+	{"/user/list", usersListPage},
+	{"/user/run/", UserRun},
+	{"/vlan/edit/", VlanEdit},
+	{"/vm/add/", VMAdd},
+	{"/vm/all", VMAllPage},
+	{"/vm/audit/", VMAudit},
+	{"/vm/edit/", VMEdit},
+	{"/vm/find", VMFind},
+	{"/vm/list/", VMListPage},
+	{"/vm/orphans", VMOrphans},
+	{"/vm/orphan/", VMOrphaned},
 	{"/", HomePage},
 }

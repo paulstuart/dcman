@@ -6,7 +6,15 @@ BEGIN TRANSACTION;
 CREATE TABLE "datacenters" (
     id integer primary key AUTOINCREMENT,
     name text,
-    location text
+    address text,
+    city text,
+    state text,
+    phone text,
+    web text,
+    dcman text
+    remote_addr text default '', 
+    modified timestamp, 
+    user_id int default 0
     );
 
 CREATE TABLE master (
@@ -242,10 +250,11 @@ CREATE TABLE "vlans" (
     id integer primary key not null,
     did integer not null,
     name integer not null,
-    gateway text default '',
-    netmask text default '',
-    route text default '',
-    uid int default 0,
+    profile string not null,
+    gateway text not null,
+    netmask text not null,
+    route text not null,
+    user_id int not null,
     modified timestamp DEFAULT CURRENT_TIMESTAMP
 );
 

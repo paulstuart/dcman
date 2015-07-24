@@ -23,14 +23,13 @@ var (
 //go:generate dbgen
 
 type User struct {
-	ID       int64  `sql:"id" key:"true" table:"users"`
-	RealID   int64  // when emulating another user, retain real identity
-	Login    string `sql:"login"`
-	First    string `sql:"firstname"`
-	Last     string `sql:"lastname"`
-	Email    string `sql:"email"`
-	Password string `sql:"password"`
-	Level    int    `sql:"admin"`
+	ID     int64  `sql:"id" key:"true" table:"users"`
+	RealID int64  // when emulating another user, retain real identity
+	Login  string `sql:"login"`
+	First  string `sql:"firstname"`
+	Last   string `sql:"lastname"`
+	Email  string `sql:"email"`
+	Level  int    `sql:"admin"`
 }
 
 func (u User) Admin() bool {
@@ -55,10 +54,15 @@ func (u User) Access() string {
 type Datacenter struct {
 	ID         int64     `sql:"id" key:"true" table:"datacenters"`
 	Name       string    `sql:"name"`
-	Location   string    `sql:"location"`
-	Modified   time.Time `sql:"modified"`
+	Address    string    `sql:"address"`
+	City       string    `sql:"city"`
+	State      string    `sql:"state"`
+	Phone      string    `sql:"phone"`
+	Web        string    `sql:"web"`
+	DCMan      string    `sql:"dcman"`
 	RemoteAddr string    `sql:"remote_addr"`
-	UID        int64     `sql:"uid"`
+	UID        int64     `sql:"user_id"`
+	Modified   time.Time `sql:"modified"`
 }
 
 func (d Datacenter) Count() int {
@@ -216,8 +220,7 @@ func (s Server) InternalVLAN() string {
 func deleteServerFromRack(rid, ru string) error {
 	s := Server{}
 	query := fmt.Sprintf("delete from %s where rid=? and ru=?", s.TableName())
-	err := dbExec(query, rid, ru)
-	return err
+	return dbExec(query, rid, ru)
 }
 
 type Router struct {
@@ -632,9 +635,6 @@ func userUpdate(user User) error {
 }
 
 func userAdd(user User) (int64, error) {
-	if len(user.Password) == 0 {
-		user.Password = "n/a" // TODO: no longer using stored password , need to update schema
-	}
 	return dbObjectInsert(user)
 }
 

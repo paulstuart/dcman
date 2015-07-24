@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	version           = "1.3.3"
+	version           = "1.3.4"
 	masterMode        = true
 	Hostname, _       = os.Hostname()
 	Basedir, _        = os.Getwd() // get abs path now, as we will be changing dirs
@@ -29,6 +29,7 @@ var (
 	dbFile            = execDir + "/inventory.db"
 	dcLookup          = make(map[string]Datacenter)
 	dcIDs             = make(map[int64]Datacenter)
+	thisDC            Datacenter
 	Datacenters       []Datacenter
 	systemLocation, _ = time.LoadLocation("Local")
 	pathPrefix        string
@@ -167,6 +168,9 @@ func main() {
 	for _, dc := range Datacenters {
 		dcLookup[dc.Name] = dc
 		dcIDs[dc.ID] = dc
+	}
+	if vlan, err := ipVLAN(MyIp()); err == nil {
+		thisDC = dcIDs[vlan.DID]
 	}
 	webServer(webHandlers)
 }
