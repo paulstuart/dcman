@@ -1,6 +1,22 @@
 {{define "head"}}<title>{{.Common.Title}}</title>{{end}}
 {{define "javascript"}}
 
+var discover_mac = function(amount) {
+    $.ajax({
+      type: "GET",
+      url: "{{.Common.Prefix}}/data/server/discover/{{.Server.IPIpmi}}",
+      dataType: "json",
+      error: function(jqXHR, textStatus, errorThrown) {
+        alert("Error: " + jqXHR.responseText)
+        },
+      success: function(data, textStatus, jqXHR) {
+         //alert("GOT:" + data);
+         $("#MacPort0").val(data.MacEth0);
+      }
+    });
+    return false;
+}
+
 $(document).ready(function() {
     $('#rackunit').change(function() {
         window.location.assign("/"+$(this).val()+"/add/{{.Server.DC}}/{{.Server.Rack}}/{{.Server.RU}}")
@@ -13,6 +29,8 @@ $(document).ready(function() {
     if ($("#vlanip").val().length == 0) {
         $("#vlanip").val($('#ipselector').val());
     }
+
+   $("#b_discover").click(discover_mac);
 
     // because safari doesn't support the pattern/required HTML5 feature
    $('#servo').on('submit', function(e){
@@ -87,7 +105,9 @@ $(document).ready(function() {
         {{ else }}
         <label> Internal IP <input type="text" id="vlanip" name="IPInternal" value="{{.Server.IPInternal}}"/></label><br/>
         {{ end }}
-        <label>Eth0 MAC<input type="text" name="MacPort0" value="{{.Server.MacPort0}}"/></label><br/>
+        <label>Eth0 MAC<input type="text" name="MacPort0" id="MacPort0" value="{{.Server.MacPort0}}"/></label>
+        {{ if not .Server.MacPort0 }}<button id="b_discover">Discover</button>{{ end }}
+        <br/>
         <label>Eth1 MAC<input type="text" name="MacPort1" value="{{.Server.MacPort1}}"/></label><br/>
         <label>Public IP<input type="text" id="publicip" name="IPPublic" value="{{.Server.IPPublic}}"/></label><br/>
     </fieldset>

@@ -8,6 +8,7 @@ import (
 	"syscall"
 
 	pp "github.com/paulstuart/ping"
+	"github.com/paulstuart/sshclient"
 )
 
 /*
@@ -81,6 +82,7 @@ func ipmicmd(ip, input string) (int, string, string, error) {
 		return -1, "", "", fmt.Errorf("Cannot ping address: %s", ip)
 	}
 	args := strings.Fields(input)
+	fmt.Println("ARGS:", args)
 	cmd := exec.Command("ipmitool", args...)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
@@ -90,4 +92,8 @@ func ipmicmd(ip, input string) (int, string, string, error) {
 	rc := status.ExitStatus()
 
 	return rc, stdout.String(), stderr.String(), err
+}
+
+func Remote(server, cmd string, timeout int) (rc int, stdout, stderr string, err error) {
+	return sshclient.Exec(server+":22", cfg.SSH.Username, cfg.SSH.Password, cmd, timeout)
 }

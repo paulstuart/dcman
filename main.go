@@ -38,6 +38,7 @@ var (
 		Main    MainConfig
 		Backups BackupConfig
 		SAML    SAMLConfig
+		SSH     SSHConfig
 	}{}
 )
 
@@ -56,6 +57,12 @@ type MainConfig struct {
 type BackupConfig struct {
 	Dir  string `gcfg:"dir"`
 	Freq int    `gcfg:"freq"`
+}
+
+type SSHConfig struct {
+	Username string `gcfg:"username"`
+	Password string `gcfg:"password"`
+	Host     string `gcfg:"host"`
 }
 
 type SAMLConfig struct {

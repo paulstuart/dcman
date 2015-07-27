@@ -10,6 +10,11 @@ key         = your secret key here
 freq  = 5 # frequently to test for write contention
 dir   = "backups"
 
+[ ssh ]
+username    = sshuser
+password    = secret
+host        = 1.2.3.4
+
 [ saml ]
 samlURL     = https://samlhost.example.com/saml/url
 cookie      = common cookie

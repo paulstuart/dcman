@@ -1623,6 +1623,37 @@ func APIUpload(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func ServerDiscover(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	ipmi := r.URL.Path
+	if len(ipmi) == 0 {
+		log.Println("DISCOVER IPMI:", ipmi)
+		notFound(w, r)
+		return
+	}
+	//_, stdout, stderr, err := ipmicmd(ipmi, "raw 0x30 0x21")
+	_, stdout, stderr, err := Remote(cfg.SSH.Host, "findmac "+ipmi, 10)
+	if err != nil {
+		log.Println("DISCOVER ERR:", err)
+		log.Println("DISCOVER STDERR:", stderr)
+		notFound(w, r)
+		return
+	}
+	if len(stdout) == 0 {
+		log.Println("DISCOVER STDOUT TOO SMALL:", stdout)
+		notFound(w, r)
+		return
+	}
+	d := struct {
+		MacEth0 string
+	}{
+		MacEth0: strings.TrimSpace(stdout),
+	}
+	j, _ := json.MarshalIndent(d, " ", " ")
+	w.Header().Set("Content-Type", "application/json")
+	fmt.Fprint(w, string(j))
+}
+
 func BulkPings(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	timeout := pingTimeout
@@ -1653,6 +1684,7 @@ var webHandlers = []HFunc{
 	{"/api/pings", BulkPings},
 	{"/api/upload", APIUpload},
 	{"/audit/log", auditPage},
+	{"/data/server/discover/", ServerDiscover},
 	{"/data/mactable", MacTable},
 	{"/data/servers.csv", ServersCSV},
 	{"/data/servers.json", ServersJSON},
