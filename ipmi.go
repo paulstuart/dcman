@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"os/exec"
 	"strings"
 	"syscall"
@@ -96,4 +97,34 @@ func ipmicmd(ip, input string) (int, string, string, error) {
 
 func Remote(server, cmd string, timeout int) (rc int, stdout, stderr string, err error) {
 	return sshclient.Exec(server+":22", cfg.SSH.Username, cfg.SSH.Password, cmd, timeout)
+}
+
+func FindMAC(ipmi string) string {
+	rc, stdout, stderr, err := Remote(cfg.SSH.Host, "findmac "+ipmi, 10)
+	if err != nil {
+		log.Println("IPMI ERROR FOR "+ipmi, ":", err)
+		return ""
+	}
+	if rc != 0 {
+		log.Printf("IPMI ERROR FOR %s: (%d) %s", ipmi, rc, stderr)
+		return ""
+	}
+	return strings.TrimSpace(stdout)
+}
+
+func GetCredentials(ipmi string) (string, string, error) {
+	query := "select username, password from credentials where ip=?"
+	results, err := dbRow(query, ipmi)
+	if err != nil {
+		return "", "", err
+	}
+	if len(results) < 2 {
+		return "", "", fmt.Errorf("incomplete results")
+	}
+	return results[0], results[1], nil
+}
+
+func SetCredentials(ipmi, username, password string) error {
+	query := "replace into credentials (ip,username,password) values(?,?,?)"
+	return dbExec(query, ipmi, username, password)
 }

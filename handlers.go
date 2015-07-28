@@ -1632,26 +1632,38 @@ func ServerDiscover(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	//_, stdout, stderr, err := ipmicmd(ipmi, "raw 0x30 0x21")
-	_, stdout, stderr, err := Remote(cfg.SSH.Host, "findmac "+ipmi, 10)
-	if err != nil {
-		log.Println("DISCOVER ERR:", err)
-		log.Println("DISCOVER STDERR:", stderr)
-		notFound(w, r)
-		return
-	}
-	if len(stdout) == 0 {
-		log.Println("DISCOVER STDOUT TOO SMALL:", stdout)
-		notFound(w, r)
-		return
-	}
+	/*
+		_, stdout, stderr, err := Remote(cfg.SSH.Host, "findmac "+ipmi, 10)
+		if err != nil {
+			log.Println("DISCOVER ERR:", err)
+			log.Println("DISCOVER STDERR:", stderr)
+			notFound(w, r)
+			return
+		}
+		if len(stdout) == 0 {
+			log.Println("DISCOVER STDOUT TOO SMALL:", stdout)
+			notFound(w, r)
+			return
+		}
+	*/
 	d := struct {
 		MacEth0 string
 	}{
-		MacEth0: strings.TrimSpace(stdout),
+		MacEth0: FindMAC(ipmi),
 	}
 	j, _ := json.MarshalIndent(d, " ", " ")
 	w.Header().Set("Content-Type", "application/json")
 	fmt.Fprint(w, string(j))
+}
+
+func APIUpdate(w http.ResponseWriter, r *http.Request) {
+	servers := serversByQuery("where ip_ipmi > '' and mac_eth0=''")
+	w.Header().Set("Content-Type", "text/plain")
+	for i, server := range servers {
+		fmt.Fprintln(w, i, "S:", server.Hostname, "I:", server.IPIpmi, "M:", server.MacPort0)
+		go server.FixMac()
+		time.Sleep(1 * time.Second)
+	}
 }
 
 func BulkPings(w http.ResponseWriter, r *http.Request) {
@@ -1677,12 +1689,42 @@ func BulkPings(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func IPMICredentialsGet(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "POST" {
+		r.ParseForm()
+		ipmi := r.Form.Get("ipmi")
+		username, password, err := GetCredentials(ipmi)
+		if err != nil {
+			log.Println("error getting creds for ipmp:", ipmi, "error:", err)
+		}
+		w.Header().Set("Content-Type", "text/plain")
+		fmt.Fprintln(w, username, password)
+	}
+}
+
+func IPMICredentialsSet(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "POST" {
+		r.ParseForm()
+		ipmi := r.Form.Get("ipmi")
+		username := r.Form.Get("username")
+		password := r.Form.Get("password")
+		err := SetCredentials(ipmi, username, password)
+		if err != nil {
+			w.Header().Set("Content-Type", "text/plain")
+			fmt.Fprintln(w, err)
+		}
+	}
+}
+
 var webHandlers = []HFunc{
 	{"/favicon.ico", FaviconPage},
 	{"/static/", StaticPage},
 	{"/api/audit", APIAudit},
+	{"/api/credentials/get", IPMICredentialsGet},
+	{"/api/credentials/set", IPMICredentialsSet},
 	{"/api/pings", BulkPings},
 	{"/api/upload", APIUpload},
+	{"/api/update", APIUpdate},
 	{"/audit/log", auditPage},
 	{"/data/server/discover/", ServerDiscover},
 	{"/data/mactable", MacTable},

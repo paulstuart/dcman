@@ -744,6 +744,11 @@ func NextIPs(rid int64) (map[string]string, error) {
 	return next, err
 }
 
+func (s Server) FixMac() {
+	s.MacPort0 = FindMAC(s.IPIpmi)
+	dbSave(&s)
+}
+
 type Audit struct {
 	Hostname string `sql:"hostname" table:"auditing"`
 	IP       string `sql:"remote_addr"`

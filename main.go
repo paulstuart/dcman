@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	version           = "1.3.4"
+	version           = "0.1.3"
 	masterMode        = true
 	Hostname, _       = os.Hostname()
 	Basedir, _        = os.Getwd() // get abs path now, as we will be changing dirs

@@ -188,18 +188,28 @@ func dbReplace(o dbutil.DBObject) error {
 	}
 	return datastore.Replace(o)
 }
+
 func dbRows(q string, args ...interface{}) (results []string, err error) {
 	if err := readable(); err != nil {
 		return []string{}, err
 	}
 	return datastore.Rows(q, args...)
 }
+
+func dbRow(query string, args ...interface{}) ([]string, error) {
+	if err := readable(); err != nil {
+		return []string{}, err
+	}
+	return datastore.Row(query, args...)
+}
+
 func dbSave(o dbutil.DBObject) error {
 	if err := writable(); err != nil {
 		return err
 	}
 	return datastore.Save(o)
 }
+
 func dbStats() []string {
 	if err := readable(); err != nil {
 		return []string{}
@@ -233,6 +243,14 @@ func dbTable(query string, args ...interface{}) (*dbutil.Table, error) {
 	}
 	return datastore.Table(query, args...)
 }
+
+func dbUpdate(query string, args ...interface{}) (i int64, e error) {
+	if err := writable(); err != nil {
+		return -1, err
+	}
+	return datastore.Update(query, args...)
+}
+
 func dbVersion() {}
 
 func dbPrep() {
