@@ -745,8 +745,10 @@ func NextIPs(rid int64) (map[string]string, error) {
 }
 
 func (s Server) FixMac() {
-	s.MacPort0 = FindMAC(s.IPIpmi)
-	dbSave(&s)
+	var err error
+	if s.MacPort0, err = FindMAC(s.IPIpmi); err == nil {
+		dbSave(&s)
+	}
 }
 
 type Audit struct {

@@ -50,8 +50,6 @@ type MainConfig struct {
 	Banner   string `gcfg:"banner"`
 	Key      string `gcfg:"key"`
 	ReadOnly bool   `gcfg:"readonly"`
-	//BackupDir  string `gcfg:"backup_dir"`
-	//BackupFreq int    `gcfg:"backup_freq"`
 }
 
 type BackupConfig struct {
@@ -147,9 +145,11 @@ func init() {
 		for sig := range c {
 			log.Println("Got signal:", sig)
 			// sig is a ^C, handle it
-			err := dbClose()
-			if err != nil {
-				log.Println("CLOSE ERROR:", err)
+			if err := dbExec("PRAGMA wal_checkpoint(FULL)"); err != nil {
+				log.Println("checkpoint error:", err)
+			}
+			if err := dbClose(); err != nil {
+				log.Println("close error:", err)
 			}
 			os.Exit(1)
 		}

@@ -1631,25 +1631,11 @@ func ServerDiscover(w http.ResponseWriter, r *http.Request) {
 		notFound(w, r)
 		return
 	}
-	//_, stdout, stderr, err := ipmicmd(ipmi, "raw 0x30 0x21")
-	/*
-		_, stdout, stderr, err := Remote(cfg.SSH.Host, "findmac "+ipmi, 10)
-		if err != nil {
-			log.Println("DISCOVER ERR:", err)
-			log.Println("DISCOVER STDERR:", stderr)
-			notFound(w, r)
-			return
-		}
-		if len(stdout) == 0 {
-			log.Println("DISCOVER STDOUT TOO SMALL:", stdout)
-			notFound(w, r)
-			return
-		}
-	*/
+	mac, _ := FindMAC(ipmi)
 	d := struct {
 		MacEth0 string
 	}{
-		MacEth0: FindMAC(ipmi),
+		MacEth0: mac,
 	}
 	j, _ := json.MarshalIndent(d, " ", " ")
 	w.Header().Set("Content-Type", "application/json")
@@ -1657,8 +1643,8 @@ func ServerDiscover(w http.ResponseWriter, r *http.Request) {
 }
 
 func APIUpdate(w http.ResponseWriter, r *http.Request) {
-	servers := serversByQuery("where ip_ipmi > '' and mac_eth0=''")
 	w.Header().Set("Content-Type", "text/plain")
+	servers := serversByQuery("where ip_ipmi > '' and mac_eth0=''")
 	for i, server := range servers {
 		fmt.Fprintln(w, i, "S:", server.Hostname, "I:", server.IPIpmi, "M:", server.MacPort0)
 		go server.FixMac()
