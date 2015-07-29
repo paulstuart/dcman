@@ -12,6 +12,7 @@ import (
 	_ "net/http/pprof"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -30,7 +31,6 @@ const (
 var (
 	assetDir    = "assets"
 	tdir        string
-	logDir      = "logs"
 	ip          = MyIp()
 	htmlTmpl    map[string]*template.Template
 	textTmpl    map[string]*ttext.Template
@@ -331,6 +331,13 @@ func webServer(handlers []HFunc) {
 		http.HandleFunc("/", goHome)
 	}
 
+	logDir := cfg.Main.LogDir
+	if len(logDir) == 0 {
+		logDir = "logs"
+	}
+	if !path.IsAbs(logDir) {
+		logDir = path.Join(execDir, logDir)
+	}
 	if err := os.MkdirAll(logDir, 0755); err != nil {
 		log.Panic(err)
 	}

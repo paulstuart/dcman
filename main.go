@@ -49,6 +49,7 @@ type MainConfig struct {
 	Uploads  string `gcfg:"uploads"`
 	Banner   string `gcfg:"banner"`
 	Key      string `gcfg:"key"`
+	LogDir   string `gcfg:"logdir"`
 	ReadOnly bool   `gcfg:"readonly"`
 }
 
