@@ -7,6 +7,8 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -188,6 +190,182 @@ func DataUpload(w http.ResponseWriter, r *http.Request) {
 		data := NewCommon(r, "Upload server data")
 		renderTemplate(w, r, "upload", data)
 	}
+}
+
+func DocumentUpload(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "POST" {
+		r.ParseMultipartForm(32 << 20)
+		//r.ParseForm()
+		dc_id := r.Form.Get("did")
+		//filename := r.Form.Get("filename")
+		title := r.Form.Get("title")
+		file, header, err := r.FormFile("file")
+		if err != nil {
+			fmt.Fprintln(w, err)
+			return
+		}
+		//fmt.Println(r.Form)
+		did, err := strconv.ParseInt(dc_id, 0, 64)
+		if err != nil {
+			fmt.Fprintln(w, err)
+			return
+		}
+		fmt.Println("DID:", dc_id, "FN:", header.Filename, "T:", title)
+		u := currentUser(r)
+		doc := Document{
+			DID:        did,
+			Filename:   header.Filename,
+			Title:      title,
+			UID:        u.ID,
+			RemoteAddr: RemoteHost(r),
+		}
+		filename := path.Join(documentDir, header.Filename)
+		err = dbAdd(&doc)
+		if err != nil {
+			fmt.Fprintln(w, err)
+			return
+		}
+		if err = saveMultipartFile(filename, file); err != nil {
+			fmt.Fprintln(w, err)
+			return
+		}
+		//fmt.Println("FORM:", r.Form)
+		//fmt.Fprintf(w, "File uploaded successfully: ")
+		//fmt.Fprintf(w, header.Filename)
+		redirect(w, r, "/document/list", http.StatusSeeOther)
+	} else {
+		data := struct {
+			Common Common
+		}{
+			Common: NewCommon(r, "Upload document"),
+		}
+		renderTemplate(w, r, "document", data)
+	}
+}
+
+func DocumentEdit(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "POST" {
+		r.ParseMultipartForm(32 << 20)
+
+		action := r.Form.Get("action")
+		u := currentUser(r)
+		doc := Document{}
+		objFromForm(&doc, r.Form)
+		doc.Modified = time.Now()
+		doc.UID = u.ID
+		doc.RemoteAddr = RemoteHost(r)
+		switch {
+		case action == "Update":
+			if file, header, err := r.FormFile("file"); err == nil {
+				// remove original file in case filename changed and we aren't able to simply over-write
+				err := os.Remove(doc.Fullpath())
+				doc.Filename = header.Filename
+				if err := saveMultipartFile(doc.Fullpath(), file); err != nil {
+					fmt.Fprintln(w, err)
+					return
+				}
+			}
+			if err := dbSave(&doc); err != nil {
+				fmt.Fprintln(w, err)
+				return
+			}
+		case action == "Delete":
+			if err := os.Remove(doc.Fullpath()); err != nil {
+				fmt.Fprintln(w, err)
+				return
+			}
+			if err := dbDelete(&doc); err != nil {
+				fmt.Fprintln(w, err)
+				return
+			}
+		case action == "Add":
+			file, header, err := r.FormFile("file")
+			if err != nil {
+				fmt.Fprintln(w, err)
+				return
+			}
+			doc.Filename = header.Filename
+			err = dbAdd(&doc)
+			if err != nil {
+				fmt.Fprintln(w, err)
+				return
+			}
+			if err = saveMultipartFile(doc.Fullpath(), file); err != nil {
+				fmt.Fprintln(w, err)
+				return
+			}
+		}
+		redirect(w, r, "/document/list", http.StatusSeeOther)
+	} else {
+		var err error
+		doc := Document{}
+		if len(r.URL.Path) > 0 {
+			if doc.ID, err = strconv.ParseInt(r.URL.Path, 0, 64); err != nil {
+				notFound(w, r)
+				log.Println(err)
+				return
+			}
+			if err = dbFindSelf(&doc); err != nil {
+				notFound(w, r)
+				log.Println(err)
+				return
+			}
+		}
+		data := struct {
+			Common   Common
+			Document Document
+		}{
+			Common:   NewCommon(r, "Edit document"),
+			Document: doc,
+		}
+		renderTemplate(w, r, "document", data)
+	}
+}
+
+func DocumentList(w http.ResponseWriter, r *http.Request) {
+	t, err := dbTable("select id, did, dc, filename, title, login, modified, remote_addr from docview")
+	if err != nil {
+		fmt.Fprintln(w, err)
+		return
+	}
+	setLinks(t, 3, "/document/get/%s", 0)
+	setLinks(t, 4, "/document/edit/%s", 0)
+
+	t.Hide(0, 1)
+	//t.SetType("ip-address", 3, 4)
+	data := Tabular{
+		Common: NewCommon(r, "Document List"),
+		Table:  t,
+	}
+	renderTemplate(w, r, "table", data)
+}
+
+func DocumentGet(w http.ResponseWriter, r *http.Request) {
+	if len(r.URL.Path) == 0 {
+		notFound(w, r)
+		return
+	}
+	docid, err := strconv.ParseInt(r.URL.Path, 0, 64)
+	if err != nil {
+		notFound(w, r)
+		log.Println(err)
+		return
+	}
+	doc := Document{ID: docid}
+	if err = dbFindSelf(&doc); err != nil {
+		notFound(w, r)
+		log.Println(err)
+		return
+	}
+	log.Println("DOC:", doc)
+	file, err := os.Open(doc.Fullpath())
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	defer file.Close()
+	fi, _ := file.Stat()
+	http.ServeContent(w, r, doc.Filename, fi.ModTime(), file)
 }
 
 func ServerFind(w http.ResponseWriter, r *http.Request) {
@@ -1726,6 +1904,10 @@ var webHandlers = []HFunc{
 	{"/dc/edit/", DCEdit},
 	{"/dc/list", DCList},
 	{"/dc/racks/", DatacenterPage},
+	{"/document/edit/", DocumentEdit},
+	{"/document/get/", DocumentGet},
+	{"/document/list", DocumentList},
+	//{"/document/upload", DocumentUpload},
 	{"/excel", ExcelPage},
 	{"/ip/dc/", IPInternalDC},
 	{"/ip/internal/all", IPInternalAllPage},

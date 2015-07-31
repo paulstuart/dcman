@@ -211,13 +211,13 @@ func InvalidPage(w http.ResponseWriter, r *http.Request) {
 
 func saveMultipartFile(name string, file multipart.File) error {
 	if len(name) == 0 {
-		return fmt.Errorf("name not specified")
+		return fmt.Errorf("file name not specified")
 	}
 	defer file.Close()
 
 	out, err := os.Create(name)
 	if err != nil {
-		return fmt.Errorf("Unable write to: %s. Check your write access privileges.", name)
+		return err
 	}
 
 	defer out.Close()

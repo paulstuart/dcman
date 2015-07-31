@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path"
 	"reflect"
 	"regexp"
 	"sort"
@@ -30,6 +31,20 @@ type User struct {
 	Last   string `sql:"lastname"`
 	Email  string `sql:"email"`
 	Level  int    `sql:"admin"`
+}
+
+type Document struct {
+	ID         int64     `sql:"id" key:"true" table:"documents"`
+	DID        int64     `sql:"did"`
+	Filename   string    `sql:"filename"`
+	Title      string    `sql:"title"`
+	RemoteAddr string    `sql:"remote_addr"`
+	UID        int64     `sql:"user_id"`
+	Modified   time.Time `sql:"modified"`
+}
+
+func (d Document) Fullpath() string {
+	return path.Join(documentDir, d.Filename)
 }
 
 func (u User) Admin() bool {

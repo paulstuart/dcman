@@ -3,7 +3,7 @@
 <html lang="en" xml:lang="en">
 <head>
     <meta http-equiv="content-type" content="text/html;charset=utf-8"/>
-    <title>{{.Title}}</title>
+    <title>{{.Common.Title}}</title>
     <link rel="stylesheet" type="text/css" href="{{$.Common.Prefix}}/static/css/reset.css" media="screen" />
     <link rel="stylesheet" type="text/css" href="{{$.Common.Prefix}}/static/css/style.css" media="screen" />
     <link rel="stylesheet" type="text/css" href="{{$.Common.Prefix}}/static/css/jquery.dataTables.css" media="screen" />
@@ -69,6 +69,8 @@
       <li><a>Data</a>
         <ul>
             <li><a href="{{$.Common.Prefix}}/data/upload">Load Server Data</a></li>
+            <li><a href="{{$.Common.Prefix}}/document/edit/">Upload File</a></li>
+            <li><a href="{{$.Common.Prefix}}/document/list">Document List</a></li>
             <li><a href="{{$.Common.Prefix}}/data/servers.csv">Export Servers (CSV)</a></li>
             <li><a href="{{$.Common.Prefix}}/data/vms.csv">Export VMs (CSV)</a></li>
         </ul>
@@ -103,7 +105,7 @@
     </ul>
     <ul>
         <div class="login">
-            <a href="{{$.Common.Prefix}}/logout">Logout {{.User.Login}}</a>
+            <a href="{{$.Common.Prefix}}/logout">Logout {{.Common.User.Login}}</a>
         </div>
     </ul>
 </nav>

@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	version           = "0.1.3"
+	version           = "0.1.4"
 	masterMode        = true
 	Hostname, _       = os.Hostname()
 	Basedir, _        = os.Getwd() // get abs path now, as we will be changing dirs
@@ -27,6 +27,7 @@ var (
 	sqlDir            = "sql" // dir containing sql schemas, etc
 	sqlSchema         = sqlDir + "/schema.sql"
 	dbFile            = execDir + "/inventory.db"
+	documentDir       = execDir + "/documents"
 	dcLookup          = make(map[string]Datacenter)
 	dcIDs             = make(map[int64]Datacenter)
 	thisDC            Datacenter
@@ -115,14 +116,15 @@ func init() {
 	authCookie = cfg.SAML.OKTACookie
 	bannerText += cfg.Main.Banner
 
-	var key string
-	if len(cfg.Main.Key) > 0 {
-		key = cfg.Main.Key
-	} else {
+	key := cfg.Main.Key
+	if len(key) == 0 {
 		key, _ = secrets.KeyGen()
 	}
-	log.Println("KEY:", key)
 	secrets.SetKey(key)
+
+	if err := os.MkdirAll(documentDir, 0755); err != nil {
+		log.Panic(err)
+	}
 }
 
 func MyIp() string {
