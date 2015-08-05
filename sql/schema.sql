@@ -5,17 +5,44 @@ BEGIN TRANSACTION;
 
 CREATE TABLE "datacenters" (
     id integer primary key AUTOINCREMENT,
-    name text,
-    address text,
-    city text,
-    state text,
-    phone text,
-    web text,
-    dcman text
-    remote_addr text default '', 
+    name text not null,
+    address text not null,
+    city text not null,
+    state text not null,
+    phone text not null,
+    web text not null,
+    dcman text not null,
+    pxehost text not null,
+    pxeuser text not null,
+    pxepass text not null,
+    pxekey text not null,
+    remote_addr text not null default '', 
     modified timestamp, 
     user_id int default 0
     );
+
+CREATE TABLE "rmas" (
+    id integer primary key AUTOINCREMENT,
+    sid integer not null, -- server id
+    vid integer not null, -- server id
+    user_id integer not null, 
+    description text not null default '',
+    part_no text not null default '',
+    tracking_no text not null default '',
+    dc_ticket text not null default '',
+    date_opened date DEFAULT CURRENT_TIMESTAMP,
+    date_sent date,
+    date_received date,
+    date_replaced date 
+);
+
+DROP VIEW IF EXISTS rma_report;
+CREATE VIEW rma_report as 
+  select r.*, u.login, s.hostname, s.sn, s.rack, s.ru
+  from  rmas r
+  left outer join users u on r.user_id = u.id
+  left outer join sview s on r.sid = s.id
+;
 
 CREATE TABLE master (
     rack    text,

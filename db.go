@@ -119,6 +119,13 @@ func dbExec(query string, args ...interface{}) error {
 	return err
 }
 
+func dbFindByID(o dbutil.DBObject, id interface{}) error {
+	if err := readable(); err != nil {
+		return err
+	}
+	return datastore.FindByID(o, id)
+}
+
 func dbFindSelf(o dbutil.DBObject) error {
 	if err := readable(); err != nil {
 		return err

@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/paulstuart/dbutil"
+	"github.com/paulstuart/sshclient"
 )
 
 var (
@@ -47,6 +48,20 @@ func (d Document) Fullpath() string {
 	return path.Join(documentDir, d.Filename)
 }
 
+type RMA struct {
+	ID          int64     `sql:"id" key:"true" table:"rmas "`
+	SID         int64     `sql:"sid"`
+	VID         int64     `sql:"vid"`
+	UID         int64     `sql:"user_id"`
+	Description string    `sql:"description"`
+	Part        string    `sql:"part_no"`
+	Tracking    string    `sql:"tracking_no"`
+	Opened      time.Time `sql:"date_opened"`
+	Sent        time.Time `sql:"date_sent"`
+	Received    time.Time `sql:"date_sent"`
+	Replaced    time.Time `sql:"date_replaced"`
+}
+
 func (u User) Admin() bool {
 	return u.Level > 1
 }
@@ -75,9 +90,17 @@ type Datacenter struct {
 	Phone      string    `sql:"phone"`
 	Web        string    `sql:"web"`
 	DCMan      string    `sql:"dcman"`
+	PXEHost    string    `sql:"pxehost"`
+	PXEUser    string    `sql:"pxeuser"`
+	PXEPass    string    `sql:"pxepass"`
+	PXEKey     string    `sql:"pxekey"`
 	RemoteAddr string    `sql:"remote_addr"`
 	UID        int64     `sql:"user_id"`
 	Modified   time.Time `sql:"modified"`
+}
+
+func (dc Datacenter) Remote(cmd string, timeout int) (int, string, string, error) {
+	return sshclient.Exec(dc.PXEHost+":22", dc.PXEUser, dc.PXEPass, cmd, timeout)
 }
 
 func (d Datacenter) Count() int {
@@ -525,6 +548,38 @@ func getServer(where string, args ...interface{}) (Server, error) {
 	return s, dbObjectLoad(&s, where, args...)
 }
 
+func serverReimage(id, jira, email, menu string) error {
+	if err := JiraAssigned(jira, email); err != nil {
+		return err
+	}
+	s, err := getServer("where id=?", id)
+	if err != nil {
+		return err
+	}
+	dc := s.Datacenter()
+	timeout := 30
+
+	// pxemenu command looks for list of ips on stdin
+	// it gets confused when running over ssh, so just
+	// pipe the single IP so it uses stdin
+	cmd := fmt.Sprintf("echo %s | pxemenu %s", s.IPIpmi, menu)
+	rc, stdout, stderr, err := dc.Remote(cmd, timeout)
+	if err != nil {
+		return err
+	}
+	if rc != 0 {
+		return fmt.Errorf("RC:%d OUT:%s ERR:%s", rc, stdout, stderr)
+	}
+	username, password, err := GetCredentials(s.IPIpmi)
+	if err != nil {
+		return err
+	}
+	if err = ipmigo(s.IPIpmi, username, password, "chassis bootdev pxe"); err != nil {
+		return err
+	}
+	return ipmigo(s.IPIpmi, username, password, "chassis power cycle")
+}
+
 func getRouter(where string, args ...interface{}) (Router, error) {
 	var s Router
 	return s, dbObjectLoad(&s, where, args...)
@@ -592,6 +647,15 @@ func (s Server) DID() int64 {
 		return r.DID
 	}
 	return 0
+}
+
+func (s Server) Datacenter() *Datacenter {
+	q := "where id=?"
+	r, _ := getRack(q, s.RID)
+	if dc, ok := dcIDs[r.DID]; ok {
+		return &dc
+	}
+	return nil
 }
 
 func (s Server) DC() string {

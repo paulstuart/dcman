@@ -38,8 +38,8 @@ var (
 	cfg               = struct {
 		Main    MainConfig
 		Backups BackupConfig
+		Jira    JiraConfig
 		SAML    SAMLConfig
-		SSH     SSHConfig
 	}{}
 )
 
@@ -59,12 +59,6 @@ type BackupConfig struct {
 	Freq int    `gcfg:"freq"`
 }
 
-type SSHConfig struct {
-	Username string `gcfg:"username"`
-	Password string `gcfg:"password"`
-	Host     string `gcfg:"host"`
-}
-
 type SAMLConfig struct {
 	URL         string `gcfg:"samlURL"`
 	Cookie      string `gcfg:"cookie"`
@@ -73,6 +67,12 @@ type SAMLConfig struct {
 	PlaceHolder string `gcfg:"placeholder"`
 	OKTACookie  string `gcfg:"OKTACookie"`
 	OKTAHash    string `gcfg:"OKTAHash"`
+}
+
+type JiraConfig struct {
+	Username string `gcfg:"username"`
+	Password string `gcfg:"password"`
+	URL      string `gcfg:"url"`
 }
 
 const (

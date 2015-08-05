@@ -8,7 +8,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -192,57 +191,6 @@ func DataUpload(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func DocumentUpload(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "POST" {
-		r.ParseMultipartForm(32 << 20)
-		//r.ParseForm()
-		dc_id := r.Form.Get("did")
-		//filename := r.Form.Get("filename")
-		title := r.Form.Get("title")
-		file, header, err := r.FormFile("file")
-		if err != nil {
-			fmt.Fprintln(w, err)
-			return
-		}
-		//fmt.Println(r.Form)
-		did, err := strconv.ParseInt(dc_id, 0, 64)
-		if err != nil {
-			fmt.Fprintln(w, err)
-			return
-		}
-		fmt.Println("DID:", dc_id, "FN:", header.Filename, "T:", title)
-		u := currentUser(r)
-		doc := Document{
-			DID:        did,
-			Filename:   header.Filename,
-			Title:      title,
-			UID:        u.ID,
-			RemoteAddr: RemoteHost(r),
-		}
-		filename := path.Join(documentDir, header.Filename)
-		err = dbAdd(&doc)
-		if err != nil {
-			fmt.Fprintln(w, err)
-			return
-		}
-		if err = saveMultipartFile(filename, file); err != nil {
-			fmt.Fprintln(w, err)
-			return
-		}
-		//fmt.Println("FORM:", r.Form)
-		//fmt.Fprintf(w, "File uploaded successfully: ")
-		//fmt.Fprintf(w, header.Filename)
-		redirect(w, r, "/document/list", http.StatusSeeOther)
-	} else {
-		data := struct {
-			Common Common
-		}{
-			Common: NewCommon(r, "Upload document"),
-		}
-		renderTemplate(w, r, "document", data)
-	}
-}
-
 func DocumentEdit(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		r.ParseMultipartForm(32 << 20)
@@ -258,7 +206,7 @@ func DocumentEdit(w http.ResponseWriter, r *http.Request) {
 		case action == "Update":
 			if file, header, err := r.FormFile("file"); err == nil {
 				// remove original file in case filename changed and we aren't able to simply over-write
-				err := os.Remove(doc.Fullpath())
+				os.Remove(doc.Fullpath())
 				doc.Filename = header.Filename
 				if err := saveMultipartFile(doc.Fullpath(), file); err != nil {
 					fmt.Fprintln(w, err)
@@ -376,13 +324,33 @@ func ServerFind(w http.ResponseWriter, r *http.Request) {
 		if len(s) == 0 {
 			ErrorPage(w, r, "No servers found matching hostname: "+h)
 		} else if len(s) == 1 {
-			ShowServer(w, r, s[0])
+			redirectToServer(w, r, s[0])
 		} else {
 			data := ServerInfo{
 				Common:  NewCommon(r, "servers matching: "+h),
 				Servers: s,
 			}
 			renderTemplate(w, r, "found", data)
+		}
+	}
+}
+
+func ServerReimage(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "POST" {
+		r.ParseForm()
+		u := currentUser(r)
+		sid := r.Form.Get("SID")
+		jira := r.Form.Get("Jira")
+		menu := r.Form.Get("Menu")
+		err := serverReimage(sid, jira, u.Email, menu)
+		s := Server{}
+		dbFindByID(&s, sid)
+		auditLog(u.ID, RemoteHost(r), "reimage: "+s.Hostname, err.Error())
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusForbidden)
+			log.Println("reimage error:", err)
+		} else {
+			fmt.Fprintf(w, "")
 		}
 	}
 }
@@ -416,7 +384,7 @@ func searchIPMI(w http.ResponseWriter, r *http.Request, ip string) {
 		ErrorPage(w, r, "No assets found matching IPMI address: "+ip)
 	} else if len(table.Rows) == 1 {
 		s, _ := getServer("where id = ?", table.Rows[0][0])
-		ShowServer(w, r, s)
+		redirectToServer(w, r, s)
 	}
 }
 
@@ -428,7 +396,7 @@ func searchIPs(w http.ResponseWriter, r *http.Request, ip string) {
 	} else if len(table.Rows) == 1 {
 		if table.Rows[0][1] == "server" {
 			s, _ := getServer("where id = ?", table.Rows[0][0])
-			ShowServer(w, r, s)
+			redirectToServer(w, r, s)
 		} else if table.Rows[0][1] == "vm" {
 			v, _ := getVM("where id = ?", table.Rows[0][0])
 			ShowVM(w, r, v)
@@ -442,12 +410,16 @@ func searchIPs(w http.ResponseWriter, r *http.Request, ip string) {
 	}
 }
 
+func redirectToServer(w http.ResponseWriter, r *http.Request, s Server) {
+	redirect(w, r, fmt.Sprintf("/server/edit/%d", s.ID), http.StatusSeeOther)
+}
+
 func searchServers(w http.ResponseWriter, r *http.Request, hostname string) {
 	s := serversByQuery("where hostname like ?", "%"+hostname+"%")
 	if len(s) == 0 {
 		ErrorPage(w, r, "No servers found matching hostname: "+hostname)
 	} else if len(s) == 1 {
-		ShowServer(w, r, s[0])
+		redirectToServer(w, r, s[0])
 	} else {
 		data := ServerInfo{
 			Common:  NewCommon(r, "servers matching: "+hostname),
@@ -562,25 +534,43 @@ func ServerEdit(w http.ResponseWriter, r *http.Request) {
 		bits := strings.Split(r.URL.Path, "/")
 		if len(bits) < 1 {
 			notFound(w, r)
+			return
+		}
+		var server Server
+		if len(bits) > 2 {
+			dc := dcLookup[strings.ToUpper(bits[0])]
+			ru, _ := strconv.Atoi(bits[2])
+			rid := RackID(dc.ID, bits[1])
+			server = Server{
+				RU:     ru,
+				RID:    rid,
+				Height: 1,
+			}
 		} else {
-			if len(bits) > 2 {
-				dc := dcLookup[strings.ToUpper(bits[0])]
-				ru, _ := strconv.Atoi(bits[2])
-				rid := RackID(dc.ID, bits[1])
-				server := Server{
-					RU:     ru,
-					RID:    rid,
-					Height: 1,
-				}
-				ShowServer(w, r, server)
-			} else {
-				server, err := getServer("where id=?", bits[0])
-				if err != nil {
-					log.Println("server error:", err)
-				}
-				ShowServer(w, r, server)
+			var err error
+			if server, err = getServer("where id=?", bits[0]); err != nil {
+				log.Println("server error:", err)
+				notFound(w, r)
+				return
 			}
 		}
+		IPs := make(map[string]string)
+		if len(server.IPInternal) == 0 {
+			IPs, _ = NextIPs(server.RID)
+			for k, v := range IPs {
+				log.Println("VLAN:", k, "IP:", v)
+			}
+		}
+		data := struct {
+			Common
+			Server Server
+			IPs    map[string]string
+		}{
+			Common: NewCommon(r, server.Hostname),
+			Server: server,
+			IPs:    IPs,
+		}
+		renderTemplate(w, r, "server", data)
 	}
 }
 
@@ -623,37 +613,12 @@ func RackAudit(w http.ResponseWriter, r *http.Request) {
 			notFound(w, r)
 			return
 		}
-		/*
-			ips := []string{}
-			ipmis := []string{}
-			units, err := rack.Units()
-			if err != nil {
-				notFound(w, r)
-				return
-			}
-			for _, unit := range units {
-				if len(unit.IPMI) > 0 {
-					ipmis = append(ipmis, unit.IPMI)
-				}
-				if len(unit.Internal) > 0 {
-					ips = append(ips, unit.Internal)
-				}
-			}
-		*/
 		data := struct {
 			Common
 			Rack Rack
-			/*
-				PingIPMI map[string]bool
-				PingIP   map[string]bool
-			*/
 		}{
 			Common: NewCommon(r, fmt.Sprintf("Audit rack: %d (%s)", rack.Label, rack.DC())),
 			Rack:   rack,
-			/*
-				PingIPMI: bulkPing(pingTimeout, ipmis...),
-				PingIP:   bulkPing(pingTimeout, ips...),
-			*/
 		}
 		renderTemplate(w, r, "rackaudit", data)
 	}
@@ -1273,6 +1238,7 @@ func ListingPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func ServerDupes(w http.ResponseWriter, r *http.Request) {
+	// TODO: make this a view
 	const query = `select a.id,a.dc,a.rack,a.ru,a.hostname,a.alias,a.profile,a.assigned,a.ip_ipmi,a.ip_internal,a.ip_public,a.asset_tag,a.vendor_sku,a.sn 
 	from sview a, sview b
 	where a.rid = b.rid
@@ -1750,11 +1716,6 @@ func APIAudit(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		r.ParseForm()
 		var a Audit
-		/*
-			for k, v := range r.Form {
-				log.Println("K:", k, "V:", v)
-			}
-		*/
 		objFromForm(&a, r.Form)
 		a.Hostname = strings.ToLower(a.Hostname)
 		a.FQDN = a.Hostname
@@ -1763,7 +1724,6 @@ func APIAudit(w http.ResponseWriter, r *http.Request) {
 			i = len(a.Hostname)
 		}
 		a.Hostname = a.Hostname[:i]
-		//log.Println(a.Hostname, a.VMs)
 		a.IP = RemoteHost(r)
 		log.Println(a.IP, a.Hostname)
 		err := dbReplace(&a)
@@ -1907,7 +1867,6 @@ var webHandlers = []HFunc{
 	{"/document/edit/", DocumentEdit},
 	{"/document/get/", DocumentGet},
 	{"/document/list", DocumentList},
-	//{"/document/upload", DocumentUpload},
 	{"/excel", ExcelPage},
 	{"/ip/dc/", IPInternalDC},
 	{"/ip/internal/all", IPInternalAllPage},
@@ -1940,6 +1899,7 @@ var webHandlers = []HFunc{
 	{"/server/dupes", ServerDupes},
 	{"/server/edit/", ServerEdit},
 	{"/server/find", ServerFind},
+	{"/server/reimage", ServerReimage},
 	{"/server/vms", VMListing},
 	{"/settings", SettingsHandler},
 	{"/user/add", UserEdit},

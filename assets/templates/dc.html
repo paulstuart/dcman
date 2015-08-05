@@ -14,8 +14,12 @@
     </fieldset>
 
     <fieldset>
-        <legend>Peer DCMan</legend>
+        <legend>Remote</legend>
         <label>DCMan<input type="text" name="DCMan" value="{{.Datacenter.DCMan}}"/></label><br/>
+        <label>PXE Host<input type="text" name="PXEHost" value="{{.Datacenter.PXEHost}}"/></label><br/>
+        <label>PXE User<input type="text" name="PXEUser" value="{{.Datacenter.PXEUser}}"/></label><br/>
+        <label>PXE Password<input type="password" name="PXEPass" value="{{.Datacenter.PXEPass}}"/></label><br/>
+        <label>PXE SSH Key<input type="text" name="PXEKey" value="{{.Datacenter.PXEKey}}" size="50"/></label><br/>
     </fieldset>
 
 <input type="hidden" name="ID" value="{{.Datacenter.ID}}">

@@ -10,7 +10,6 @@ import (
 	"syscall"
 
 	pp "github.com/paulstuart/ping"
-	"github.com/paulstuart/sshclient"
 )
 
 /*
@@ -32,6 +31,9 @@ var (
 	ErrLoginIPMI      = fmt.Errorf("unable to log into IPMI")
 	ErrIncompleteIPMI = fmt.Errorf("incomplete IPMI response")
 	ErrExecFailed     = fmt.Errorf("command execution failed")
+	ErrNoAddress      = fmt.Errorf("no address specified")
+	ErrNoUsername     = fmt.Errorf("no username specified")
+	ErrNoPassword     = fmt.Errorf("no password specified")
 )
 
 func ping(ip string, timeout int) bool {
@@ -87,6 +89,15 @@ func BlinkStatus(ip string) (bool, error) {
 }
 
 func ipmiexec(ip, username, password, input string) (int, string, string, error) {
+	if len(ip) == 0 {
+		return -1, "", "", ErrNoAddress
+	}
+	if len(username) == 0 {
+		return -1, "", "", ErrNoUsername
+	}
+	if len(password) == 0 {
+		return -1, "", "", ErrNoPassword
+	}
 	args := []string{"-Ilanplus", "-H", ip, "-U", username, "-P", password}
 	args = append(args, strings.Fields(input)...)
 	cmd := exec.Command("ipmitool", args...)
@@ -101,10 +112,25 @@ func ipmiexec(ip, username, password, input string) (int, string, string, error)
 }
 
 func ipmicmd(ip, username, password, input string) (int, string, string, error) {
+	if len(ip) == 0 {
+		return -1, "", "", ErrNoAddress
+	}
 	if !ping(ip, pingTimeout) {
 		return -1, "", "", ErrNoPing
 	}
 	return ipmiexec(ip, username, password, input)
+}
+
+func ipmigo(ip, username, password, input string) error {
+	rc, stdout, stderr, err := ipmiexec(ip, username, password, input)
+	if err != nil {
+		return err
+	}
+	if rc > 0 {
+		log.Printf("RC:%d OUT:%s ERR:%s\n", rc, stdout, stderr)
+		return ErrExecFailed
+	}
+	return nil
 }
 
 func ipmichk(ip, username, password string) error {
@@ -165,10 +191,6 @@ func repairCredentials() (int, int) {
 	return fixed, len(unknown)
 }
 
-func Remote(server, cmd string, timeout int) (rc int, stdout, stderr string, err error) {
-	return sshclient.Exec(server+":22", cfg.SSH.Username, cfg.SSH.Password, cmd, timeout)
-}
-
 func FindMAC(ipmi string) (string, error) {
 	const cmd = "raw 0x30 0x21"
 	u, p, err := GetCredentials(ipmi)
@@ -204,7 +226,7 @@ func noCredentials() []string {
 	return rows
 }
 
-func GetCredentials(ipmi string) (string, string, error) {
+func ipmiCredentials(ipmi string) (string, string, error) {
 	query := "select username, password from credentials where ip=?"
 	results, err := dbRow(query, ipmi)
 	if err != nil {
@@ -213,7 +235,18 @@ func GetCredentials(ipmi string) (string, string, error) {
 	if len(results) < 2 {
 		return "", "", fmt.Errorf("incomplete results")
 	}
+	log.Println("RESULTS:", results)
 	return results[0], results[1], nil
+}
+
+func GetCredentials(ipmi string) (string, string, error) {
+	if u, p, err := ipmiCredentials(ipmi); err == nil {
+		return u, p, nil
+	}
+	if err := fixCredentials(ipmi); err != nil {
+		return "", "", err
+	}
+	return ipmiCredentials(ipmi)
 }
 
 func SetCredentials(ipmi, username, password string) error {

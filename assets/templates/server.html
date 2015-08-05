@@ -17,6 +17,35 @@ var discover_mac = function(amount) {
     return false;
 }
 
+var reimage_server = function() {
+    var jira = prompt("Jira ticket #");
+    if (jira == null) {
+        return false;
+    }
+    if (jira.length == 0) {
+        alert("You must enter a Jira ticket assigned to you");
+        return false;
+    }
+    $.ajax({
+      type: "POST",
+      url: "{{.Common.Prefix}}/server/reimage",
+      dataType: "text",
+      data: {
+          SID: {{.Server.ID}},
+          Jira: jira,
+          Menu: "autoimage"
+      },
+      error: function(jqXHR, textStatus, errorThrown) {
+        alert("Error: " + jqXHR.responseText)
+        },
+      success: function(data, textStatus, jqXHR) {
+         //alert("GOT:" + data);
+         alert("Server should now be imaging");
+      }
+    });
+    return false;
+}
+
 $(document).ready(function() {
     $('#rackunit').change(function() {
         window.location.assign("/"+$(this).val()+"/add/{{.Server.DC}}/{{.Server.Rack}}/{{.Server.RU}}")
@@ -31,6 +60,12 @@ $(document).ready(function() {
     }
 
    $("#b_discover").click(discover_mac);
+
+{{ if .Common.User.Editor }}
+{{ if ne .Server.ID 0 }}
+   $("#b_reimage").click(reimage_server);
+{{ end }}
+{{ end }}
 
     // because safari doesn't support the pattern/required HTML5 feature
    $('#servo').on('submit', function(e){
@@ -77,6 +112,13 @@ $(document).ready(function() {
         <label class="threelines">Note<textarea cols="35" rows="3" name="Note">{{.Server.Note}}</textarea></label><br/>
         -->
         <label id="notelabel">Note<textarea cols="35" rows="3" name="Note">{{.Server.Note}}</textarea></label><br/>
+{{ if .Common.User.Editor }}
+{{ if ne .Server.ID 0 }}
+<label>Reimage
+    <button id="b_reimage">Reimage</button>
+</label><br/>
+{{ end }}
+{{ end }}
     </fieldset>
 
     <fieldset>
