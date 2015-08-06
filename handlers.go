@@ -47,6 +47,7 @@ type Common struct {
 	Title, Prefix, Banner string
 	Heading               template.HTML
 	Datacenters           []Datacenter
+	Current               Datacenter
 	User                  User
 	PXEBoot               bool
 }
@@ -116,6 +117,7 @@ func NewCommon(r *http.Request, title string) Common {
 		Title:       title,
 		Prefix:      pathPrefix,
 		Datacenters: Datacenters,
+		Current:     thisDC,
 		User:        currentUser(r),
 		Banner:      b,
 		PXEBoot:     cfg.Main.PXEBoot,
@@ -282,6 +284,7 @@ func DocumentList(w http.ResponseWriter, r *http.Request) {
 	setLinks(t, 4, "/document/edit/%s", 0)
 
 	t.Hide(0, 1)
+	// BAD?t.Adjustment(trimTime, 6)
 	//t.SetType("ip-address", 3, 4)
 	data := Tabular{
 		Common: NewCommon(r, "Document List"),
@@ -603,6 +606,15 @@ func RackMoveUnit(w http.ResponseWriter, r *http.Request) {
 
 func RackAudit(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
+		if dc, ok := dcLookup[r.URL.Path]; ok {
+			for _, rack := range dc.Racks() {
+				u := fmt.Sprintf("/rack/audit/%d", rack.ID)
+				redirect(w, r, u, http.StatusSeeOther)
+				return
+			}
+			notFound(w, r)
+			return
+		}
 		rid, err := strconv.ParseInt(r.URL.Path, 0, 64)
 		if err != nil {
 			log.Println("bad rack id:", err)
@@ -658,6 +670,7 @@ func rackItemUpdate(r *http.Request, rid, ru string) error {
 }
 
 func rackItemAdd(r *http.Request, rid_string, ru_string string) error {
+	log.Println("ADD RID:", rid_string, "RU:", ru_string)
 	height, err := strconv.Atoi(r.Form.Get("height"))
 	if err != nil {
 		return err
@@ -679,6 +692,7 @@ func rackItemAdd(r *http.Request, rid_string, ru_string string) error {
 		Note:     r.Form.Get("note"),
 		Height:   height,
 	}
+	log.Println("ADD SERVER:", server)
 	return dbAdd(&server)
 }
 
@@ -842,20 +856,8 @@ func RMAPage(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func trimDate(s string) string {
-	const date = len(date_layout)
-	if len(s) < date {
-		return s
-	}
-	s = s[:date]
-	if s == "0001-01-01" {
-		return ""
-	}
-	return s
-}
-
 func RMAList(w http.ResponseWriter, r *http.Request) {
-	const cols = "id,sid,vid,hostname,rma_no,description,part_no,vendor_name,tracking_no,dc_ticket,date_opened,date_sent,date_received,date_replaced,login"
+	const cols = "id,sid,vid,hostname,rma_no,description,part_no,old_sn,new_sn,vendor_name,tracking_no,dc_ticket,date_opened,date_sent,date_received,date_replaced,login"
 	const q = "select " + cols + " from rma_report"
 	table, err := dbTable(q)
 	if err != nil {
@@ -865,9 +867,9 @@ func RMAList(w http.ResponseWriter, r *http.Request) {
 	table.Hide(0, 1, 2)
 	setLinks(table, 3, "/server/edit/%s", 1)
 	setLinks(table, 4, "/rma/%s", 0)
-	setLinks(table, 7, "/vendor/edit/%s", 2)
+	setLinks(table, 9, "/vendor/edit/%s", 2)
 	table.Adjustment(isBlank, 4)
-	table.Adjustment(trimDate, 10, 11, 12, 13)
+	table.Adjustment(trimDate, 12, 13, 14, 15)
 	renderTabular(w, r, table, "RMA Report")
 }
 
@@ -975,6 +977,35 @@ func ServerRack(w http.ResponseWriter, r *http.Request, s Server) {
 func RackView(w http.ResponseWriter, r *http.Request) {
 	bits := strings.Split(r.URL.Path, "/")
 	ShowRacks(w, r, bits...)
+}
+
+func RackZone(w http.ResponseWriter, r *http.Request) {
+	bits := strings.Split(r.URL.Path, "/")
+	if len(bits) < 1 {
+		notFound(w, r)
+		return
+	}
+	/*
+		where := "where rid=?"
+			sx, err := dbObjectListQuery(Server{}, where, bits[1])
+			if err != nil {
+				log.Println("error loading objects:", err)
+			}
+	*/
+	w.Header().Set("Content-Type", "text/plain")
+	const query = "select * from servers_history where id=? order by rowid desc"
+	id, err := strconv.Atoi(r.URL.Path)
+	if err != nil {
+		notFound(w, r)
+	} else {
+		table, _ := dbTable(query, id)
+		skip := []string{"rowid", "id", "uid", "login", "modified", "remote_addr"}
+		data := Tabular{
+			Common: NewCommon(r, "Audit History"),
+			Table:  table.Diff(true, skip...),
+		}
+		renderTemplate(w, r, "server_audit", data)
+	}
 }
 
 func ServerAudit(w http.ResponseWriter, r *http.Request) {
@@ -1361,7 +1392,8 @@ func auditPage(w http.ResponseWriter, r *http.Request) {
 		Common: NewCommon(r, "Audit Log"),
 		Table:  table,
 	}
-	renderTemplate(w, r, "audit", data)
+	table.Hide(0)
+	renderTemplate(w, r, "table", data)
 }
 
 func ListingPage(w http.ResponseWriter, r *http.Request) {
@@ -1376,11 +1408,7 @@ func ListingPage(w http.ResponseWriter, r *http.Request) {
 
 func ServerDupes(w http.ResponseWriter, r *http.Request) {
 	// TODO: make this a view
-	const query = `select a.id,a.dc,a.rack,a.ru,a.hostname,a.alias,a.profile,a.assigned,a.ip_ipmi,a.ip_internal,a.ip_public,a.asset_tag,a.vendor_sku,a.sn 
-	from sview a, sview b
-	where a.rid = b.rid
-	  and a.ru  = b.ru
-	    and a.id != b.id`
+	const query = `select * from server_dupes`
 	table, _ := dbTable(query)
 	data := Tabular{
 		Common: NewCommon(r, "Duplicate Servers"),
@@ -1397,7 +1425,7 @@ func ShowListing(w http.ResponseWriter, r *http.Request, t Tabular) {
 	t.Table.Hide(0)
 	setLinks(t.Table, 1, "/rack/view/%s", 1)
 	setLinks(t.Table, 2, "/rack/view/%s/%s", 1, 2)
-	setLinks(t.Table, 4, "/server/edit/%s", 0)
+	setLinks(t.Table, 3, "/server/edit/%s", 0)
 	t.Table.AddSort(1, false)
 	t.Table.AddSort(2, false)
 	t.Table.AddSort(3, true)
@@ -2032,6 +2060,7 @@ var webHandlers = []HFunc{
 	{"/rack/network", RackNetwork},
 	{"/rack/updates", RackUpdates},
 	{"/rack/view/", RackView},
+	{"/rack/zone/", RackZone},
 	{"/reload", reloadPage},
 	{"/search", SearchPage},
 	{"/rmas", RMAList},

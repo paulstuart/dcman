@@ -309,3 +309,28 @@ func Backups(freq int, to string) {
 	}
 
 }
+
+func trimDate(s string) string {
+	const date = len(date_layout)
+	if len(s) < date {
+		return s
+	}
+	s = s[:date]
+	if s == "0001-01-01" {
+		return ""
+	}
+	return s
+}
+
+func trimTime(s string) string {
+	const t = len(time_layout)
+	if len(s) < t {
+		return s
+	}
+	s = s[:t]
+	fmt.Println("TT:", s)
+	if s == "0001-01-01" {
+		return ""
+	}
+	return s
+}

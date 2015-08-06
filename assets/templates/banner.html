@@ -5,8 +5,14 @@
 <div class="banner-edit">
 <form method="post" id="bannerform" class="common">
     <fieldset>
-        <label>Banner<input type="text" size="50" id="bannerinput" name="banner" value="{{.Common.Banner}}"/></label><br/>
-        <label>Read Only<input type="checkbox" name="mode" value="slave" {{if .ReadOnly}}checked{{end}}/></label><br/>
+        <div class="field">
+            <label>Banner</label>
+            <input type="text" size="50" id="bannerinput" name="banner" value="{{.Common.Banner}}"/>
+        </div>
+        <div class="field">
+            <label>Read Only</label>
+            <input type="checkbox" name="mode" value="slave" {{if .ReadOnly}}checked{{end}}/>
+        </div>
     </fieldset>
 
 <input type="button" value="Cancel"  onclick="javascript:window.history.go(-1)">

@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"html/template"
 	"net"
 	"os"
 	"path"
@@ -72,6 +73,8 @@ type RMA struct {
 	Number      string    `sql:"rma_no"`
 	Description string    `sql:"description"`
 	Part        string    `sql:"part_no"`
+	OldSN       string    `sql:"old_sn"`
+	NewSN       string    `sql:"new_sn"`
 	Ticket      string    `sql:"dc_ticket"`
 	Tracking    string    `sql:"tracking_no"`
 	Opened      time.Time `sql:"date_opened"`
@@ -153,6 +156,26 @@ func (d Datacenter) Count() int {
 		fmt.Println("ERR!", err)
 	}
 	return c
+}
+
+//func (d Datacenter) Selected() string {
+func (d Datacenter) Selected() template.HTML {
+	if thisDC.ID == d.ID {
+		return template.HTML("selected")
+	}
+	return template.HTML("")
+}
+
+func (d Datacenter) Current() bool {
+	return thisDC.ID == d.ID
+}
+
+func (d Datacenter) Racks() []Rack {
+	r, err := dbObjectListQuery(Rack{}, "where did=? order by rack", d.ID)
+	if err != nil {
+		fmt.Println("racks err:", err)
+	}
+	return r.([]Rack)
 }
 
 type DCView struct {
@@ -336,6 +359,11 @@ type Rack struct {
 	Table    dbutil.Table
 }
 
+func (r Rack) Datacenter() Datacenter {
+	dc := dcIDs[r.DID]
+	return dc
+}
+
 func (r Rack) DC() string {
 	dc := dcIDs[r.DID]
 	return dc.Name
@@ -471,9 +499,18 @@ func objFromForm(obj interface{}, values map[string][]string) {
 				i, _ := strconv.ParseUint(val[0], 0, 32)
 				b.SetUint(i)
 			case time.Time:
-				if when, err := time.Parse(time_layout, val[0]); err == nil {
+				if len(val[0]) == 0 {
+					continue
+				}
+				l := date_layout
+				if len(val[0]) > len(date_layout) {
+					l = time_layout
+				}
+				if when, err := time.Parse(l, val[0]); err == nil {
 					v := reflect.ValueOf(when)
 					b.Set(v)
+				} else {
+					fmt.Println("TIME PARSE ERR:", err)
 				}
 			default:
 				fmt.Println("unhandled field type for:", f.Name, "type:", b.Type())

@@ -3,6 +3,14 @@
 
 var current_row;
 
+var hideme = function(s) {
+    $(s).css("display", "none");
+}
+
+var showme = function(s) {
+    $(s).css("display", "inline");
+}
+
 var row_disable = function(i) {
     if (typeof i === 'undefined') {
         return
@@ -12,7 +20,9 @@ var row_disable = function(i) {
    document.getElementById("sn_" + i).disabled = true;
    document.getElementById("note_" + i).disabled = true;
    document.getElementById("hostname_" + i).disabled = true;
-   document.getElementById("buttons_" + i).className = "hide_buttons";
+   //document.getElementById("buttons_" + i).className = "hide_buttons";
+   hideme("#buttons_" + i);
+   $("#row_"+i).removeClass("highlighted");
 }
 
 var row_enable = function(i) {
@@ -25,9 +35,20 @@ var row_enable = function(i) {
    document.getElementById("sn_" + i).disabled = false;
    document.getElementById("note_" + i).disabled = false;
    document.getElementById("hostname_" + i).disabled = false;
-   document.getElementById("buttons_" + i).className = "show_buttons";
+   //document.getElementById("buttons_" + i).className = "show_buttons";
+   showme("#up_" + i);
+   showme("#dn_" + i);
+   showme("#update_" + i);
+   showme("#delete_" + i);
+   $("#row_"+i).addClass("highlighted");
+    $("#buttons_" + i).css("display", "table-cell");
 }
 
+var do_cancel = function(e) {
+  var bits = e.target.id.split("_");
+  var ru = bits[bits.length - 1];
+  row_disable(ru);
+}
 
 var do_up = function(e) {
   var bits = e.target.id.split("_");
@@ -132,6 +153,7 @@ var do_delete = function(e) {
            $("#asset_"+ru).val("");
            $("#sn_"+ru).val("");
            $("#note_"+ru).val("");
+            row_disable(ru);
         }
     });
   }
@@ -161,7 +183,11 @@ var do_update = function(e) {
       },
       error: function(jqXHR, textStatus, errorThrown) {
         alert("Error: " + jqXHR.responseText)
+        },
+      success: function() {
+        row_disable(ru);
       }
+
     });
 }
 
@@ -191,6 +217,7 @@ var adjust = function(amount) {
 }
 
 var move_unit = function(ru, amount) {
+    row_disable(ru);
     $.ajax({
       type: "POST",
       url: "{{.Common.Prefix}}/rack/move",
@@ -208,13 +235,8 @@ var move_unit = function(ru, amount) {
     });
 }
 
-
-$(document).ready(function() {
-    $("th").css("background-color", "#eeeeee");
-    $("tr:visible:even").css("background-color", "#ffffff");
-    $("tr:visible:odd").css("background-color", "#eeeeee");
-
-    // find top of rack 
+// find first device in rack 
+var top_of_rack = function() {
     for (var i=50; i>0; i--) {
        var ru = document.getElementById("ru_" + i);
        if (ru && ru.innerText.length > 0) {
@@ -222,10 +244,19 @@ $(document).ready(function() {
            break;
        }
     }
+}
+
+$(document).ready(function() {
+    $("th").css("background-color", "#eeeeee");
+    $("tr:visible:even").css("background-color", "#ffffff");
+    $("tr:visible:odd").css("background-color", "#eeeeee");
+
+    top_of_rack();
     $(".b_delete").click(do_delete);
     $(".b_update").click(do_update);
     $(".b_up").click(do_up);
     $(".b_dn").click(do_down);
+    $(".b_cancel").click(do_cancel);
     $("#adjust_up").click(adjust_up);
 
     if ($("#sid_1").text() > 0) {
@@ -233,23 +264,72 @@ $(document).ready(function() {
     } else {
         $("#adjust_dn").click(adjust_dn);
     }
+
     $(".auditcell").click(function() {
         var ru = $(this).parent('tr').attr('id').split("_")[1];
         row_disable(current_row);
         row_enable(ru);
     });
 
+    $("#dc").change(function() {
+        var dc = $("#dc").val();
+        var url = "{{.Common.Prefix}}/rack/audit/" + dc;
+        window.location.href = url;
+    });
+
+    $("#rack").change(function() {
+        var rid = $("#rack").val();
+        var url = "{{.Common.Prefix}}/rack/audit/" + rid;
+        window.location.href = url;
+    });
+
+    $("#audit").change(function() {
+    if (this.checked) {
+        $(".theneedful").css("display", "table-cell");
+        $(".butts").css("display", "none");
+        top_of_rack();
+    } else {
+        $(".theneedful").css("display", "none");
+        $(".butts").css("display", "none");
+        /*
+        $(".showbuttons").css("display", "none");
+        */
+    }
+    });
+    $(".butts").css("display", "none");
     pings();
 } );
 {{end}}
 
 {{define "body"}}
-<h1 class="title">{{.Title}}</h1>
+    <div id="dclist">
+        <div class="selector">
+            <label for="dc">Datacenter</label>
+            <select id="dc">
+            {{ range .Common.Datacenters }}
+            <option value="{{.Name}}" {{ if eq .ID $.Rack.DID }}selected{{ end }}>{{.Name}}</option>
+            {{ end }}
+            </select>
+        </div>
+        <div class="selector">
+            <label for="rack">Rack</label>
+            <select id="rack">
+            {{ range .Rack.Datacenter.Racks }}
+            <option value="{{.ID}}" {{ if eq .ID $.Rack.ID}}selected{{ end }}>{{.Label}}</option>
+            {{ end }}
+            </select>
+        </div>
+        <div class="selector">
+            <label for="audit">Audit</label>
+            <input id="audit" value="auditmode" type="checkbox">
+        </div>
+    </div>
 <div class="rackdiv">
     <table id="racklayout">
      <thead>
     <tr>
-        <th>RU</th><th>Height</th><th>Hostname</th><th>Asset Tag</th><th>SN</th><th>IPMI</th><th>IPMI Online</th><th>Internal IP</th><th>IP Online</th><th>Note</th><th>The Needful</th>
+        <th>RU</th><th>Height</th><th>Hostname</th><th>Asset Tag</th><th>SN</th><th>IPMI</th><th
+            >IPMI Online</th><th>Internal IP</th><th>IP Online</th><th>Note</th><th class="theneedful">The Needful</th>
     </tr>
      </thead>
      <tbody>
@@ -265,13 +345,26 @@ $(document).ready(function() {
             <td class="auditcell" id="ip_{{.RU}}">{{.Internal}}</td>
             <td class="auditcell pingok" id="ip_ping_{{.RU}}"></td>
             <td class="auditcell"><input type="text" class="asset_field" id="note_{{.RU}}" value="{{.Note}}" size="30"></td>
-            <td id="buttons_{{.RU}}" class="hide_buttons">
-                <button class="b_delete" id="delete_{{.RU}}">Delete</button>
-                <button class="b_update" id="update_{{.RU}}">Update</button>
-                <button class="b_up"     id="up_{{.RU}}">Move unit up</button>
-                <button class="b_dn"     id="dn_{{.RU}}">Move unit down</button>
-            </td>
             <td class="hidecell" id="sid_{{.RU}}">{{.SID}}</td>
+        </tr>
+        <tr>
+            <td colspan="10" id="buttons_{{.RU}}" class="buttoncell theneedful">
+                <div class="quartered">
+                <button class="butts b_delete" id="delete_{{.RU}}">Delete</button>
+                </div>
+                <div class="quartered">
+                <button class="butts b_update" id="update_{{.RU}}">Update</button>
+                </div>
+                <div class="quartered">
+                <button class="butts b_up"     id="up_{{.RU}}">Move unit up</button>
+                </div>
+                <div class="quartered">
+                <button class="butts b_dn"     id="dn_{{.RU}}">Move unit down</button>
+                </div>
+                <div class="quartered">
+                <button class="butts b_cancel"     id="cancel_{{.RU}}">Cancel</button>
+                </div>
+            </td>
         </tr>
         {{ end }}
      </tbody>

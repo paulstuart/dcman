@@ -11,6 +11,23 @@ h1 {
     font-weight: 500;
 }
 
+.selector {
+    margin: auto;
+    width: 60%;
+    font-family: Helvetica, Arial, "Lucida Grande", sans-serif; 
+    font-weight: 400;
+    color: red;
+}
+
+.selector > label {
+    float: left;
+    clear: left;
+    width: 50%;
+    color: green;
+    text-align:  right;
+    margin-right: 0.5em;
+}
+
 #title {
     text-align:  center;
     margin: 0px auto;
@@ -73,8 +90,39 @@ h1.title {
     content: ":";
 }
 
-.rackdiv,.summary {
-    margin: 1em ;
+.summary {
+    display: inline-block;
+}
+
+.highlighted {
+    border-color: red red black red;
+}
+
+.buttoncell {
+    border-color: black red red red;
+}
+
+.quartered {
+    float: left;
+    width: 20%;
+    /*
+    border-color: black red red red;
+    */
+}
+
+.butts {
+    /*
+    width: 4em;
+    */
+    margin: auto;
+}
+
+.rackdiv {
+    /*
+    margin: 10 auto;
+    width: 90% ;
+    */
+    margin: 2em;
     display: inline-block;
 }
 
@@ -399,8 +447,21 @@ td.pingok {
     visibility:hidden ;
 }
 
-.show_buttons {
-    visibility:visible ;
+.show_buttons .theneedful {
+    display: inline  ;
+    /*
+    visibility: none ;
+    */
+}
+
+.heading {
+    margin-top: 1em;
+    font-weight: bold;
+    font-size: 125%;
+}
+
+.theneedful {
+    display: none;
 }
 
 .height_field:focus {
@@ -492,8 +553,8 @@ form.common > fieldset > label {
     display: inline;
     float: left;
     clear: left;
-    width: 8em;
-    margin-right:1.5em;
+    width: 12em;
+    margin-right:0.5em;
     margin-top:0.1em;
     margin-bottom:0.1em;
     padding-bottom:0.2em;

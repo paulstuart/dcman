@@ -29,19 +29,23 @@
         </div>
         <div class="field">
             <label for="Number">RMA Number</label>
-            <input type="text" name="Number" value="{{.RMA.Number}}"/>
+            <input type="text" name="Number" id="Number" value="{{.RMA.Number}}"/>
         </div>
         <div class="field">
             <label for="Tracking">Tracking Number</label>
-            <input type="text" name="Tracking" value="{{.RMA.Tracking}}"/>
+            <input type="text" name="Tracking" id="Tracking" value="{{.RMA.Tracking}}"/>
         </div>
         <div class="field">
             <label for="Ticket">Datacenter Ticket</label>
-            <input type="text" name="Ticket" value="{{.RMA.Ticket}}"/>
+            <input type="text" name="Ticket" id="Ticket" value="{{.RMA.Ticket}}"/>
         </div>
         <div class="field">
-            <label for="SerialNo">Serial Number</label>
-            <input type="text" name="SerialNo" value="{{$server.SerialNo}}" readonly/>
+            <label for="OldSN">Old Serial Number</label>
+            <input type="text" name="OldSN" id="OldSN" value="{{if .RMA.OldSN }}{{ .RMA.OldSN }}{{ else }}{{ $server.SerialNo }}{{ end }}"/>
+        </div>
+        <div class="field">
+            <label for="NewSN">New Serial Number</label>
+            <input type="text" name="NewSN" value="{{.RMA.NewSN}}"/>
         </div>
         <div class="field">
             <label for="Part">Part Number</label>

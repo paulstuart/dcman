@@ -104,23 +104,41 @@ $(".rvlan").change(function () {
 <form method="post" class="common">
     <fieldset>
         <legend>General</legend>
-        {{ if gt .Rack.ID 0 }}
-        <label>Datacenter<input type="text" name="DC" value="{{.DC}}" readonly/></label><br/>
-        {{ else }}
-        <label>Datacenter<select name="DID">{{range .Datacenters}}
-                <option value="{{.ID}}">{{.Name}}</option>
-                {{ end }}</select>
-        </label><br/>
-        {{ end }}
-        <label>Rack Number<input type="text" name="Label" value="{{.Rack.Label}}"/></label><br/>
-        <label>Vendor ID<input type="text" name="VendorID" value="{{.Rack.VendorID}}"/></label><br/>
-        <label>Rack Height<input type="text" name="RUs" value="{{.Rack.RUs}}"/></label><br/>
+        <div class="field">
+            {{ if gt .Rack.ID 0 }}
+            <label>Datacenter</label>
+            <input type="text" name="DC" value="{{.DC}}" readonly/>
+            {{ else }}
+            <label>Datacenter</label>
+            <select name="DID">{{range .Datacenters}}
+                    <option value="{{.ID}}">{{.Name}}</option>
+                    {{ end }}</select>
+            {{ end }}
+        </div>
+        <div class="field">
+            <label for="Label">Rack Number</label>
+            <input type="text" name="Label" id="Label" value="{{.Rack.Label}}"/>
+        </div>
+        <div class="field">
+            <label for="VendorID">Vendor ID</label>
+            <input type="text" name="VendorID" id="VendorID" value="{{.Rack.VendorID}}"/>
+        </div>
+        <div class="field">
+            <label for="RUs">Rack Height</label>
+            <input type="text" name="RUs" id="RUs" value="{{.Rack.RUs}}"/>
+        </div>
     </fieldset>
     {{/* for now
     <fieldset>
         <legend>Layout</legend>
-        <label>X Pos<input type="text" name="XPos" value="{{.Rack.XPos}}"/></label><br/>
-        <label>Y Pos<input type="text" name="YPos" value="{{.Rack.YPos}}"/></label><br/>
+        <div class="field">
+            <label>X Pos</label>
+            <input type="text" name="XPos" id="XPos" value="{{.Rack.XPos}}"/>
+        </div>
+        <div class="field">
+            <label>Y Pos</label>
+            <input type="text" name="YPos" id="YPos" value="{{.Rack.YPos}}"/>
+        </div>
     </fieldset>
     */}}
 

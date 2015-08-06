@@ -5,15 +5,22 @@
 <div class="docedit">
 <form method="post" id="bannerform" class="common" enctype="multipart/form-data">
     <fieldset>
-        <label>Datacenter:
+        <div class="field">
+            <label>Datacenter:</label>
              <select name="DID" id="did">
-            {{ range .Common.Datacenters }}
-            <option value="{{.ID}}" {{ if eq .ID $.Document.DID}}selected{{ end }}>{{.City}}</option>
-            {{ end }}
+                {{ range .Common.Datacenters }}
+                <option value="{{.ID}}" {{ if eq .ID $.Document.DID}}selected{{ end }}>{{.City}}</option>
+                {{ end }}
             </select>
-        </label>
-        <label>Title: <input type="text" name="Title" size="30" value="{{.Document.Title}}"/></label>
-        <label>File: <input type="file" name="file" value="{{.Document.Filename}}" accept="image/*"></label>
+        </div>
+        <div class="field">
+            <label>Title:</label>
+            <input type="text" name="Title" size="30" value="{{.Document.Title}}"/></label>
+        </div>
+        <div class="field">
+            <label>File:</label> 
+            <input type="file" name="file" value="{{.Document.Filename}}" accept="image/*"></label>
+        </div>
     </fieldset>
 
 <input type="button" value="Cancel"  onclick="javascript:window.history.go(-1)">

@@ -38,12 +38,16 @@ CREATE TABLE "vendors" (
     modified date DEFAULT CURRENT_TIMESTAMP
 );
 
+DROP TABLE IF EXISTS "rmas" ;
 CREATE TABLE "rmas" (
     id integer primary key AUTOINCREMENT,
     sid integer not null, -- server id
     vid integer not null, -- server id
     user_id integer not null, 
+    rma_no text not null default '',
     description text not null default '',
+    old_sn text not null default '',
+    new_sn text not null default '',
     part_no text not null default '',
     tracking_no text not null default '',
     dc_ticket text not null default '',
@@ -55,10 +59,11 @@ CREATE TABLE "rmas" (
 
 DROP VIEW IF EXISTS rma_report;
 CREATE VIEW rma_report as 
-  select r.*, u.login, s.hostname, s.sn, s.dc, s.rack, s.ru
+  select r.*, u.login, s.dc, s.hostname, s.sn as server_sn, s.rack, s.ru, v.name as vendor_name
   from  rmas r
   left outer join users u on r.user_id = u.id
   left outer join sview s on r.sid = s.id
+  left outer join vendors v on r.vid = v.vid
 ;
 
 CREATE TABLE master (
@@ -719,5 +724,17 @@ CREATE VIEW vmload as
 CREATE VIEW vmbad as 
 select rowid,* from vmdetail where rowid not in (select did from vmload);
 
+drop view if exists server_dupes;
+create view server_dupes as
+select a.id as id, a.dc as dc, a.rack as rack, a.ru as ru,
+        a.hostname as hostname ,a.alias as alias, a.profile as profile, 
+        a.assigned, a.ip_ipmi as ip_ipmi, a.ip_internal as ip_internal, 
+        a.ip_public as ip_putlic,a.asset_tag,a.vendor_sku as vender_sku,
+        a.sn  as sn, b.id as dupe
+	from sview a, sview b
+	where a.rid = b.rid
+	  and a.ru  = b.ru
+	    and a.id != b.id
+        ;
 
 COMMIT;
