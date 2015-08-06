@@ -1,0 +1,35 @@
+{{define "head"}}<title>{{.Common.Title}}</title>{{end}}
+{{define "javascript"}}
+{{end}}
+{{define "body"}}
+<div class="docedit">
+<form method="post" id="bannerform" class="common" enctype="multipart/form-data">
+    <fieldset>
+        <label>Datacenter:
+             <select name="DID" id="did">
+            {{ range .Common.Datacenters }}
+            <option value="{{.ID}}" {{ if eq .ID $.Document.DID}}selected{{ end }}>{{.City}}</option>
+            {{ end }}
+            </select>
+        </label>
+        <label>Title: <input type="text" name="Title" size="30" value="{{.Document.Title}}"/></label>
+        <label>File: <input type="file" name="file" value="{{.Document.Filename}}" accept="image/*"></label>
+    </fieldset>
+
+<input type="button" value="Cancel"  onclick="javascript:window.history.go(-1)">
+<input type="hidden" name="Filename" value="{{.Document.Filename}}">
+<input type="hidden" name="ID" value="{{.Document.ID}}">
+{{ if .Common.User.Editor }}
+{{ if .Document.ID }}
+<input type="submit" name="action" value="Update">
+<input type="submit" name="action" value="Delete">
+{{ else }}
+<input type="submit" name="action" value="Add">
+{{ end }}
+{{ else }}
+<div id="sorry">You must be logged in as an editor to upload files</div>
+{{end}}
+</form>
+</div>
+{{end}}
+

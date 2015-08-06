@@ -6,13 +6,34 @@
 <form method="post" id="vmform" class="common">
     <fieldset>
         <legend>VM</legend>
-        <label>Server <a href="{{.Common.Prefix}}/server/edit/{{.VM.SID}}">{{.VM.Server.Hostname}}</a></label><br/>
-        <label>Hostname<input type="text" name="Hostname" value="{{.VM.Hostname}}"  pattern=".+" required/></label><br/>
-        <label>Profile<input type="text" name="Profile" value="{{.VM.Profile}}"/></label><br/>
-        <label>Private IP<input type="text" name="Private" value="{{.VM.Private}}" pattern=".+" required/></label><br/>
-        <label>Public IP<input type="text" name="Public" value="{{.VM.Public}}"/></label><br/>
-        <label>VIP<input type="text" name="VIP" value="{{.VM.VIP}}"/></label><br/>
-        <label class="twolines">Note<textarea cols="25" rows="2" name="Note">{{.VM.Note}}</textarea></label><br/>
+        <div class="field">
+            <label for="Server">Server</label>
+            <a href="{{.Common.Prefix}}/server/edit/{{.VM.SID}}">{{.VM.Server.Hostname}}</a>
+        </div>
+        <div class="field">
+            <label for="Hostname">Hostname</label>
+            <input type="text" name="Hostname" value="{{.VM.Hostname}}"  pattern=".+" required/>
+        </div>
+        <div class="field">
+            <label for="Profile">Profile</label>
+            <input type="text" name="Profile" value="{{.VM.Profile}}"/>
+        </div>
+        <div class="field">
+            <label for="Private">Private IP</label>
+            <input type="text" name="Private" value="{{.VM.Private}}" pattern=".+" required/>
+        </div>
+        <div class="field">
+            <label for="Public">Public IP</label>
+            <input type="text" name="Public" value="{{.VM.Public}}"/>
+        </div>
+        <div class="field">
+            <label for="VIP">VIP</label>
+            <input type="text" name="VIP" value="{{.VM.VIP}}"/>
+        </div>
+        <div class="field">
+            <label class="twolines" for="Note">Note</label>
+            <textarea cols="25" rows="2" name="Note">{{.VM.Note}}</textarea>
+        </div>
     </fieldset>
 {{ if gt .VM.ID 0 }}
     <fieldset>

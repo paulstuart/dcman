@@ -21,12 +21,6 @@ const (
 	LoadBalancer
 )
 
-type Vendor struct {
-	VID   int64  `sql:"vid" key:"true" table:"vendors"`
-	Name  string `sql:"name"`
-	Phone string `sql:"phone"`
-}
-
 type Contract struct {
 	CID    int64  `sql:"cid" key:"true" table:"contracts"`
 	VID    int64  `sql:"vid"`

@@ -15,6 +15,20 @@ func UserByID(id interface{}) (User, error) {
 	return getUser("where id=?", id)
 }
 
+func userLogin(id string) string {
+	if len(id) == 0 {
+		return ""
+	}
+	if id == "0" {
+		return ""
+	}
+	u, err := UserByID(id)
+	if err != nil {
+		return err.Error()
+	}
+	return u.Login
+}
+
 func UserByLogin(login string) (User, error) {
 	return getUser("where login=?", login)
 }

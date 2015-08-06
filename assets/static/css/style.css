@@ -429,51 +429,86 @@ div.server, div.vm, div.rack {
   margin-right: auto;
   }
 
-  /*
-div.rack {
-  padding: 1em;
-  margin-left: auto; 
-  margin-right: auto;
-  }
-      */
 
 form.common > fieldset {
+    width: 40em;
     margin: 1em;
     font:80%/1 sans-serif;
-      border:1px solid black;
-        padding: 0.2em 0.5em;
-
+    border:1px solid black;
+    padding: 0.2em 0.5em;
 }
 
 
-form.common > fieldset > label {
-display: inline-block; 
-  width: 20em;
+label.button_label {
+  display: inline; 
+    float: left;
+  text-align:left;
+  vertical-align: middle;
+  /*
+    color: red;
+  width: 3em;
   margin-right:1.5em;
   padding-top:0.2em;
   text-align:right;
   font-weight:bold;
+  */
+}
+/*
+form.common > fieldset > label > input {
+form.common > fieldset > input {
+*/
+div.fullway {
+    overflow:auto
+    width: 100%
 }
 
-form.common > fieldset > label > input {
-  margin-left:0.5em;
+div.halfway {
+    float: left;
+    width: 50%;
+    vertical-align: middle;
 }
+
+div.field { padding: 4px; margin:1px; background: #eee; }
+
+div.field > input {
+    margin-left:0.5em;
+    /*
+    display: inline-block;
+    */
+    margin-top:0.1em;
+    vertical-align: middle;
+    display: inline;
+    width: 18em;
+}
+
+div.field > label {
+    /*
+form.common > fieldset > label {
+    display: inline-block; 
+    width: auto;
+    margin-bottom:0.5em;
+    display: inline-block;
+    */
+    display: inline;
+    float: left;
+    clear: left;
+    width: 8em;
+    margin-right:1.5em;
+    margin-top:0.1em;
+    margin-bottom:0.1em;
+    padding-bottom:0.2em;
+    /*
+    padding-top:0.5em;
+    margin-top:0.2em;
+    */
+    text-align:right;
+    font-weight:bold;
+}
+
 
 div.rackdiv {
       border:2px solid black;
-/*
-      border:1px solid green;
-      padding: 0.5em;
-*/
 }
-
-/*
-div.rackdiv > table > tbody {
-  background: blue;
-div.rackdiv > table > tbody > tr > td {
-   border-bottom:1px solid green;
-}
-*/
 
 div.rackdiv > table > tbody > tr > td > a, u {
     text-decoration: none;
@@ -616,5 +651,4 @@ vertical-align: bottom;
     z-index: 98;
     width: 220px;
 }
-
 

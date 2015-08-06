@@ -22,7 +22,6 @@ var (
 	Basedir, _        = os.Getwd() // get abs path now, as we will be changing dirs
 	execDir, _        = osext.ExecutableFolder()
 	uploadDir         = filepath.Join(execDir, "uploads")
-	log_layout        = "2006-01-02 15:04:05.999"
 	start_time        = time.Now()
 	sqlDir            = "sql" // dir containing sql schemas, etc
 	sqlSchema         = sqlDir + "/schema.sql"
@@ -52,6 +51,7 @@ type MainConfig struct {
 	Key      string `gcfg:"key"`
 	LogDir   string `gcfg:"logdir"`
 	ReadOnly bool   `gcfg:"readonly"`
+	PXEBoot  bool   `gcfg:"pxeboot"`
 }
 
 type BackupConfig struct {
@@ -78,6 +78,9 @@ type JiraConfig struct {
 const (
 	sessionMinutes = 120
 	configFile     = "config.gcfg"
+	log_layout     = "2006-01-02 15:04:05.999"
+	date_layout    = "2006-01-02"
+	time_layout    = "2006-01-02 15:04:05"
 )
 
 func init() {

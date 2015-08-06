@@ -19,22 +19,58 @@ $('#rackunit').change(function() {
 <form method="post" class="common">
     <fieldset>
         <legend>General</legend>
-        <label>Hostname<input type="text" name="Hostname" value="{{.Router.Hostname}}"/></label><br/>
-        <label>Make<input type="text" name="Make" value="{{.Router.Make}}"/></label><br/>
-        <label>Model<input type="text" name="Model" value="{{.Router.Model}}"/></label><br/>
-        <label>Datacenter<input type="text" name="DC" value="{{.DC}}" readonly/></label><br/>
-        <label>Rack Number<input type="text" name="Rack" value="{{.Router.Rack}}"/></label><br/>
-        <label>Rack Unit<input type="text" name="RU" value="{{.Router.RU}}"/></label><br/>
-        <label>Unit Height<input type="text" name="Height" value="{{.Router.Height}}"/></label><br/>
-        <label>Asset Tag<input type="text" name="AssetTag" value="{{.Router.AssetTag}}"/></label><br/>
-        <label>Serial Number<input type="text" name="SerialNo" value="{{.Router.SerialNo}}"/></label><br/>
-        <label>Part Number<input type="text" name="PartNo" value="{{.Router.PartNo}}"/></label><br/>
-        <label class="twolines">Note<textarea cols="25" rows="2" name="Note">{{.Router.Note}}</textarea></label><br/>
+        <div class="field">
+        <label for="Hostname">Hostname</label>
+        <input type="text" name="Hostname" value="{{.Router.Hostname}}"/>
+        </div>
+        <div class="field">
+        <label for="Hostname">Make</label>
+        <input type="text" name="Make" value="{{.Router.Make}}"/>
+        </div>
+        <div class="field">
+        <label for="Hostname">Model</label>
+        <input type="text" name="Model" value="{{.Router.Model}}"/>
+        </div>
+        <div class="field">
+        <label for="Hostname">Datacenter</label>
+        <input type="text" name="DC" value="{{.DC}}" readonly/>
+        </div>
+        <div class="field">
+        <label for="Hostname">Rack Number</label>
+        <input type="text" name="Rack" value="{{.Router.Rack}}"/>
+        </div>
+        <div class="field">
+        <label for="Hostname">Rack Unit</label>
+        <input type="text" name="RU" value="{{.Router.RU}}"/>
+        </div>
+        <div class="field">
+        <label for="Hostname">Unit Height</label>
+        <input type="text" name="Height" value="{{.Router.Height}}"/>
+        </div>
+        <div class="field">
+        <label for="Hostname">Asset Tag</label>
+        <input type="text" name="AssetTag" value="{{.Router.AssetTag}}"/>
+        </div>
+        <div class="field">
+        <label for="Hostname">Serial Number</label>
+        <input type="text" name="SerialNo" value="{{.Router.SerialNo}}"/>
+        </div>
+        <div class="field">
+        <label for="Hostname">Part Number</label>
+        <input type="text" name="PartNo" value="{{.Router.PartNo}}"/>
+        </div>
+        <div class="field">
+        <label class="twolines" for="Hostname">Note</label>
+        <textarea cols="25" rows="2" name="Note">{{.Router.Note}}</textarea>
+        </div>
     </fieldset>
 
     <fieldset>
         <legend>Management Port</legend>
-        <label>IP<input type="text" name="MgmtIP" value="{{.Router.MgmtIP}}"/></label><br/>
+        <div class="field">
+        <label for="MgmtIP">IP</label>
+        <input type="text" name="MgmtIP" value="{{.Router.MgmtIP}}"/></label><br/>
+        </div>
     </fieldset>
 
 {{ if gt .Router.ID 0 }}

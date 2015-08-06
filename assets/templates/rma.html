@@ -1,0 +1,94 @@
+{{define "head"}}<title>{{.Common.Title}}</title>{{end}}
+{{define "javascript"}}
+{{end}}
+
+{{define "body"}}
+<div id="serverform" class="server">
+{{ $server := .RMA.Server }}
+<form method="post" class="common" id="servo">
+    <fieldset>
+        <legend>RMA</legend>
+        <div class="field">
+            {{ if .RMA.SID }}
+            <label for="Hostname"><a href="{{.Common.Prefix}}/server/edit/{{.RMA.SID}}">Hostname</a></label>
+            {{ else }}
+            <label for="Hostname">Hostname</label>
+            {{ end }}
+            <input type="text" name="Hostname" id="Hostname" value="{{.RMA.Hostname}}" pattern=".+" required/>
+        </div>
+        <div class="field">
+            <label for="DC">Datacenter</label>
+            <input type="text" name="DC" id="DC" value="{{$server.DC}}" readonly/>
+        </div>
+        <div class="field">
+            <label for="VID">Vendor</label>
+            <select name="VID"/>
+                {{ range .Vendors }}<option value="{{.VID}}" {{if eq .VID $.RMA.VID}}selected{{end}}>{{.Name}}</option>
+                {{ end }}
+            </select>
+        </div>
+        <div class="field">
+            <label for="Number">RMA Number</label>
+            <input type="text" name="Number" value="{{.RMA.Number}}"/>
+        </div>
+        <div class="field">
+            <label for="Tracking">Tracking Number</label>
+            <input type="text" name="Tracking" value="{{.RMA.Tracking}}"/>
+        </div>
+        <div class="field">
+            <label for="Ticket">Datacenter Ticket</label>
+            <input type="text" name="Ticket" value="{{.RMA.Ticket}}"/>
+        </div>
+        <div class="field">
+            <label for="SerialNo">Serial Number</label>
+            <input type="text" name="SerialNo" value="{{$server.SerialNo}}" readonly/>
+        </div>
+        <div class="field">
+            <label for="Part">Part Number</label>
+            <input type="text" name="Part" value="{{.RMA.Part}}"/>
+        </div>
+        <div class="field">
+            <label id="notelabel" for="Note">Note</label>
+            <textarea cols="35" rows="3" name="Description">{{.RMA.Description}}</textarea>
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <legend>Dates</legend>
+        <div class="field">
+            <label for="Opened">Opened</label>
+            <input type="text" name="Opened" id="Opened" value="{{.RMA.Opened | fixDate}}"/>
+        </div>
+        <div class="field">
+            <label for="Sent">Sent</label>
+            <input type="text" name="Sent" id="Sent" value="{{.RMA.Sent | fixDate}}"/>
+        </div>
+        <div class="field">
+            <label for="Received">Received</label>
+            <input type="text" name="Received" id="Received" value="{{.RMA.Received | fixDate}}"/>
+        </div>
+        <div class="field">
+            <label for="Replaced">Replaced</label>
+            <input type="text" name="Replaced" id="Replaced" value="{{.RMA.Replaced | fixDate}}"/>
+        </div>
+    </fieldset>
+
+
+<input type="hidden" name="ID"  value="{{.RMA.ID}}">
+<input type="hidden" name="SID" value="{{.RMA.SID}}">
+<input type="hidden" name="UID" value="{{.Common.User.ID}}">
+<input type="button" value="Cancel"  onclick="javascript:window.history.go(-1)">
+{{ if .Common.User.Editor }}
+{{ if eq .RMA.ID 0 }}
+<input type="submit" name="action" value="Add">
+{{ else }}
+<input type="submit" name="action" value="Update">
+<input type="submit" name="action" value="Delete">
+{{ end }}
+{{ else }}
+<div id="sorry">You must be logged in as an admin to modify this record</div>
+{{ end }}
+</form>
+</div>
+{{end}}
+

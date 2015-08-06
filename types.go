@@ -48,18 +48,62 @@ func (d Document) Fullpath() string {
 	return path.Join(documentDir, d.Filename)
 }
 
+type Vendor struct {
+	VID        int64     `sql:"vid" key:"true" table:"vendors"`
+	Name       string    `sql:"name"`
+	WWW        string    `sql:"www"`
+	Phone      string    `sql:"phone"`
+	Address    string    `sql:"address"`
+	City       string    `sql:"city"`
+	State      string    `sql:"state"`
+	Country    string    `sql:"country"`
+	Postal     string    `sql:"postal"`
+	Note       string    `sql:"note"`
+	RemoteAddr string    `sql:"remote_addr"`
+	UID        int64     `sql:"user_id"`
+	Modified   time.Time `sql:"modified"`
+}
+
 type RMA struct {
-	ID          int64     `sql:"id" key:"true" table:"rmas "`
+	ID          int64     `sql:"id" key:"true" table:"rmas"`
 	SID         int64     `sql:"sid"`
 	VID         int64     `sql:"vid"`
 	UID         int64     `sql:"user_id"`
+	Number      string    `sql:"rma_no"`
 	Description string    `sql:"description"`
 	Part        string    `sql:"part_no"`
+	Ticket      string    `sql:"dc_ticket"`
 	Tracking    string    `sql:"tracking_no"`
 	Opened      time.Time `sql:"date_opened"`
 	Sent        time.Time `sql:"date_sent"`
-	Received    time.Time `sql:"date_sent"`
+	Received    time.Time `sql:"date_received"`
 	Replaced    time.Time `sql:"date_replaced"`
+}
+
+func (r RMA) Server() Server {
+	s := Server{}
+	if r.SID > 0 {
+		dbFindByID(&s, r.SID)
+	}
+	return s
+}
+
+func (r RMA) Hostname() string {
+	if r.SID == 0 {
+		return ""
+	}
+	s := Server{}
+	dbFindByID(&s, r.SID)
+	return s.Hostname
+}
+
+func (r RMA) DC() string {
+	if r.SID == 0 {
+		return ""
+	}
+	s := Server{}
+	dbFindByID(&s, r.SID)
+	return s.DC()
 }
 
 func (u User) Admin() bool {
@@ -426,6 +470,11 @@ func objFromForm(obj interface{}, values map[string][]string) {
 			case uint32:
 				i, _ := strconv.ParseUint(val[0], 0, 32)
 				b.SetUint(i)
+			case time.Time:
+				if when, err := time.Parse(time_layout, val[0]); err == nil {
+					v := reflect.ValueOf(when)
+					b.Set(v)
+				}
 			default:
 				fmt.Println("unhandled field type for:", f.Name, "type:", b.Type())
 			}

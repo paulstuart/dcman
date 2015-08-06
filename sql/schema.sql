@@ -21,6 +21,23 @@ CREATE TABLE "datacenters" (
     user_id int default 0
     );
 
+
+CREATE TABLE "vendors" (
+    vid integer primary key AUTOINCREMENT,
+    name text not null ,
+    www text not null default '',
+    phone text not null default '',
+    address text not null default '',
+    city text not null default '',
+    state text not null default '',
+    country text not null default '',
+    postal text not null default '',
+    note text not null default '',
+    remote_addr text not null default '', 
+    user_id int default 0,
+    modified date DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE "rmas" (
     id integer primary key AUTOINCREMENT,
     sid integer not null, -- server id
@@ -38,7 +55,7 @@ CREATE TABLE "rmas" (
 
 DROP VIEW IF EXISTS rma_report;
 CREATE VIEW rma_report as 
-  select r.*, u.login, s.hostname, s.sn, s.rack, s.ru
+  select r.*, u.login, s.hostname, s.sn, s.dc, s.rack, s.ru
   from  rmas r
   left outer join users u on r.user_id = u.id
   left outer join sview s on r.sid = s.id

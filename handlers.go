@@ -48,6 +48,7 @@ type Common struct {
 	Heading               template.HTML
 	Datacenters           []Datacenter
 	User                  User
+	PXEBoot               bool
 }
 
 type Summary struct {
@@ -117,6 +118,7 @@ func NewCommon(r *http.Request, title string) Common {
 		Datacenters: Datacenters,
 		User:        currentUser(r),
 		Banner:      b,
+		PXEBoot:     cfg.Main.PXEBoot,
 	}
 }
 
@@ -706,7 +708,6 @@ func RackUpdates(w http.ResponseWriter, r *http.Request) {
 			log.Println("rack updates invalid action:", action)
 			notFound(w, r)
 		}
-		//fmt.Fprint(w, "ok")
 	}
 }
 
@@ -784,6 +785,142 @@ func RackEdit(w http.ResponseWriter, r *http.Request) {
 			Rack:   rack,
 		}
 		renderTemplate(w, r, "rack", data)
+	}
+}
+
+func RMAPage(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "POST" {
+		rma := RMA{}
+		r.ParseForm()
+		objFromForm(&rma, r.Form)
+		action := r.Form.Get("action")
+		var err error
+		switch {
+		case action == "Add":
+			_, err = dbObjectInsert(rma)
+		case action == "Update":
+			err = dbObjectUpdate(rma)
+		case action == "Delete":
+			err = dbObjectDelete(rma)
+		}
+		if err != nil {
+			log.Println("RMA", action, "** Error:", err)
+		} else {
+			user := currentUser(r)
+			auditLog(user.ID, RemoteHost(r), action, "rma")
+		}
+		redirect(w, r, "/rmas", http.StatusSeeOther)
+	} else {
+		rma := RMA{Opened: time.Now()}
+		if len(r.URL.Path) > 0 {
+			if err := dbFindByID(&rma, r.URL.Path); err != nil {
+				notFound(w, r)
+				return
+			}
+		} else {
+			r.ParseForm()
+			var err error
+			if rma.SID, err = strconv.ParseInt(r.Form.Get("SID"), 0, 64); err != nil {
+				notFound(w, r)
+				return
+			}
+		}
+		v, err := dbObjectList(Vendor{})
+		if err != nil {
+			log.Println("vendor object list error:", err)
+		}
+		data := struct {
+			Common
+			RMA     RMA
+			Vendors []Vendor
+		}{
+			Common:  NewCommon(r, fmt.Sprintf("RMA")),
+			RMA:     rma,
+			Vendors: v.([]Vendor),
+		}
+		renderTemplate(w, r, "rma", data)
+	}
+}
+
+func trimDate(s string) string {
+	const date = len(date_layout)
+	if len(s) < date {
+		return s
+	}
+	s = s[:date]
+	if s == "0001-01-01" {
+		return ""
+	}
+	return s
+}
+
+func RMAList(w http.ResponseWriter, r *http.Request) {
+	const cols = "id,sid,vid,hostname,rma_no,description,part_no,vendor_name,tracking_no,dc_ticket,date_opened,date_sent,date_received,date_replaced,login"
+	const q = "select " + cols + " from rma_report"
+	table, err := dbTable(q)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	table.Hide(0, 1, 2)
+	setLinks(table, 3, "/server/edit/%s", 1)
+	setLinks(table, 4, "/rma/%s", 0)
+	setLinks(table, 7, "/vendor/edit/%s", 2)
+	table.Adjustment(isBlank, 4)
+	table.Adjustment(trimDate, 10, 11, 12, 13)
+	renderTabular(w, r, table, "RMA Report")
+}
+
+func VendorList(w http.ResponseWriter, r *http.Request) {
+	const cols = "*"
+	const q = "select " + cols + " from vendors"
+	table, err := dbTable(q)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	table.Hide(0)
+	table.Adjustment(trimDate, 12)
+	table.Adjustment(userLogin, 11)
+	setLinks(table, 1, "/vendor/edit/%s", 0)
+	heading := fmt.Sprintf(`Vendor List <a href="%s/vendor/edit/">Add</a>`, pathPrefix)
+	renderTabular(w, r, table, heading)
+}
+
+func VendorEdit(w http.ResponseWriter, r *http.Request) {
+	var v Vendor
+	if r.Method == "POST" {
+		r.ParseForm()
+		objFromForm(&v, r.Form)
+		user := currentUser(r)
+		remote_addr := RemoteHost(r)
+		v.Modified = time.Now()
+		v.RemoteAddr = remote_addr
+		v.UID = user.ID
+		action := r.Form.Get("action")
+		var err error
+		if action == "Add" {
+			err = dbAdd(&v)
+		} else if action == "Update" {
+			err = dbSave(&v)
+		} else if action == "Delete" {
+			err = dbDelete(&v)
+		}
+		if err != nil {
+			log.Println("VENDOR ERR:", err)
+		}
+		auditLog(user.ID, remote_addr, action, v.Name)
+		redirect(w, r, "/vendor/list", http.StatusSeeOther)
+	} else {
+		dbFindByID(&v, r.URL.Path)
+		data := struct {
+			Common
+			Vendor Vendor
+		}{
+			Common: NewCommon(r, v.Name),
+			Vendor: v,
+		}
+		renderTemplate(w, r, "vendor", data)
 	}
 }
 
@@ -1272,6 +1409,9 @@ func renderTabular(w http.ResponseWriter, r *http.Request, table *dbu.Table, tit
 	data := Tabular{
 		Common: NewCommon(r, title),
 		Table:  table,
+	}
+	if len(title) > 0 {
+		data.Common.Heading = template.HTML(title)
 	}
 	renderTemplate(w, r, "table", data)
 }
@@ -1894,6 +2034,8 @@ var webHandlers = []HFunc{
 	{"/rack/view/", RackView},
 	{"/reload", reloadPage},
 	{"/search", SearchPage},
+	{"/rmas", RMAList},
+	{"/rma/", RMAPage},
 	{"/server/add/", ServerEdit},
 	{"/server/audit/", ServerAudit},
 	{"/server/dupes", ServerDupes},
@@ -1906,6 +2048,8 @@ var webHandlers = []HFunc{
 	{"/user/edit/", UserEdit},
 	{"/user/list", usersListPage},
 	{"/user/run/", UserRun},
+	{"/vendor/edit/", VendorEdit},
+	{"/vendor/list", VendorList},
 	{"/vlan/edit/", VlanEdit},
 	{"/vm/add/", VMAdd},
 	{"/vm/all", VMAllPage},

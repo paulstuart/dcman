@@ -5,15 +5,16 @@ prefix      = /url/prefix
 banner      = this is a test
 readonly    = true
 key         = your secret key here
+pxeboot     = false  # enable pxeboot of servers
 
 [ backups ]
 freq  = 5 # frequently to test for write contention
 dir   = "backups"
 
-[ ssh ]
-username    = sshuser
+[ jira ]
+username    = jirauser
 password    = secret
-host        = 1.2.3.4
+url         = https://jira.example.com/jira/rest/api/latest
 
 [ saml ]
 samlURL     = https://samlhost.example.com/saml/url

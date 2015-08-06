@@ -62,8 +62,11 @@ func RemoteHost(r *http.Request) string {
 func loadTemplates() {
 	//fmt.Println("LOAD TEMPLATES DIR:", tdir)
 	funcMap := template.FuncMap{
-		"isTrue":  isTrue,
-		"plusOne": plusOne,
+		"isBlank":   isBlank,
+		"isTrue":    isTrue,
+		"plusOne":   plusOne,
+		"fixDate":   fixDate,
+		"userLogin": userLogin,
 	}
 	htmlTmpl = make(map[string]*template.Template)
 	textTmpl = make(map[string]*ttext.Template)
@@ -125,10 +128,24 @@ func isTrue(in interface{}) string {
 	return "false"
 }
 
+func isBlank(s string) string {
+	if len(s) > 0 {
+		return s
+	}
+	return " * blank * "
+}
+
 func plusOne(in interface{}) string {
 	val := in.(int)
 	val++
 	return strconv.Itoa(val)
+}
+
+func fixDate(d time.Time) string {
+	if d.IsZero() {
+		return ""
+	}
+	return d.Format(date_layout)
 }
 
 // render a template that inherits the "base" template

@@ -33,7 +33,7 @@ $(document).ready(function() {
             <td><a href="{{$.Common.Prefix}}/server/edit/{{.ID}}">{{.Hostname}}</a></td>
             <td>
             {{ range $v := .VMs }}
-                <a href="{${.Common.Prefix}}/vm/edit/{{.ID}}">{{.Hostname}}</a>
+                <a href="{{$.Common.Prefix}}/vm/edit/{{.ID}}">{{.Hostname}}</a>
             {{end}}
             </td>
         </tr>

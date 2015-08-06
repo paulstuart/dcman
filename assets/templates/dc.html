@@ -5,21 +5,54 @@
 <form method="post" action="{{.Common.Prefix}}/dc/edit/{{.Datacenter.ID}}" class="common" id="dcform">
     <fieldset>
         <legend>General</legend>
-        <label>Name<input type="text" name="Name" value="{{.Datacenter.Name}}" pattern=".+" required/></label><br/>
-        <label>Address<input type="text" name="Address" value="{{.Datacenter.Address}}"/></label><br/>
-        <label>City<input type="text" name="City" value="{{.Datacenter.City}}"/></label><br/>
-        <label>State<input type="text" name="State" value="{{.Datacenter.State}}"/></label><br/>
-        <label>Phone<input type="text" name="Phone" value="{{.Datacenter.Phone}}"/></label><br/>
-        <label>Web<input type="text" name="Web" value="{{.Datacenter.Web}}"/></label><br/>
+        <div class="field">
+            <label for="Name">Name</label>
+            <input type="text" name="Name" value="{{.Datacenter.Name}}" pattern=".+" required/>
+        </div>
+        <div class="field">
+            <label for="Name">Address</label>
+            <input type="text" name="Address" value="{{.Datacenter.Address}}"/>
+        </div>
+        <div class="field">
+            <label for="Name">City</label>
+            <input type="text" name="City" value="{{.Datacenter.City}}"/>
+        </div>
+        <div class="field">
+            <label for="Name">State</label>
+            <input type="text" name="State" value="{{.Datacenter.State}}"/>
+        </div>
+        <div class="field">
+            <label for="Name">Phone</label>
+            <input type="text" name="Phone" value="{{.Datacenter.Phone}}"/>
+        </div>
+        <div class="field">
+            <label for="Name">Web</label>
+            <input type="text" name="Web" value="{{.Datacenter.Web}}"/>
+        </div>
     </fieldset>
 
     <fieldset>
         <legend>Remote</legend>
-        <label>DCMan<input type="text" name="DCMan" value="{{.Datacenter.DCMan}}"/></label><br/>
-        <label>PXE Host<input type="text" name="PXEHost" value="{{.Datacenter.PXEHost}}"/></label><br/>
-        <label>PXE User<input type="text" name="PXEUser" value="{{.Datacenter.PXEUser}}"/></label><br/>
-        <label>PXE Password<input type="password" name="PXEPass" value="{{.Datacenter.PXEPass}}"/></label><br/>
-        <label>PXE SSH Key<input type="text" name="PXEKey" value="{{.Datacenter.PXEKey}}" size="50"/></label><br/>
+        <div class="field">
+        <label for="Name">DCMan</label>
+        <input type="text" name="DCMan" value="{{.Datacenter.DCMan}}"/>
+        </div>
+        <div class="field">
+            <label for="Name">PXE Host</label>
+            <input type="text" name="PXEHost" value="{{.Datacenter.PXEHost}}"/>
+        </div>
+        <div class="field">
+            <label for="Name">PXE User</label>
+            <input type="text" name="PXEUser" value="{{.Datacenter.PXEUser}}"/>
+        </div>
+        <div class="field">
+            <label for="Name">PXE Password</label>
+            <input type="password" name="PXEPass" value="{{.Datacenter.PXEPass}}"/>
+        </div>
+        <div class="field">
+            <label for="Name">PXE SSH Key</label>
+            <input type="text" name="PXEKey" value="{{.Datacenter.PXEKey}}" size="50"/>
+        </div>
     </fieldset>
 
 <input type="hidden" name="ID" value="{{.Datacenter.ID}}">
