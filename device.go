@@ -15,10 +15,13 @@ const (
 	StandaloneServer
 	Enclosure
 	Blade
-	Switch
-	PowerDistributionUnit
+	NetworkSwitch
+	NetworkRouter
 	TerminalServer
 	LoadBalancer
+	PowerDistributionUnit
+	CableManagement
+	Console
 )
 
 type Contract struct {
@@ -29,9 +32,9 @@ type Contract struct {
 }
 
 type Device struct {
-	DID        int64      `sql:"did" key:"true" table:"devices"`
-	VID        int64      `sql:"vid"`
-	CID        int64      `sql:"cid"`
+	DID int64 `sql:"did" key:"true" table:"devices"`
+	VID int64 `sql:"vid"`
+	//	CID        int64      `sql:"cid"`
 	RID        int64      `sql:"rid"`
 	RU         int        `sql:"ru"`
 	Height     int        `sql:"height"`
@@ -46,9 +49,9 @@ type Device struct {
 	SerialNo   string     `sql:"sn"`
 	Note       string     `sql:"note"`
 	// audit info
-	RemoteAddr string    `sql:"remote_addr"`
-	Modified   time.Time `sql:"modified"`
-	UID        int       `sql:"uid"`
+	//RemoteAddr string    `sql:"remote_addr"`
+	Modified time.Time `sql:"modified"`
+	UID      int       `sql:"uid"`
 }
 
 const q = `select d.*, 
@@ -78,9 +81,9 @@ type Port struct {
 	CableTag   string   `sql:"cable_tag"`
 	SwitchPort string   `sql:"switch_port"`
 	// audit info
-	RemoteAddr string    `sql:"remote_addr"`
-	Modified   time.Time `sql:"modified"`
-	UID        int       `sql:"uid"`
+	//RemoteAddr string    `sql:"remote_addr"`
+	Modified time.Time `sql:"modified"`
+	UID      int       `sql:"uid"`
 }
 
 type ipType int

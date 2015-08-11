@@ -273,6 +273,7 @@ func ErrorLog(r *http.Request, msg string, args ...interface{}) {
 	fmt.Fprintln(errorFile, time.Now().Format(log_layout), remote_addr, user.ID, msg, args)
 }
 
+// allows logging to show user id
 func userMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.User == nil {
@@ -296,8 +297,7 @@ func authMiddleware(next http.Handler) http.Handler {
 			if err != nil || !authorized(cookie.Value) {
 				// stash url attempted to redirect after successful login
 				// not working right now, because we're stripping the registered path :-(
-				expires := time.Now()
-				expires = expires.Add(time.Duration(time.Hour) * 24 * 365)
+				expires := time.Now().Add(time.Hour * 24 * 365)
 				path := r.URL.Path
 				if len(r.URL.RawQuery) > 0 {
 					path += "?" + r.URL.RawQuery
@@ -329,6 +329,8 @@ func goHome(w http.ResponseWriter, r *http.Request) {
 
 func webServer(handlers []HFunc) {
 	loadTemplates()
+
+	// mux all the handlers
 	for _, h := range handlers {
 		p := pathPrefix + h.Path
 		switch {

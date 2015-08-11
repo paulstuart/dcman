@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html/template"
 	"net"
+	"net/http"
 	"os"
 	"path"
 	"reflect"
@@ -42,7 +43,7 @@ type Document struct {
 	Title      string    `sql:"title"`
 	RemoteAddr string    `sql:"remote_addr"`
 	UID        int64     `sql:"user_id"`
-	Modified   time.Time `sql:"modified"`
+	Modified   time.Time `sql:"modified`
 }
 
 func (d Document) Fullpath() string {
@@ -61,8 +62,8 @@ type Vendor struct {
 	Postal     string    `sql:"postal"`
 	Note       string    `sql:"note"`
 	RemoteAddr string    `sql:"remote_addr"`
-	UID        int64     `sql:"user_id"`
-	Modified   time.Time `sql:"modified"`
+	UID        int64     `sql:"user_id"  audit:"user"`
+	Modified   time.Time `sql:"modified" audit:"time"`
 }
 
 type RMA struct {
@@ -75,6 +76,7 @@ type RMA struct {
 	Part        string    `sql:"part_no"`
 	OldSN       string    `sql:"old_sn"`
 	NewSN       string    `sql:"new_sn"`
+	Jira        string    `sql:"jira"`
 	Ticket      string    `sql:"dc_ticket"`
 	Tracking    string    `sql:"tracking_no"`
 	Opened      time.Time `sql:"date_opened"`
@@ -107,6 +109,76 @@ func (r RMA) DC() string {
 	s := Server{}
 	dbFindByID(&s, r.SID)
 	return s.DC()
+}
+
+type Manufacturer struct {
+	MID      int64     `sql:"mid" key:"true" table:"mfgr"`
+	Name     string    `sql:"name"`
+	URL      string    `sql:"url"`
+	UID      int64     `sql:"user_id"  audit:"user"`
+	Modified time.Time `sql:"modified" audit:"time"`
+}
+
+type Part struct {
+	PID         int64     `sql:"pid" key:"true" table:"parts"`
+	MID         int64     `sql:"mid"`
+	Description string    `sql:"description"`
+	PartNo      string    `sql:"part_no"`
+	UID         int64     `sql:"user_id"  audit:"user"`
+	Modified    time.Time `sql:"modified" audit:"time""`
+}
+
+func (p *Part) Manufacturer() Manufacturer {
+	m := Manufacturer{MID: p.MID}
+	dbFindSelf(&m)
+	return m
+}
+
+func (p *Part) PageData(r *http.Request) (interface{}, error) {
+	if len(r.URL.Path) > 0 {
+		if err := dbFindByID(p, r.URL.Path); err != nil {
+			return nil, err
+		}
+	}
+	return struct {
+		Common
+		Part *Part
+	}{
+		Common: NewCommon(r, "Edit"),
+		Part:   p,
+	}, nil
+}
+
+type Stock struct {
+	KID      int64     `sql:"kid" key:"true" table:"stock"`
+	DID      int64     `sql:"did"`
+	PID      int64     `sql:"pid"`
+	VID      int64     `sql:"vid"`
+	SN       string    `sql:"sn"`
+	Amount   int       `sql:"amount"`
+	UID      int64     `sql:"user_id"   audit:"user"`
+	Modified time.Time `sql:"modified"  audit:"time"`
+}
+
+func (s *Stock) PartNo() string {
+	p := Part{PID: s.PID}
+	dbFindSelf(&p)
+	return p.PartNo
+}
+
+func (s *Stock) PageData(r *http.Request) (interface{}, error) {
+	if len(r.URL.Path) > 0 {
+		if err := dbFindByID(s, r.URL.Path); err != nil {
+			return nil, err
+		}
+	}
+	return struct {
+		Common
+		Stock *Stock
+	}{
+		Common: NewCommon(r, "Edit"),
+		Stock:  s,
+	}, nil
 }
 
 func (u User) Admin() bool {
@@ -142,8 +214,8 @@ type Datacenter struct {
 	PXEPass    string    `sql:"pxepass"`
 	PXEKey     string    `sql:"pxekey"`
 	RemoteAddr string    `sql:"remote_addr"`
-	UID        int64     `sql:"user_id"`
-	Modified   time.Time `sql:"modified"`
+	UID        int64     `sql:"user_id"  audit:"user"`
+	Modified   time.Time `sql:"modified" audit:"time"`
 }
 
 func (dc Datacenter) Remote(cmd string, timeout int) (int, string, string, error) {
@@ -309,9 +381,9 @@ type Server struct {
 	MacPort1   string    `sql:"mac_eth1"`
 	MacIPMI    string    `sql:"mac_ipmi"`
 	CPU        string    `sql:"cpu"`
-	Modified   time.Time `sql:"modified"`
 	RemoteAddr string    `sql:"remote_addr"`
-	UID        int64     `sql:"uid"`
+	Modified   time.Time `sql:"modified" audit:"time"`
+	UID        int64     `sql:"uid"      audit:"user"`
 }
 
 func (s Server) InternalVLAN() string {

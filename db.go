@@ -328,7 +328,6 @@ func trimTime(s string) string {
 		return s
 	}
 	s = s[:t]
-	fmt.Println("TT:", s)
 	if s == "0001-01-01" {
 		return ""
 	}

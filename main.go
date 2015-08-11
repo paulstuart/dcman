@@ -141,6 +141,7 @@ func MyIp() string {
 }
 
 func auditLog(uid int64, ip, action, msg string) {
+	log.Println("IP:", ip)
 	dbExec("insert into audit_log (uid,ip,action,msg) values(?,?,?,?)", uid, ip, strings.ToLower(action), msg)
 }
 

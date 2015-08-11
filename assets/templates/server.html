@@ -54,6 +54,12 @@ var rma_server = function() {
     return false;
 }
 
+var replace_part = function() {
+    var url = "{{.Common.Prefix}}/server/replace/{{.Server.ID}}";
+    window.location.replace(url);
+    return false;
+}
+
 $(document).ready(function() {
     $('#rackunit').change(function() {
         window.location.assign("/"+$(this).val()+"/add/{{.Server.DC}}/{{.Server.Rack}}/{{.Server.RU}}")
@@ -71,8 +77,11 @@ $(document).ready(function() {
 
 {{ if .Common.User.Editor }}
 {{ if ne .Server.ID 0 }}
+{{ if .Common.PXEBoot }}
    $("#b_reimage").click(reimage_server);
+{{ end }}
    $("#b_rma").click(rma_server);
+   $("#b_replace").click(replace_part);
 {{ end }}
 {{ end }}
 
@@ -154,26 +163,6 @@ $(document).ready(function() {
             <label for="Note">Note</label>
             <textarea cols="35" rows="3" name="Note" id="Note">{{.Server.Note}}</textarea>
         </div>
-{{ if .Common.User.Editor }}
-{{ if ne .Server.ID 0 }}
-<div class="fullway">
-<div class="halfway">
-    {{/*
-    <label class="button_label" for="b_rma">RMA</label>
-    */}}
-    <button id="b_rma">RMA</button>
-</div>
-<div class="halfway">
-    {{ if .Common.PXEBoot }}
-    {{/*
-    <label class="button_label" for="b_reimage">Reimage</label>
-    */}}
-    <button id="b_reimage">Reimage</button>
-    {{ end }}
-</div>
-</div>
-{{ end }}
-{{ end }}
     </fieldset>
 
     <fieldset>
@@ -273,6 +262,11 @@ $(document).ready(function() {
 {{ else }}
 <input type="submit" name="action" value="Update">
 <input type="submit" name="action" value="Delete">
+<button id="b_rma">RMA</button>
+<button id="b_replace">Replace Part</button>
+{{ if .Common.PXEBoot }}
+<button id="b_reimage">Reimage</button>
+{{ end }}
 {{ end }}
 {{ else }}
 <div id="sorry">You must be logged in as an admin to modify this record</div>

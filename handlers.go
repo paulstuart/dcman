@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -502,37 +503,26 @@ func VMFind(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+var (
+	ErrBlankHostname = fmt.Errorf("hostname cannot be blank")
+)
+
 func ServerEdit(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
-		r.ParseForm()
 		var s Server
-		objFromForm(&s, r.Form)
-		user := currentUser(r)
-		remote_addr := RemoteHost(r)
-		s.Modified = time.Now()
-		s.RemoteAddr = remote_addr
-		s.UID = user.ID
-		action := r.Form.Get("action")
-		var err error
-		if action == "Add" {
-			if len(s.Hostname) == 0 {
-				ErrorPage(w, r, "Hostname cannot be blank")
-				return
+		validate := func(action string) error {
+			bad := len(s.Hostname) == 0
+			switch {
+			case action == "Add" && bad:
+				return ErrBlankHostname
+			case action == "Update" && bad:
+				return ErrBlankHostname
 			}
-			s.ID, err = dbObjectInsert(s)
-			if err != nil {
-				log.Println("SERVERADD ERR:", err)
-			}
-		} else if action == "Update" {
-			if len(s.Hostname) == 0 {
-				ErrorPage(w, r, "Hostname cannot be blank")
-				return
-			}
-			s.Update()
-		} else if action == "Delete" {
-			s.Delete()
+			return nil
 		}
-		auditLog(user.ID, remote_addr, action, s.String())
+		if err := objPost(r, &s, validate); err != nil {
+			log.Println("server error:", err)
+		}
 		dc := r.FormValue("DC")
 		redirect(w, r, "/dc/racks/"+dc, http.StatusSeeOther)
 	} else {
@@ -576,6 +566,59 @@ func ServerEdit(w http.ResponseWriter, r *http.Request) {
 			IPs:    IPs,
 		}
 		renderTemplate(w, r, "server", data)
+	}
+}
+
+func ServerReplace(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "POST" {
+		var s Server
+		validate := func(action string) error {
+			bad := len(s.Hostname) == 0
+			switch {
+			case action == "Add" && bad:
+				return ErrBlankHostname
+			case action == "Update" && bad:
+				return ErrBlankHostname
+			}
+			return nil
+		}
+		if err := objPost(r, &s, validate); err != nil {
+			log.Println("server error:", err)
+		}
+		dc := r.FormValue("DC")
+		redirect(w, r, "/dc/racks/"+dc, http.StatusSeeOther)
+	} else {
+		bits := strings.Split(r.URL.Path, "/")
+		if len(bits) < 1 {
+			notFound(w, r)
+			return
+		}
+		var server Server
+		if len(bits) > 2 {
+			dc := dcLookup[strings.ToUpper(bits[0])]
+			ru, _ := strconv.Atoi(bits[2])
+			rid := RackID(dc.ID, bits[1])
+			server = Server{
+				RU:     ru,
+				RID:    rid,
+				Height: 1,
+			}
+		} else {
+			var err error
+			if server, err = getServer("where id=?", bits[0]); err != nil {
+				log.Println("server error:", err)
+				notFound(w, r)
+				return
+			}
+		}
+		data := struct {
+			Common
+			Server Server
+		}{
+			Common: NewCommon(r, server.Hostname),
+			Server: server,
+		}
+		renderTemplate(w, r, "replace", data)
 	}
 }
 
@@ -857,7 +900,7 @@ func RMAPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func RMAList(w http.ResponseWriter, r *http.Request) {
-	const cols = "id,sid,vid,hostname,rma_no,description,part_no,old_sn,new_sn,vendor_name,tracking_no,dc_ticket,date_opened,date_sent,date_received,date_replaced,login"
+	const cols = "id,sid,vid,hostname,rma_no,description,part_no,old_sn,new_sn,vendor_name,jira,tracking_no,dc_ticket,date_opened,date_sent,date_received,date_replaced,login"
 	const q = "select " + cols + " from rma_report"
 	table, err := dbTable(q)
 	if err != nil {
@@ -869,8 +912,120 @@ func RMAList(w http.ResponseWriter, r *http.Request) {
 	setLinks(table, 4, "/rma/%s", 0)
 	setLinks(table, 9, "/vendor/edit/%s", 2)
 	table.Adjustment(isBlank, 4)
-	table.Adjustment(trimDate, 12, 13, 14, 15)
+	table.Adjustment(trimDate, 13, 14, 15, 16)
 	renderTabular(w, r, table, "RMA Report")
+}
+
+func StockList(w http.ResponseWriter, r *http.Request) {
+	const cols = "*"
+	const q = "select " + cols + " from stock_report"
+	table, err := dbTable(q)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	/*
+		table.Hide(0, 1, 2)
+		setLinks(table, 3, "/server/edit/%s", 1)
+		setLinks(table, 4, "/rma/%s", 0)
+		setLinks(table, 9, "/vendor/edit/%s", 2)
+		table.Adjustment(isBlank, 4)
+		table.Adjustment(trimDate, 13, 14, 15, 16)
+
+		dc|amount|part_no|description|sn|vendor|mfgr|login|modified|kid|pid|vid|did
+		AMS|123|iSSD123x|ssd drive|whatever|SuperMicro|Intel|pstuart|2015-08-07 23:27:26|1|1|1|1
+		k
+	*/
+	setLinks(table, 1, "/stock/edit/%s", 9)
+	setLinks(table, 2, "/part/edit/%s", 10)
+	setLinks(table, 5, "/vendor/edit/%s", 11)
+	table.Hide(9, 10, 11, 12)
+	renderTabular(w, r, table, "Stock Report")
+}
+
+type Validator func(string) error
+
+//func objPost(r *http.Request, o dbu.DBObject, validators ...func() error) error {
+func objPost(r *http.Request, o dbu.DBObject, validators ...Validator) error {
+	r.ParseForm()
+	objFromForm(o, r.Form)
+	action := r.Form.Get("action")
+	user := currentUser(r)
+	o.ModifiedBy(user.ID, time.Now())
+	fmt.Println("POST OBJ:", o)
+	name := fmt.Sprintf("%v", reflect.TypeOf(o))
+	for _, v := range validators {
+		if err := v(action); err != nil {
+			log.Println("VALID ERR:", err)
+			return err
+		}
+	}
+	//dbDebug(true)
+	auditLog(user.ID, RemoteHost(r), action, name)
+	//dbDebug(false)
+	switch {
+	case action == "Add":
+		return dbAdd(o)
+	case action == "Update":
+		dbFindByID(o, r.FormValue(o.KeyField()))
+		return dbSave(o)
+	case action == "Delete":
+		return dbDelete(o)
+	}
+	return fmt.Errorf("Unknown action: %s", action)
+}
+
+func StockEdit(w http.ResponseWriter, r *http.Request) {
+	s := &Stock{}
+	if r.Method == "POST" {
+		if err := objPost(r, s); err != nil {
+			log.Println("stock error:", err)
+		}
+		//auditLog(user.ID, remote_addr, action, v.Name)
+		redirect(w, r, "/stock/list", http.StatusSeeOther)
+	} else {
+		data, err := s.PageData(r)
+		if err != nil {
+			notFound(w, r)
+			return
+		}
+		renderTemplate(w, r, "stock", data)
+	}
+}
+
+func PartEdit(w http.ResponseWriter, r *http.Request) {
+	s := &Part{}
+	if r.Method == "POST" {
+		if err := objPost(r, s); err != nil {
+			log.Println("part error:", err)
+		}
+		//auditLog(user.ID, remote_addr, action, v.Name)
+		redirect(w, r, "/part/list", http.StatusSeeOther)
+	} else {
+		data, err := s.PageData(r)
+		if err != nil {
+			notFound(w, r)
+			return
+		}
+		renderTemplate(w, r, "part", data)
+	}
+}
+
+func PartList(w http.ResponseWriter, r *http.Request) {
+	const cols = "pid,mid,user_id,description,part_no,mfgr,login,modified"
+
+	const q = "select " + cols + " from pview"
+	table, err := dbTable(q)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	table.Hide(0, 1, 2)
+	table.Adjustment(trimTime, 7)
+	setLinks(table, 4, "/part/edit/%s", 0)
+	setLinks(table, 5, "/mfgr/edit/%s", 1)
+	heading := fmt.Sprintf(`Part List <a href="%s/part/edit/">Add</a>`, pathPrefix)
+	renderTabular(w, r, table, heading)
 }
 
 func VendorList(w http.ResponseWriter, r *http.Request) {
@@ -1020,7 +1175,9 @@ func ServerAudit(w http.ResponseWriter, r *http.Request) {
 			Common: NewCommon(r, "Audit History"),
 			Table:  table.Diff(true, skip...),
 		}
-		renderTemplate(w, r, "server_audit", data)
+		//renderTemplate(w, r, "server_audit", data)
+		table.Hide(0, 1, 2)
+		renderTemplate(w, r, "table", data)
 	}
 }
 
@@ -1425,7 +1582,8 @@ func ShowListing(w http.ResponseWriter, r *http.Request, t Tabular) {
 	t.Table.Hide(0)
 	setLinks(t.Table, 1, "/rack/view/%s", 1)
 	setLinks(t.Table, 2, "/rack/view/%s/%s", 1, 2)
-	setLinks(t.Table, 3, "/server/edit/%s", 0)
+	setLinks(t.Table, 4, "/server/edit/%s", 0)
+	t.Table.Adjustment(isBlank, 4)
 	t.Table.AddSort(1, false)
 	t.Table.AddSort(2, false)
 	t.Table.AddSort(3, true)
@@ -1469,6 +1627,7 @@ func NetworkDevices(w http.ResponseWriter, r *http.Request) {
 }
 
 func ConnectionsPage(w http.ResponseWriter, r *http.Request) {
+	// TODO:  make this a view
 	const columns = "id,datacenter,rack,ru,hostname,profile,ip_ipmi,ip_internal,ip_public,port_eth0,port_eth1,port_ipmi,cable_eth0,cable_eth1,cable_ipmi"
 	const query = "select " + columns + " from dcview"
 	table, _ := dbTable(query)
@@ -2049,6 +2208,8 @@ var webHandlers = []HFunc{
 	{"/network/edit/", NetworkEdit},
 	{"/network/next/", NetworkNext},
 	{"/network/vlans", VlansPage},
+	{"/part/edit/", PartEdit},
+	{"/part/list", PartList},
 	{"/pdu/edit", PDUEdit},
 	{"/ping", pingPage},
 	{"/profile/view", ProfileView},
@@ -2071,8 +2232,11 @@ var webHandlers = []HFunc{
 	{"/server/edit/", ServerEdit},
 	{"/server/find", ServerFind},
 	{"/server/reimage", ServerReimage},
+	{"/server/replace/", ServerReplace},
 	{"/server/vms", VMListing},
 	{"/settings", SettingsHandler},
+	{"/stock/edit/", StockEdit},
+	{"/stock/list", StockList},
 	{"/user/add", UserEdit},
 	{"/user/edit/", UserEdit},
 	{"/user/list", usersListPage},

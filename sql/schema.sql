@@ -50,6 +50,7 @@ CREATE TABLE "rmas" (
     new_sn text not null default '',
     part_no text not null default '',
     tracking_no text not null default '',
+    jira text not null default '',
     dc_ticket text not null default '',
     date_opened date DEFAULT CURRENT_TIMESTAMP,
     date_sent date,
