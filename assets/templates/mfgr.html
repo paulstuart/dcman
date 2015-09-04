@@ -1,0 +1,35 @@
+{{define "head"}}<title>{{.Common.Title}}</title>{{end}}
+{{define "javascript"}}
+{{end}}
+{{define "body"}}
+<div id="vendorform" class="Xserver">
+<form method="post" class="common" id="servo">
+    <fieldset>
+        <legend>Manufacturer</legend>
+        <div class="field">
+            <label for="Name">Name</label>
+            <input type="text" name="Name" value="{{.Manufacturer.Name}}" pattern=".+" required/>
+        </div>
+        <div class="field">
+            <label for="AKA">AKA</label>
+            <input type="text" name="AKA" id="AKA" value="{{.Manufacturer.AKA}}" pattern=".+" required/>
+        </div>
+    </fieldset>
+
+<input type="hidden" name="MID" value="{{.Manufacturer.MID}}">
+<input type="hidden" name="UID" value="{{.Common.User.ID}}">
+<input type="button" value="Cancel"  onclick="javascript:window.history.go(-1)">
+{{ if .Common.User.Editor }}
+{{ if eq .Manufacturer.MID 0 }}
+<input type="submit" name="action" value="Add">
+{{ else }}
+<input type="submit" name="action" value="Update">
+<input type="submit" name="action" value="Delete">
+{{ end }}
+{{ else }}
+<div id="sorry">You must be logged in as an admin to modify this record</div>
+{{ end }}
+</form>
+</div>
+{{end}}
+

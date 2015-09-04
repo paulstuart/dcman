@@ -1,0 +1,44 @@
+{{define "head"}}<title>{{.Common.Title}}</title>{{end}}
+{{define "javascript"}}
+{{end}}
+
+{{define "body"}}
+<div id="serverform" class="server">
+<form method="post" class="common" id="servo">
+    <fieldset>
+        <legend>Replace Part</legend>
+        <div class="field">
+            <label for="Hostname"><a href="{{.Common.Prefix}}/server/edit/{{.Server.ID}}">Hostname</a></label>
+            <input type="text" name="Hostname" id="Hostname" value="{{.Server.Hostname}}" readonly/>
+        </div>
+        <div class="field">
+            <label for="DC">Datacenter</label>
+            <input type="text" name="DC" id="DC" value="{{.Server.DC}}" readonly/>
+        </div>
+        <div class="field">
+            <label for="Part">Part Number</label>
+            <input type="text" name="Part" id="Part" value=""/>
+        </div>
+        <div class="field">
+            <label for="OldSN">Original Serial Number</label>
+            <input type="text" name="OldSN" id="OldSN" value=""/>
+        </div>
+        <div class="field">
+            <label for="NewSN">New Serial Number</label>
+            <input type="text" name="NewSN" id="NewSN" value=""/>
+        </div>
+    </fieldset>
+
+
+<input type="hidden" name="ID" value="{{.Server.ID}}">
+<input type="hidden" name="UID" value="{{.Common.User.ID}}">
+<input type="button" value="Cancel"  onclick="javascript:window.history.go(-1)">
+{{ if .Common.User.Editor }}
+<input type="submit" name="action" value="Replace">
+{{ else }}
+<div id="sorry">You must be logged in as an admin to modify this record</div>
+{{ end }}
+</form>
+</div>
+{{end}}
+

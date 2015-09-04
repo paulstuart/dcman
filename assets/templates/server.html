@@ -54,11 +54,6 @@ var rma_server = function() {
     return false;
 }
 
-var replace_part = function() {
-    var url = "{{.Common.Prefix}}/server/replace/{{.Server.ID}}";
-    window.location.replace(url);
-    return false;
-}
 
 $(document).ready(function() {
     $('#rackunit').change(function() {
@@ -81,7 +76,10 @@ $(document).ready(function() {
    $("#b_reimage").click(reimage_server);
 {{ end }}
    $("#b_rma").click(rma_server);
-   $("#b_replace").click(replace_part);
+   $("#b_parts").click(function() {
+        window.location.replace("{{.Common.Prefix}}/server/parts/{{.Server.ID}}");
+        return false;
+    });
 {{ end }}
 {{ end }}
 
@@ -263,7 +261,7 @@ $(document).ready(function() {
 <input type="submit" name="action" value="Update">
 <input type="submit" name="action" value="Delete">
 <button id="b_rma">RMA</button>
-<button id="b_replace">Replace Part</button>
+<button id="b_parts">Parts</button>
 {{ if .Common.PXEBoot }}
 <button id="b_reimage">Reimage</button>
 {{ end }}

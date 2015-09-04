@@ -2,16 +2,18 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net"
+	"strings"
 	"time"
 )
 
-//g#o:generate stringer -type=deviceType,portType,ipType
+//g#o:generate stringer -type=deviceFamily,portType,ipType
 
-type deviceType int
+type deviceFamily int
 
 const (
-	UnknownDevice deviceType = iota
+	UnknownDevice deviceFamily = iota
 	StandaloneServer
 	Enclosure
 	Blade
@@ -35,21 +37,20 @@ type Device struct {
 	DID int64 `sql:"did" key:"true" table:"devices"`
 	VID int64 `sql:"vid"`
 	//	CID        int64      `sql:"cid"`
-	RID        int64      `sql:"rid"`
-	RU         int        `sql:"ru"`
-	Height     int        `sql:"height"`
-	Type       deviceType `sql:"device_type"`
-	PrimaryIP  uint32     `sql:"primary_ip"`
-	MgmtIP     uint32     `sql:"mgmt_ip"`
-	PrimaryMac string     `sql:"primary_mac"`
-	MgmtMac    string     `sql:"mgmt_mac"`
-	Hostname   string     `sql:"hostname"`
-	Model      string     `sql:"model"`
-	AssetTag   string     `sql:"asset_tag"`
-	SerialNo   string     `sql:"sn"`
-	Note       string     `sql:"note"`
+	RID        int64        `sql:"rid"`
+	RU         int          `sql:"ru"`
+	Height     int          `sql:"height"`
+	Type       deviceFamily `sql:"device_type"`
+	PrimaryIP  uint32       `sql:"primary_ip"`
+	MgmtIP     uint32       `sql:"mgmt_ip"`
+	PrimaryMac string       `sql:"primary_mac"`
+	MgmtMac    string       `sql:"mgmt_mac"`
+	Hostname   string       `sql:"hostname"`
+	Model      string       `sql:"model"`
+	AssetTag   string       `sql:"asset_tag"`
+	SerialNo   string       `sql:"sn"`
+	Note       string       `sql:"note"`
 	// audit info
-	//RemoteAddr string    `sql:"remote_addr"`
 	Modified time.Time `sql:"modified"`
 	UID      int       `sql:"uid"`
 }
@@ -81,7 +82,6 @@ type Port struct {
 	CableTag   string   `sql:"cable_tag"`
 	SwitchPort string   `sql:"switch_port"`
 	// audit info
-	//RemoteAddr string    `sql:"remote_addr"`
 	Modified time.Time `sql:"modified"`
 	UID      int       `sql:"uid"`
 }
@@ -101,9 +101,8 @@ type IP struct {
 	Type ipType `sql:"ip_type"`
 	Int  uint32 `sql:"ip_int"`
 	// audit info
-	RemoteAddr string    `sql:"remote_addr"`
-	Modified   time.Time `sql:"modified"`
-	UID        int       `sql:"uid"`
+	Modified time.Time `sql:"modified"`
+	UID      int       `sql:"uid"`
 }
 
 func (ip *IP) FromString(in string) {
@@ -119,4 +118,57 @@ func (ip IP) String() string {
 	c := (ip.Int >> 8) & 255
 	d := ip.Int & 255
 	return fmt.Sprintf("%d.%d.%d.%d", a, b, c, d)
+}
+
+var removeWords = []string{
+	"the ",
+	"inc.",
+	"incorporated",
+	"corporation",
+	"company",
+}
+
+func ManufacturerID(name string) int64 {
+	aka := strings.ToLower(name)
+	/*
+		aka = strings.Replace(aka, "the ", "", -1)
+		aka = strings.Replace(aka, "inc.", "", -1)
+		aka = strings.Replace(aka, "incorporated", "", -1)
+		aka = strings.Replace(aka, "corporation", "", -1)
+		aka = strings.Replace(aka, "company", "", -1)
+	*/
+	for _, word := range removeWords {
+		aka = strings.Replace(aka, word, "", -1)
+	}
+	m := Manufacturer{Name: name, AKA: aka}
+	if err := dbObjectLoad(&m, "where aka=?", aka); err != nil {
+		if err := dbAdd(&m); err != nil {
+			log.Println("mfgr add err:", err)
+		}
+	}
+	return m.MID
+}
+
+func skuID(mid int64, pn, d string) int64 {
+	pl := SKU{MID: mid, PartNumber: pn, Description: d}
+	if err := dbObjectLoad(&pl, "where mid=? and part_no=?", mid, pn); err != nil {
+		fmt.Println("plist load err:", err)
+		dbAdd(&pl)
+	}
+	return pl.KID
+}
+
+func AddDevicePart(did, sid int64, manufacturer, productName, description, serialNumber, assetTag, location string) (*Part, error) {
+	part := Part{
+		SID:      sid,
+		DID:      did,
+		KID:      skuID(ManufacturerID(manufacturer), productName, description),
+		Serial:   serialNumber,
+		AssetTag: assetTag,
+		Location: location,
+	}
+	if err := dbAdd(&part); err != nil {
+		return nil, err
+	}
+	return &part, nil
 }

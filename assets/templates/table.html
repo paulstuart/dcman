@@ -20,8 +20,8 @@ $(document).ready(function() {
 
 {{define "body"}}
 
-{{ if .Common.Heading }}
-<h1 class="heading">{{.Common.Heading}}</h1>
+{{ range .Common.Heading }}
+<h1 class="heading">{{.}}</h1>
 {{ end }}
 
 {{ template "tablelinks" .Table }}

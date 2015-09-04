@@ -14,12 +14,14 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	ttext "text/template"
 	"time"
 
 	gorilla "github.com/gorilla/handlers"
+	"github.com/paulstuart/dbutil"
 )
 
 const (
@@ -35,6 +37,7 @@ var (
 	htmlTmpl    map[string]*template.Template
 	textTmpl    map[string]*ttext.Template
 	http_server string
+	baseURL     string
 	errorFile   *os.File
 	authCookie  string
 )
@@ -57,6 +60,83 @@ func RemoteHost(r *http.Request) string {
 		remote_addr = ip
 	}
 	return remote_addr
+}
+
+// for loading an object from an http post
+func objFromForm(obj interface{}, values map[string][]string) {
+	val := reflect.ValueOf(obj)
+	base := reflect.Indirect(val)
+	t := reflect.TypeOf(base.Interface())
+
+	for i := 0; i < t.NumField(); i++ {
+		f := t.Field(i)
+		b := base.Field(i)
+		if val, ok := values[f.Name]; ok {
+			switch b.Interface().(type) {
+			case string:
+				b.SetString(val[0])
+			case int:
+				i, _ := strconv.Atoi(val[0])
+				b.SetInt(int64(i))
+			case int64:
+				i, _ := strconv.ParseInt(val[0], 0, 64)
+				b.SetInt(i)
+			case uint:
+				i, _ := strconv.ParseUint(val[0], 0, 64)
+				b.SetUint(i)
+			case uint32:
+				i, _ := strconv.ParseUint(val[0], 0, 32)
+				b.SetUint(i)
+			case time.Time:
+				if len(val[0]) == 0 {
+					continue
+				}
+				l := date_layout
+				if len(val[0]) > len(date_layout) {
+					l = time_layout
+				}
+				if when, err := time.Parse(l, val[0]); err == nil {
+					v := reflect.ValueOf(when)
+					b.Set(v)
+				} else {
+					fmt.Println("TIME PARSE ERR:", err)
+				}
+			default:
+				fmt.Println("unhandled field type for:", f.Name, "type:", b.Type())
+			}
+		}
+	}
+}
+
+type Validator func(string) error
+
+func objPost(r *http.Request, o dbutil.DBObject, validators ...Validator) error {
+	r.ParseForm()
+	objFromForm(o, r.Form)
+	action := r.Form.Get("action")
+	user := currentUser(r)
+	o.ModifiedBy(user.ID, time.Now())
+	fmt.Println("POST OBJ:", o)
+	name := fmt.Sprintf("%v", reflect.TypeOf(o))
+	for _, v := range validators {
+		if err := v(action); err != nil {
+			log.Println("VALID ERR:", err)
+			return err
+		}
+	}
+	//dbDebug(true)
+	auditLog(user.ID, RemoteHost(r), action, name)
+	//dbDebug(false)
+	switch {
+	case action == "Add":
+		return dbAdd(o)
+	case action == "Update":
+		dbFindByID(o, r.FormValue(o.KeyField()))
+		return dbSave(o)
+	case action == "Delete":
+		return dbDelete(o)
+	}
+	return fmt.Errorf("Unknown action: %s", action)
 }
 
 func loadTemplates() {
@@ -88,6 +168,14 @@ func loadTemplates() {
 		t := ttext.New(name)
 		textTmpl[name] = ttext.Must(t.ParseFiles(file))
 	}
+}
+
+func setLinks(t *dbutil.Table, id int, path string, args ...int) {
+	t.SetLinks(id, pathPrefix+path, args...)
+}
+
+func setLinksWhen(t *dbutil.Table, fn dbutil.LinkFunc, id int, path string, args ...int) {
+	t.SetLinksWhen(fn, id, pathPrefix+path, args...)
 }
 
 // Creates a new file upload http request with optional extra params
@@ -148,7 +236,7 @@ func fixDate(d time.Time) string {
 	return d.Format(date_layout)
 }
 
-// render a template that inherits the "base" template
+// render an html template that inherits the "base" template
 func renderTemplate(w http.ResponseWriter, r *http.Request, tname string, data interface{}) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	name := string(tname + ".html")
@@ -158,7 +246,7 @@ func renderTemplate(w http.ResponseWriter, r *http.Request, tname string, data i
 	}
 }
 
-// render a template with no inheritence
+// render an html template with no inheritence
 func renderPlainTemplate(w http.ResponseWriter, r *http.Request, tname string, data interface{}) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	name := string(tname + ".html")
@@ -168,6 +256,7 @@ func renderPlainTemplate(w http.ResponseWriter, r *http.Request, tname string, d
 	}
 }
 
+// render a plaintext template with no inheritence (e.g., for scripts)
 func renderTextTemplate(w http.ResponseWriter, r *http.Request, tname string, data interface{}) {
 	w.Header().Set("Content-Type", "text/plain")
 	t := textTmpl[tname]
@@ -315,6 +404,20 @@ func authMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+func StripPrefix(prefix string, h http.Handler) http.Handler {
+	if prefix == "" {
+		return h
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if p := strings.TrimPrefix(r.URL.Path, prefix); len(p) < len(r.URL.Path) {
+			r.URL.Path = p
+			h.ServeHTTP(w, r)
+		} else {
+			http.NotFound(w, r)
+		}
+	})
+}
+
 func redirect(w http.ResponseWriter, r *http.Request, path string, status int) {
 	http.Redirect(w, r, pathPrefix+path, status)
 }
@@ -325,6 +428,10 @@ func notFound(w http.ResponseWriter, r *http.Request) {
 
 func goHome(w http.ResponseWriter, r *http.Request) {
 	redirect(w, r, "/", http.StatusMovedPermanently)
+}
+
+func badRequest(w http.ResponseWriter, err error) {
+	http.Error(w, err.Error(), http.StatusBadRequest)
 }
 
 func webServer(handlers []HFunc) {
@@ -372,6 +479,7 @@ func webServer(handlers []HFunc) {
 	}
 
 	http_server = fmt.Sprintf(":%d", cfg.Main.Port)
+	baseURL = fmt.Sprintf("http://%s:%d/%s", ip, cfg.Main.Port, pathPrefix)
 	fmt.Printf("serve up web: http://%s%s/\n", ip, http_server)
 	err = http.ListenAndServe(http_server, gorilla.CompressHandler(userMiddleware(gorilla.LoggingHandler(accessLog, http.DefaultServeMux))))
 	if err != nil {

@@ -29,6 +29,9 @@ $(document).ready(function() {
 {{end}}
 
 {{define "body"}}
+    {{ if .User.Admin }}
+    <h1><a href="{{.Common.Prefix}}/user/edit">Add User</a></h1>
+    {{ end }}
 <table id="example" class="userlist">
   <thead>
     <tr>

@@ -1,0 +1,89 @@
+{{define "head"}}<title>{{.Common.Title}}</title>{{end}}
+{{define "javascript"}}
+{{ if .Parts }}
+$(document).ready(function() {
+    var name = '{{.Parts.Name}}' || 'example';
+    table = $('#' + name).DataTable( {
+        "bInfo" : false,
+        "bPaginate": false,
+        "bLengthChange": false,
+        "bFilter": false,
+        "iDisplayLength": -1,
+        "order": [
+            {{ range .Parts.Sorting }} [ {{.Column}}, "{{ if .Decend }}Desc{{ else }}Asc{{ end }}" ],
+            {{ end }} ]
+        ,
+      "columnDefs": [
+               {{ range $key, $value := .Parts.Types }} { type: '{{$key}}', targets: {{$value}} },
+               {{ end }} ] 
+    });
+});
+{{ end }}
+{{end}}
+
+{{define "body"}}
+<div id="serverform" class="server">
+<form method="post" class="common" id="servo">
+    <fieldset>
+        <legend>RMA Return</legend>
+        <div class="field">
+            <label for="CarrierID">Carrier</label>
+            <select name="CarrierID" id="CarrierID">
+                {{ range .Carriers }}<option value="{{.CarrierID}}" {{if eq .CarrierID $.Return.CarrierID}}selected{{end}}>{{.Name}}</option>
+                {{ end }}
+            </select>
+        </div>
+        {{/*
+        */}}
+        {{ if .Part }}
+        <div class="field">
+            <label for="PartNumber">Part Number</label>
+            <input type="text" name="PartNumber" id="PartNumber" value="{{.Part.SKU.PartNumber}}" readonly/>
+        </div>
+        <div class="field">
+            <label for="Serial">Serial Number</label>
+            <input type="text" name="Serial" id="Serial" value="{{.Part.Serial}}" readonly/>
+        </div>
+        {{ end }}
+        <div class="field">
+            <label for="Tracking">Carrier Tracking Number</label>
+            <input type="text" name="Tracking" id="Tracking" value="{{.Return.Tracking}}"/>
+        </div>
+        <div class="field">
+            <label for="Sent">Date Sent</label>
+            <input type="text" name="Sent" id="Sent" value="{{.Return.Sent | fixDate }}"/>
+        </div>
+    </fieldset>
+
+{{ if and .Parts .Parts.Rows }}
+    <fieldset>
+        <legend>Parts</legend>
+    {{ template "tablelinks" .Parts }}
+    </fieldset>
+{{ end }}
+
+<input type="hidden" name="ReturnID"  value="{{.Return.ReturnID}}">
+<input type="hidden" name="RMAID"  value="{{.Return.RMAID}}">
+<input type="hidden" name="UID" value="{{.Common.User.ID}}">
+{{ if .Part }}
+<input type="hidden" name="PID" value="{{.Part.PID}}">
+{{ end }}
+<input type="button" value="Cancel"  onclick="javascript:window.history.go(-1)">
+{{ if .Common.User.Editor }}
+{{ if .Part }}
+<input type="submit" name="action" value="Add">
+{{ else }}
+{{ if eq .Return.ReturnID 0 }}
+<input type="submit" name="action" value="Add">
+{{ else }}
+<input type="submit" name="action" value="Update">
+<input type="submit" name="action" value="Delete">
+{{ end }}
+{{ end }}
+{{ else }}
+<div id="sorry">You must be logged in as an admin to modify this record</div>
+{{ end }}
+</form>
+</div>
+{{end}}
+

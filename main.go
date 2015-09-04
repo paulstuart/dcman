@@ -34,7 +34,10 @@ var (
 	systemLocation, _ = time.LoadLocation("Local")
 	pathPrefix        string
 	bannerText        string
-	cfg               = struct {
+	// ************** DELETE BEFORE COMMIT!!!!
+	sshUsername string = "pstuart"
+	sshPassword string = "drAwuPa7rUtR"
+	cfg                = struct {
 		Main    MainConfig
 		Backups BackupConfig
 		Jira    JiraConfig
@@ -141,7 +144,7 @@ func MyIp() string {
 }
 
 func auditLog(uid int64, ip, action, msg string) {
-	log.Println("IP:", ip)
+	//log.Println("IP:", ip)
 	dbExec("insert into audit_log (uid,ip,action,msg) values(?,?,?,?)", uid, ip, strings.ToLower(action), msg)
 }
 

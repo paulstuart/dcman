@@ -9,12 +9,12 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strconv"
 	"strings"
 	"time"
 
 	dbu "github.com/paulstuart/dbutil"
+	"github.com/paulstuart/dmijson"
 )
 
 type Fail struct {
@@ -46,11 +46,19 @@ type Totals struct {
 
 type Common struct {
 	Title, Prefix, Banner string
-	Heading               template.HTML
+	Heading               []template.HTML
 	Datacenters           []Datacenter
 	Current               Datacenter
 	User                  User
 	PXEBoot               bool
+}
+
+func (c *Common) AddHeadings(headings ...string) {
+	//log.Println("ADD HEADINGS:", headings)
+	for _, h := range headings {
+		//	log.Println("ADD HEADING:", h)
+		c.Heading = append(c.Heading, template.HTML(h))
+	}
 }
 
 type Summary struct {
@@ -88,6 +96,7 @@ const (
 
 var (
 	serverExportQuery string
+	ErrBlankHostname  = fmt.Errorf("hostname cannot be blank")
 )
 
 // skip the audit info
@@ -503,10 +512,6 @@ func VMFind(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-var (
-	ErrBlankHostname = fmt.Errorf("hostname cannot be blank")
-)
-
 func ServerEdit(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		var s Server
@@ -845,39 +850,122 @@ func RackEdit(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func RMAPage(w http.ResponseWriter, r *http.Request) {
+func RMAAdd(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
+		/*
+			for k, v := range r.Form {
+				log.Println("K:", k, "V:", v)
+			}
+		*/
+		pid := r.URL.Path
+		log.Println("**** RMA ADD ****** PID:", pid)
+		//log.Println("**** RMA FORM:", r.Form)
+		p := Part{}
+		if err := dbFindByID(&p, pid); err != nil {
+			log.Println("part err:", err, "PID:", pid)
+			notFound(w, r)
+			return
+		}
+		log.Println("**** part sid:", p.SID)
+		// see if we already have an RMA for the server
 		rma := RMA{}
-		r.ParseForm()
-		objFromForm(&rma, r.Form)
-		action := r.Form.Get("action")
-		var err error
-		switch {
-		case action == "Add":
-			_, err = dbObjectInsert(rma)
-		case action == "Update":
-			err = dbObjectUpdate(rma)
-		case action == "Delete":
-			err = dbObjectDelete(rma)
+		//dbDebug(true)
+		if err := objPost(r, &rma); err != nil {
+			log.Println("rma error:", err)
 		}
-		if err != nil {
-			log.Println("RMA", action, "** Error:", err)
-		} else {
-			user := currentUser(r)
-			auditLog(user.ID, RemoteHost(r), action, "rma")
+		////dbDebug(false)
+		log.Println("rma id:", rma.ID)
+		p.RMAID = rma.ID
+		if err := dbSave(&p); err != nil {
+			log.Println("part error:", err)
 		}
-		redirect(w, r, "/rmas", http.StatusSeeOther)
+		log.Println("part:", p)
+		redirect(w, r, "/rma/list", http.StatusSeeOther)
 	} else {
-		rma := RMA{Opened: time.Now()}
-		if len(r.URL.Path) > 0 {
-			if err := dbFindByID(&rma, r.URL.Path); err != nil {
+		log.Println("PATH:", r.URL.Path)
+		if len(r.URL.Path) == 0 {
+			notFound(w, r)
+			return
+		}
+		p := &Part{}
+		//dbDebug(true)
+		if err := dbFindByID(p, r.URL.Path); err != nil {
+			log.Println("PART ERR:", err)
+			notFound(w, r)
+			//	dbDebug(false)
+			return
+		}
+		var did int64
+		if dc := p.Datacenter(); dc != nil {
+			did = dc.ID
+		}
+		rma := RMA{
+			DID:    did,
+			Opened: time.Now(),
+		}
+		const q = "select distinct rma_id from rma_detail where date_closed < '1970-01-01' and sid=?"
+		ids, err := dbRow(q, p.SID)
+		if err == nil {
+			log.Println("rma_ids:", ids)
+			if len(ids) > 1 {
+				log.Println("too many matches:", ids)
 				notFound(w, r)
 				return
 			}
+			if len(ids) == 1 {
+				if p.RMAID, err = strconv.ParseInt(ids[0], 0, 64); err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				if err := dbSave(p); err != nil {
+					log.Println("part save err:", err)
+				}
+				redirect(w, r, "/rma/edit/"+ids[0], http.StatusSeeOther)
+				return
+			}
 		} else {
-			r.ParseForm()
-			var err error
-			if rma.SID, err = strconv.ParseInt(r.Form.Get("SID"), 0, 64); err != nil {
+			log.Println("rma_id err:", err)
+		}
+		//dbDebug(false)
+		log.Println("PART:", *p)
+		log.Println("PART NO:", p.PartNumber())
+		v, err := dbObjectList(Vendor{})
+		if err != nil {
+			log.Println("vendor object list error:", err)
+		}
+		data := struct {
+			Common
+			RMA     RMA
+			Part    *Part
+			Parts   *dbu.Table
+			Returns *dbu.Table
+			Vendors []Vendor
+		}{
+			Common:  NewCommon(r, fmt.Sprintf("RMA")),
+			RMA:     rma,
+			Part:    p,
+			Parts:   nil,
+			Returns: nil,
+			Vendors: v.([]Vendor),
+		}
+		renderTemplate(w, r, "rma", data)
+	}
+}
+
+func RMAEdit(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "POST" {
+		rma := RMA{}
+		if err := objPost(r, &rma); err != nil {
+			log.Println("rma error:", err)
+		}
+		redirect(w, r, "/rma/list", http.StatusSeeOther)
+	} else {
+		rma := RMA{
+			Opened: time.Now(),
+		}
+		log.Println("PATH:", r.URL.Path)
+		if len(r.URL.Path) > 0 {
+			if err := dbFindByID(&rma, r.URL.Path); err != nil {
 				notFound(w, r)
 				return
 			}
@@ -886,110 +974,301 @@ func RMAPage(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Println("vendor object list error:", err)
 		}
+		t, err := rma.Table()
+		if err != nil {
+			log.Println("rma table error:", err)
+		}
+		t.Name = "parts"
+		returns, err := rma.Returns()
+		if err != nil {
+			log.Println("returns table error:", err)
+		}
+		returns.Name = "returns"
+		p := Part{}
 		data := struct {
 			Common
 			RMA     RMA
+			Part    *Part
+			Parts   *dbu.Table
+			Returns *dbu.Table
 			Vendors []Vendor
 		}{
 			Common:  NewCommon(r, fmt.Sprintf("RMA")),
 			RMA:     rma,
+			Part:    &p,
+			Parts:   t,
+			Returns: returns,
 			Vendors: v.([]Vendor),
 		}
 		renderTemplate(w, r, "rma", data)
 	}
 }
 
+// rma_id|return_id|did|vid|pid|sid|user_id|date_opened|date_closed|vendor_name|rma_no|dc|part_no|serial_no|jira|dc_ticket|hostname|rack|ru|note|login|ts|action
+
 func RMAList(w http.ResponseWriter, r *http.Request) {
-	const cols = "id,sid,vid,hostname,rma_no,description,part_no,old_sn,new_sn,vendor_name,jira,tracking_no,dc_ticket,date_opened,date_sent,date_received,date_replaced,login"
-	const q = "select " + cols + " from rma_report"
+	const q = "select * from rma_report"
 	table, err := dbTable(q)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
-	table.Hide(0, 1, 2)
-	setLinks(table, 3, "/server/edit/%s", 1)
-	setLinks(table, 4, "/rma/%s", 0)
-	setLinks(table, 9, "/vendor/edit/%s", 2)
-	table.Adjustment(isBlank, 4)
-	table.Adjustment(trimDate, 13, 14, 15, 16)
+	table.Adjustment(isBlank, 10)
+	table.Hide(0, 1, 2, 3, 4, 5, 6)
+	//setLinks(table, 3, "/server/edit/%s", 1)
+	setLinks(table, 10, "/rma/edit/%s", 0)
+	//setLinks(table, 9, "/vendor/edit/%s", 2)
+	table.Adjustment(trimDate, 7, 8)
 	renderTabular(w, r, table, "RMA Report")
 }
 
+func RMAReturnAdd(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "POST" {
+		r.ParseForm()
+		ship := Return{}
+		objFromForm(&ship, r.Form)
+		action := r.Form.Get("action")
+		pidstr := r.Form.Get("PID")
+		pid, err := strconv.ParseInt(pidstr, 0, 64)
+		if err != nil {
+			log.Println("bad pid:", pidstr, "err:", err)
+		}
+		user := currentUser(r)
+		ship.ModifiedBy(user.ID, time.Now())
+
+		auditLog(user.ID, RemoteHost(r), action, "shipment")
+		//dbDebug(false)
+		switch {
+		case action == "Add" && pid > 0 && ship.ReturnID > 0:
+			sent := &Sent{ship.ReturnID, pid}
+			if sent.Unsent() {
+				dbAdd(sent)
+			}
+		case action == "Add" && pid > 0:
+			dbAdd(&ship)
+			sent := &Sent{ship.ReturnID, pid}
+			if sent.Unsent() {
+				dbAdd(sent)
+			}
+		case action == "Update":
+			dbFindByID(&ship, r.FormValue(ship.KeyField()))
+			dbSave(&ship)
+		case action == "Delete":
+			dbDelete(&ship)
+		}
+		log.Println("SHIP:", ship)
+		/*
+			if err := dbAdd(&sent); err != nil {
+				log.Println("sent add err:", err)
+			}
+		*/
+		var url string
+		if ship.RMAID > 0 {
+			url = fmt.Sprintf("/rma/edit/%d", ship.RMAID)
+		} else {
+			url = "/rma/list"
+		}
+		redirect(w, r, url, http.StatusSeeOther)
+	} else {
+		p := Part{}
+		log.Println("RETURN ADD PATH:", r.URL.Path)
+		bits := strings.Split(r.URL.Path, "/")
+		if len(bits) < 1 {
+			log.Println("BAD PATH:", r.URL.Path)
+			notFound(w, r)
+			return
+		}
+		if err := dbFindByID(&p, bits[0]); err != nil {
+			log.Println("BAD PID:", bits[0], "ERR:", err)
+			notFound(w, r)
+			return
+		}
+		ship := Return{RMAID: p.RMAID, Sent: time.Now()}
+		if len(bits) > 1 && len(bits[1]) > 0 {
+			if err := dbFindByID(&ship, bits[1]); err != nil {
+				log.Println("BAD PID:", bits[1], "ERR:", err)
+				notFound(w, r)
+				return
+			}
+			sent := Sent{ship.ReturnID, p.PID}
+			if sent.Unsent() {
+				if err := dbAdd(&sent); err != nil {
+					log.Println("db add err:", err)
+				}
+			}
+			http.Redirect(w, r, r.Referer(), http.StatusSeeOther)
+			return
+		}
+
+		// find other shipments associated w/ rma
+		const q = "select distinct return_id from rma_returns where rma_id=?"
+		ids, err := dbRow(q, p.RMAID)
+		if err != nil {
+			log.Println("ids err:", err)
+		}
+		if len(ids) == 1 {
+			if err := dbFindByID(&ship, ids[0]); err != nil {
+				log.Println("BAD PID ??:", ids[0], "ERR:", err)
+				return
+			}
+		}
+		/*
+			return_id|rma_id|cr_id|tracking_no|user_id|date_sent|pid|part_no|serial_no
+			1|1|2|fxid|1|2015-09-01 00:00:00|12|M393B2G70BH0-YH9|13A466B4
+		*/
+		const q2 = "select part_no,serial_no from rma_returned where return_id=?"
+		parts, _ := dbTable(q2, ship.ReturnID)
+		data := struct {
+			Common
+			Return   Return
+			Part     *Part
+			Parts    *dbu.Table
+			Carriers []Carrier
+		}{
+			Common:   NewCommon(r, "RMA Returns"),
+			Return:   ship,
+			Part:     &p,
+			Parts:    parts,
+			Carriers: carriers(),
+		}
+		renderTemplate(w, r, "shipment", data)
+	}
+}
+
+func RMAReturn(w http.ResponseWriter, r *http.Request) {
+	ship := Return{}
+	if r.Method == "POST" {
+		if err := objPost(r, &ship); err != nil {
+			log.Println("shipment error:", err)
+		}
+		log.Println("SHIP:", ship)
+		var url string
+		if ship.RMAID > 0 {
+			url = fmt.Sprintf("/rma/edit/%d", ship.RMAID)
+		} else {
+			url = "/rma/list"
+		}
+		redirect(w, r, url, http.StatusSeeOther)
+	} else {
+		log.Println("RETURN PATH:", r.URL.Path)
+		if len(r.URL.Path) == 0 {
+			log.Println("EMPTY RETURN PATH")
+			notFound(w, r)
+			return
+		}
+		if err := dbFindByID(&ship, r.URL.Path); err != nil {
+			log.Println("BAD PID:", r.URL.Path, "ERR:", err)
+			notFound(w, r)
+			return
+		}
+		const q2 = "select part_no,serial_no from rma_returned where return_id=?"
+		parts, _ := dbTable(q2, ship.ReturnID)
+		data := struct {
+			Common
+			Return   Return
+			Carriers []Carrier
+			Parts    *dbu.Table
+			Part     *Part
+		}{
+			Common:   NewCommon(r, "RMA Return"),
+			Return:   ship,
+			Carriers: carriers(),
+			Parts:    parts,
+			Part:     nil,
+		}
+		renderTemplate(w, r, "shipment", data)
+	}
+}
+
+func RMAReceived(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "POST" {
+		r.ParseForm()
+		pn := r.Form.Get("PartNumber")
+		sn := r.Form.Get("SerialNumber")
+		//		rmaid := r.Form.Get("RMAID")
+		rma := RMA{}
+		if err := dbFindByID(&rma, r.URL.Path); err != nil {
+			log.Println("BAD RMA ID:", r.URL.Path, "ERR:", err)
+			notFound(w, r)
+			return
+		}
+		part, err := AddDevicePart(rma.DID, 0, "", pn, "", sn, "", "")
+		if err != nil {
+			log.Println("add device part err:", err)
+		}
+		log.Println("RMA ID URL:", r.URL.Path)
+		log.Println("RMA:", rma)
+		u := currentUser(r)
+		rec := Received{
+			RMAID: rma.ID,
+			PID:   part.PID,
+			TS:    time.Now(),
+			UID:   u.ID,
+		}
+		if err := dbAdd(&rec); err != nil {
+			log.Println("dbadd rec err:", err)
+		}
+		url := fmt.Sprintf("/rma/edit/%s", r.URL.Path)
+		redirect(w, r, url, http.StatusSeeOther)
+	} else {
+		if len(r.URL.Path) == 0 {
+			log.Println("EMPTY RECEIVE PATH")
+			notFound(w, r)
+			return
+		}
+		log.Println("RECEIVE PATH:", r.URL.Path)
+		rma := RMA{}
+		if err := dbFindByID(&rma, r.URL.Path); err != nil {
+			log.Println("BAD RMA ID:", r.URL.Path, "ERR:", err)
+			notFound(w, r)
+			return
+		}
+		rec := Received{}
+		data := struct {
+			Common
+			Received Received
+			RMA      RMA
+		}{
+			Common:   NewCommon(r, "RMA Received"),
+			Received: rec,
+			RMA:      rma,
+		}
+		renderTemplate(w, r, "received", data)
+	}
+}
+
 func StockList(w http.ResponseWriter, r *http.Request) {
-	const cols = "*"
-	const q = "select " + cols + " from stock_report"
+	const q = "select * from pview where rma_id=0 and sid=0"
 	table, err := dbTable(q)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
 	/*
-		table.Hide(0, 1, 2)
-		setLinks(table, 3, "/server/edit/%s", 1)
-		setLinks(table, 4, "/rma/%s", 0)
-		setLinks(table, 9, "/vendor/edit/%s", 2)
-		table.Adjustment(isBlank, 4)
-		table.Adjustment(trimDate, 13, 14, 15, 16)
-
-		dc|amount|part_no|description|sn|vendor|mfgr|login|modified|kid|pid|vid|did
-		AMS|123|iSSD123x|ssd drive|whatever|SuperMicro|Intel|pstuart|2015-08-07 23:27:26|1|1|1|1
-		k
+		table.Adjustment(isBlank, 10)
+		table.Hide(0, 1, 2, 3, 4, 5, 6)
+		//setLinks(table, 3, "/server/edit/%s", 1)
+		setLinks(table, 10, "/rma/edit/%s", 0)
+		//setLinks(table, 9, "/vendor/edit/%s", 2)
+		table.Adjustment(trimDate, 7, 8)
 	*/
-	setLinks(table, 1, "/stock/edit/%s", 9)
-	setLinks(table, 2, "/part/edit/%s", 10)
-	setLinks(table, 5, "/vendor/edit/%s", 11)
-	table.Hide(9, 10, 11, 12)
 	renderTabular(w, r, table, "Stock Report")
 }
 
-type Validator func(string) error
-
-//func objPost(r *http.Request, o dbu.DBObject, validators ...func() error) error {
-func objPost(r *http.Request, o dbu.DBObject, validators ...Validator) error {
-	r.ParseForm()
-	objFromForm(o, r.Form)
-	action := r.Form.Get("action")
-	user := currentUser(r)
-	o.ModifiedBy(user.ID, time.Now())
-	fmt.Println("POST OBJ:", o)
-	name := fmt.Sprintf("%v", reflect.TypeOf(o))
-	for _, v := range validators {
-		if err := v(action); err != nil {
-			log.Println("VALID ERR:", err)
-			return err
-		}
-	}
-	//dbDebug(true)
-	auditLog(user.ID, RemoteHost(r), action, name)
-	//dbDebug(false)
-	switch {
-	case action == "Add":
-		return dbAdd(o)
-	case action == "Update":
-		dbFindByID(o, r.FormValue(o.KeyField()))
-		return dbSave(o)
-	case action == "Delete":
-		return dbDelete(o)
-	}
-	return fmt.Errorf("Unknown action: %s", action)
-}
-
-func StockEdit(w http.ResponseWriter, r *http.Request) {
-	s := &Stock{}
+func MfgrEdit(w http.ResponseWriter, r *http.Request) {
+	m := &Manufacturer{}
 	if r.Method == "POST" {
-		if err := objPost(r, s); err != nil {
-			log.Println("stock error:", err)
+		if err := objPost(r, m); err != nil {
+			log.Println("mfgr edit error:", err)
 		}
-		//auditLog(user.ID, remote_addr, action, v.Name)
-		redirect(w, r, "/stock/list", http.StatusSeeOther)
+		redirect(w, r, "/mfgr/list", http.StatusSeeOther)
 	} else {
-		data, err := s.PageData(r)
+		data, err := m.PageData(r)
 		if err != nil {
 			notFound(w, r)
 			return
 		}
-		renderTemplate(w, r, "stock", data)
+		renderTemplate(w, r, "mfgr", data)
 	}
 }
 
@@ -997,7 +1276,7 @@ func PartEdit(w http.ResponseWriter, r *http.Request) {
 	s := &Part{}
 	if r.Method == "POST" {
 		if err := objPost(r, s); err != nil {
-			log.Println("part error:", err)
+			log.Println("part edit error:", err)
 		}
 		//auditLog(user.ID, remote_addr, action, v.Name)
 		redirect(w, r, "/part/list", http.StatusSeeOther)
@@ -1011,10 +1290,157 @@ func PartEdit(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func PartList(w http.ResponseWriter, r *http.Request) {
-	const cols = "pid,mid,user_id,description,part_no,mfgr,login,modified"
+func SKUEdit(w http.ResponseWriter, r *http.Request) {
+	s := &SKU{}
+	if r.Method == "POST" {
+		if err := objPost(r, s); err != nil {
+			log.Println("part edit error:", err)
+		}
+		//auditLog(user.ID, remote_addr, action, v.Name)
+		redirect(w, r, "/part/list", http.StatusSeeOther)
+	} else {
+		data, err := s.PageData(r)
+		if err != nil {
+			notFound(w, r)
+			return
+		}
+		renderTemplate(w, r, "sku", data)
+	}
+}
 
-	const q = "select " + cols + " from pview"
+func ServerParts(w http.ResponseWriter, r *http.Request) {
+	//const cols = "pid,mid,user_id,description,part_no,mfgr,login,modified"
+	const cols = "*"
+	const q = "select " + cols + " from pview where sid=?"
+	id := r.URL.Path
+	s := Server{}
+	if err := dbFindByID(&s, id); err != nil {
+		notFound(w, r)
+		return
+	}
+	table, err := dbTable(q, id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	/*
+		pid|vid|sid|did|kid|mid|rma_id|user_id|serial_no|part_no|description|mfgr|location|login|modified
+		1|1|0|1|1|1|0|1|fakesn|iSSD123x|ssd drive|Intel Corporation|somewhere|pstuart|2015-08-26 20:13:55
+
+		pid|vid|sid|did|kid|mid|rma_id|user_id|dc|serial_no|part_no|description|mfgr|location|login|modified
+		1|1|0|1|1|1|0|1|AMS|fakesn|iSSD123x|ssd drive|Intel Corporation|somewhere|pstuart|2015-08-26 20:13:55
+
+	*/
+	table.Hide(0, 1, 2, 3, 4, 5, 6, 7, 8)
+	table.Adjustment(isBlank, 9)
+	//table.Adjustment(trimTime, 7)
+	setLinks(table, 9, "/part/edit/%s", 0)
+	setLinks(table, 10, "/partlist/edit/%s", 4)
+	setLinks(table, 12, "/mfgr/edit/%s", 5)
+	heading := []string{"Part List for " + s.Hostname}
+	if len(table.Rows) == 0 {
+		heading = append(heading, fmt.Sprintf(`<a href="%s/api/dmidecode/%s">Find Parts</a>`, pathPrefix, id))
+	}
+	renderTabular(w, r, table, "Parts for server:"+s.Hostname, heading...)
+}
+
+func PartUse(w http.ResponseWriter, r *http.Request) {
+	/*
+		const cols = "*"
+		const q = "select " + cols + " from part_summary"
+	*/
+	// pid|vid|sid|did|kid|mid|rma_id|user_id|dc|serial_no|part_no|description|mfgr|location|login|modified
+	const q = "select * from pview where rma_id=0 and sid=0"
+	table, err := dbTable(q)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	table.Hide(0, 1, 2, 3, 4, 5, 6, 7, 13)
+	setLinks(table, 9, "/part/edit/%s", 0)
+	setLinks(table, 10, "/partlist/edit/%s", 4)
+	table.Adjustment(trimTime, 15)
+	//heading := fmt.Sprintf(`Part List <a href="%s/part/edit/">Add</a>`, pathPrefix)
+	heading := "Part Report"
+	renderTabular(w, r, table, heading)
+}
+
+func PartTotals(w http.ResponseWriter, r *http.Request) {
+	//1	1	AMS	2	iSSD123x	ssd drive
+	const q = "select * from part_totals"
+	table, err := dbTable(q)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	table.Hide(0, 1)
+	/*
+		setLinks(table, 9, "/part/edit/%s", 0)
+		setLinks(table, 10, "/partlist/edit/%s", 4)
+		table.Adjustment(trimTime, 15)
+	*/
+	//heading := fmt.Sprintf(`Part List <a href="%s/part/edit/">Add</a>`, pathPrefix)
+	heading := "Part Totals"
+	renderTabular(w, r, table, heading)
+}
+
+func partTable(dc, used, kid string) (*dbu.Table, error) {
+	switch {
+	case dc == "all" && len(kid) > 0 && (used == "used" || used == "free"):
+		return dbTable("select * from partuse where used=? and kid=?", used, kid)
+	case dc == "all" && len(kid) > 0:
+		return dbTable("select * from partuse where kid=?", used, kid)
+	case dc == "all" && (used == "used" || used == "free"):
+		return dbTable("select * from partuse where used=?", used)
+	case dc == "all":
+		return dbTable("select * from partuse")
+	case len(kid) > 0 && (used == "used" || used == "free"):
+		return dbTable("select * from partuse where used=? and kid=? and dc=?", used, kid, dc)
+	case len(kid) > 0 && used == "all":
+		return dbTable("select * from partuse where kid=? and dc=?", kid, dc)
+	case len(kid) > 0:
+		return dbTable("select * from partuse where kid=? and dc=?", kid, dc)
+	case (used == "used" || used == "free"):
+		return dbTable("select * from partuse where used=? and dc=?", used, dc)
+	case used == "all":
+		return dbTable("select * from partuse where dc=?", dc)
+	}
+	return nil, fmt.Errorf("not found - dc:%s used:%s kid:%s", dc, used, kid)
+}
+
+// part/list/{{DC}|all}/{used|free|all}/{PID}}
+func PartList(w http.ResponseWriter, r *http.Request) {
+	bits := strings.Split(r.URL.Path, "/")
+	if len(bits) < 2 {
+		notFound(w, r)
+		return
+	}
+	if len(bits) == 2 {
+		bits = append(bits, "")
+	}
+	table, err := partTable(bits[0], bits[1], bits[2])
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	/*
+		dc|pid|sid|did|kid|mid|user_id|serial_no|part_no|description|mfgr|location|login|modified|id|rack|ru|hostname|used
+		AMS|1|0|1|1|1|1|fakesn|iSSD123x|ssd drive|Intel Corporation|somewhere|pstuart|2015-08-15 18:52:23|||||free
+	*/
+	table.Hide(1, 2, 3, 4, 5, 6, 14)
+	setLinks(table, 7, "/part/edit/%s", 1)
+	setLinks(table, 8, "/sku/edit/%s", 4)
+	/*
+		table.Adjustment(trimTime, 7)
+		setLinks(table, 5, "/mfgr/edit/%s", 1)
+	*/
+	heading := fmt.Sprintf(`Part List <a href="%s/part/edit/">Add</a>`, pathPrefix)
+	renderTabular(w, r, table, heading)
+}
+
+func SKUList(w http.ResponseWriter, r *http.Request) {
+	const cols = "*"
+	const q = "select " + cols + " from skuview"
 	table, err := dbTable(q)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
@@ -1022,10 +1448,14 @@ func PartList(w http.ResponseWriter, r *http.Request) {
 	}
 	table.Hide(0, 1, 2)
 	table.Adjustment(trimTime, 7)
-	setLinks(table, 4, "/part/edit/%s", 0)
+	setLinks(table, 3, "/sku/edit/%s", 0)
 	setLinks(table, 5, "/mfgr/edit/%s", 1)
-	heading := fmt.Sprintf(`Part List <a href="%s/part/edit/">Add</a>`, pathPrefix)
-	renderTabular(w, r, table, heading)
+	title := "SKU List"
+	heading := []string{title}
+	if u := currentUser(r); u.Editor() {
+		heading = append(heading, fmt.Sprintf(`<a href="%s/sku/edit/">Add</a>`, pathPrefix))
+	}
+	renderTabular(w, r, table, title, heading...)
 }
 
 func VendorList(w http.ResponseWriter, r *http.Request) {
@@ -1041,7 +1471,7 @@ func VendorList(w http.ResponseWriter, r *http.Request) {
 	table.Adjustment(userLogin, 11)
 	setLinks(table, 1, "/vendor/edit/%s", 0)
 	heading := fmt.Sprintf(`Vendor List <a href="%s/vendor/edit/">Add</a>`, pathPrefix)
-	renderTabular(w, r, table, heading)
+	renderTabular(w, r, table, "Vendor List", heading)
 }
 
 func VendorEdit(w http.ResponseWriter, r *http.Request) {
@@ -1120,7 +1550,7 @@ func ShowRacks(w http.ResponseWriter, r *http.Request, bits ...string) {
 	}
 	if rack.ID > 0 {
 		heading := fmt.Sprintf(`Rack <a href="%s/rack/edit/%d">%d</a>`, cfg.Main.Prefix, rack.ID, rack.Label)
-		data.Common.Heading = template.HTML(heading)
+		data.Common.AddHeadings(heading)
 	}
 	ShowListing(w, r, data)
 }
@@ -1490,7 +1920,7 @@ func DCList(w http.ResponseWriter, r *http.Request) {
 	table.Hide(0)
 	setLinks(table, 1, "/dc/edit/%s", 0)
 	common := NewCommon(r, "Datacenters")
-	common.Heading = template.HTML(fmt.Sprintf(`Datacenters <a href="%s/dc/edit/">Add</a>`, pathPrefix))
+	common.AddHeadings(fmt.Sprintf(`Datacenters <a href="%s/dc/edit/">Add</a>`, pathPrefix))
 	data := Tabular{
 		Common: common,
 		Table:  table,
@@ -1574,10 +2004,6 @@ func ServerDupes(w http.ResponseWriter, r *http.Request) {
 	ShowListing(w, r, data)
 }
 
-func setLinks(t *dbu.Table, id int, path string, args ...int) {
-	t.SetLinks(id, pathPrefix+path, args...)
-}
-
 func ShowListing(w http.ResponseWriter, r *http.Request, t Tabular) {
 	t.Table.Hide(0)
 	setLinks(t.Table, 1, "/rack/view/%s", 1)
@@ -1591,14 +2017,12 @@ func ShowListing(w http.ResponseWriter, r *http.Request, t Tabular) {
 	renderTemplate(w, r, "table", t)
 }
 
-func renderTabular(w http.ResponseWriter, r *http.Request, table *dbu.Table, title string) {
+func renderTabular(w http.ResponseWriter, r *http.Request, table *dbu.Table, title string, heading ...string) {
 	data := Tabular{
 		Common: NewCommon(r, title),
 		Table:  table,
 	}
-	if len(title) > 0 {
-		data.Common.Heading = template.HTML(title)
-	}
+	data.Common.AddHeadings(heading...)
 	renderTemplate(w, r, "table", data)
 }
 
@@ -1614,7 +2038,7 @@ func VlansPage(w http.ResponseWriter, r *http.Request) {
 		Common: NewCommon(r, "VLANS"),
 		Table:  table,
 	}
-	data.Common.Heading = template.HTML(fmt.Sprintf(`Internal VLANs <a href=%s/vlan/edit/">(add)</a>`, pathPrefix))
+	data.Common.AddHeadings(fmt.Sprintf(`Internal VLANs <a href=%s/vlan/edit/">(add)</a>`, pathPrefix))
 	renderTemplate(w, r, "table", data)
 }
 
@@ -2024,6 +2448,12 @@ func SettingsHandler(w http.ResponseWriter, r *http.Request) {
 		} else {
 			cfg.Main.ReadOnly = false
 		}
+		u := r.FormValue("ssh_user")
+		p := r.FormValue("ssh_pass")
+		if len(u) > 0 && len(p) > 0 {
+			sshUsername = u
+			sshPassword = p
+		}
 		redirect(w, r, "/", http.StatusSeeOther)
 	} else {
 		common := NewCommon(r, "Edit System Settings")
@@ -2031,9 +2461,11 @@ func SettingsHandler(w http.ResponseWriter, r *http.Request) {
 		data := struct {
 			Common
 			ReadOnly bool
+			SSHUser  string
 		}{
 			Common:   common,
 			ReadOnly: cfg.Main.ReadOnly,
+			SSHUser:  sshUsername,
 		}
 		renderTemplate(w, r, "banner", data)
 	}
@@ -2058,7 +2490,7 @@ func APIAudit(w http.ResponseWriter, r *http.Request) {
 			log.Println("AUDIT ERR:", err)
 		}
 	} else if r.Method == "GET" {
-		data := struct{ URL string }{"http://" + ip + http_server + r.URL.Path}
+		data := struct{ URL string }{baseURL + r.URL.Path}
 		renderTextTemplate(w, r, "audit.sh", data)
 	}
 }
@@ -2167,13 +2599,103 @@ func IPMICredentialsSet(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func ServerDmiDecode(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Path[len(pathPrefix+"/api/dmidecode/"):]
+	log.Println("LOOK FOR SID:", path)
+	id, err := strconv.ParseInt(path, 0, 64)
+	if err != nil && len(path) > 0 {
+		log.Println("BAD INT:", err)
+		notFound(w, r)
+		return
+	}
+
+	if r.Method == "POST" {
+		if id == 0 {
+			badRequest(w, fmt.Errorf("id is 0"))
+			return
+		}
+		log.Println("DMI SID:", id)
+		decoder := json.NewDecoder(r.Body)
+		var d dmijson.DMI
+		if err := decoder.Decode(&d); err != nil {
+			log.Println("decode error:", err)
+			badRequest(w, err)
+			return
+		}
+		if err := ServerImportDMI(id, d); err != nil {
+			badRequest(w, err)
+			return
+		}
+		w.Header().Set("Content-Type", "text/plain")
+		fmt.Fprintln(w, "")
+
+	} else {
+		base := "http://" + ip + http_server + pathPrefix + "/api/dmidecode/"
+		cmd := fmt.Sprintf(`curl -s "%s" | sudo DECODE=true bash | curl -X POST -d@- "%s%d"`, base+"script", base, id)
+		log.Println("CMD:", cmd)
+		s := Server{}
+		if err := dbFindByID(&s, id); err != nil {
+			log.Println("DMI JSON SERVER ERR:", err)
+			notFound(w, r)
+			return
+		}
+		if err := sshCmd(s.IPInternal, sshUsername, sshPassword, cmd, 60); err != nil {
+			badRequest(w, err)
+			return
+		}
+		redirect(w, r, "/server/parts/"+path, http.StatusSeeOther)
+	}
+}
+
+func ServerDecodeScript(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/plain")
+	if s, err := dmijson.Script(); err != nil {
+		log.Println(err)
+	} else {
+		fmt.Fprintln(w, s)
+	}
+}
+
+func ApiScript(w http.ResponseWriter, r *http.Request) {
+	u := currentUser(r)
+	skip := len(pathPrefix + "/api/script/")
+	script := r.URL.Path[skip:]
+	if r.Method == "POST" {
+		//data := struct{ BaseURL string, UserID int64 }{baseURL, u.UID}
+		data := struct {
+			BaseURL string
+			UserID  int64
+		}{
+			BaseURL: baseURL,
+			UserID:  u.ID,
+		}
+		//data := struct{ BaseURL string }{baseURL}
+		//data := struct{ UserID int64 }{u.UID}
+
+		// TODO: validate valid filename and exists!!
+		renderTextTemplate(w, r, script, data)
+	}
+}
+
+/*
+func DmiJson(w http.ResponseWriter, r *http.Request) {
+	base := "http://" + ip + http_server + "/" + pathPrefix + "api/dmidecode/"
+	data := struct{ Script, Callback string }{base + "script", base}
+	renderTextTemplate(w, r, "dmidecode.sh", data)
+}
+*/
+
 var webHandlers = []HFunc{
 	{"/favicon.ico", FaviconPage},
 	{"/static/", StaticPage},
 	{"/api/audit", APIAudit},
 	{"/api/credentials/get", IPMICredentialsGet},
 	{"/api/credentials/set", IPMICredentialsSet},
+	{"/api/dmidecode/script", ServerDecodeScript},
+	{"/api/dmidecode/", ServerDmiDecode},
+	//{"/api/dmijson/", DmiJson},
 	{"/api/pings", BulkPings},
+	{"/api/script/", ApiScript},
 	{"/api/upload", APIUpload},
 	{"/api/update", APIUpdate},
 	{"/audit/log", auditPage},
@@ -2202,6 +2724,7 @@ var webHandlers = []HFunc{
 	{"/loginfail", loginFailHandler},
 	{"/login", LoginHandler},
 	{"/logout", logoutPage},
+	{"/mfgr/edit/", MfgrEdit},
 	{"/network/add/", NetworkAdd},
 	{"/network/audit/", NetworkAudit},
 	{"/network/devices", NetworkDevices},
@@ -2209,7 +2732,9 @@ var webHandlers = []HFunc{
 	{"/network/next/", NetworkNext},
 	{"/network/vlans", VlansPage},
 	{"/part/edit/", PartEdit},
-	{"/part/list", PartList},
+	{"/part/list/", PartList},
+	{"/part/use/", PartUse},
+	{"/part/totals", PartTotals},
 	{"/pdu/edit", PDUEdit},
 	{"/ping", pingPage},
 	{"/profile/view", ProfileView},
@@ -2224,18 +2749,25 @@ var webHandlers = []HFunc{
 	{"/rack/zone/", RackZone},
 	{"/reload", reloadPage},
 	{"/search", SearchPage},
-	{"/rmas", RMAList},
-	{"/rma/", RMAPage},
+	{"/rma/list", RMAList},
+	{"/rma/add/", RMAAdd},
+	{"/rma/edit/", RMAEdit},
+	{"/rma/received/", RMAReceived},
+	{"/rma/return/add/", RMAReturnAdd},
+	{"/rma/return/", RMAReturn},
 	{"/server/add/", ServerEdit},
 	{"/server/audit/", ServerAudit},
 	{"/server/dupes", ServerDupes},
 	{"/server/edit/", ServerEdit},
 	{"/server/find", ServerFind},
+	{"/server/parts/", ServerParts},
 	{"/server/reimage", ServerReimage},
 	{"/server/replace/", ServerReplace},
 	{"/server/vms", VMListing},
 	{"/settings", SettingsHandler},
-	{"/stock/edit/", StockEdit},
+	{"/sku/edit/", SKUEdit},
+	{"/sku/list", SKUList},
+	//{"/stock/edit/", StockEdit},
 	{"/stock/list", StockList},
 	{"/user/add", UserEdit},
 	{"/user/edit/", UserEdit},

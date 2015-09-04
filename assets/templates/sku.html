@@ -1,0 +1,39 @@
+{{define "head"}}<title>{{.Common.Title}}</title>{{end}}
+{{define "javascript"}}
+{{end}}
+{{define "body"}}
+<div id="partform">
+<form method="post" class="common" id="servo">
+    <fieldset>
+        <legend>SKU Edit</legend>
+        <div class="field">
+            <label for="Manufacturer">Manufacturer</label>
+            <input type="text" name="Manufacturer" id="Manufacturer" value="{{.SKU.Manufacturer.Name}}" readonly/>
+        </div>
+        <div class="field">
+            <label for="PartNumber">Part Number</label>
+            <input type="text" name="PartNumber" id="PartNumber" value="{{.SKU.PartNumber}}" pattern=".+" required/>
+        </div>
+        <div class="field">
+            <label for="Description">Description</label>
+             <input type="text" name="Description" value="{{.SKU.Description}}" size="40"/>
+        </div>
+    </fieldset>
+
+<input type="hidden" name="KID" value="{{.SKU.KID}}">
+<input type="hidden" name="UID" value="{{.Common.User.ID}}">
+<input type="button" value="Cancel"  onclick="javascript:window.history.go(-1)">
+{{ if .Common.User.Editor }}
+{{ if eq .SKU.KID 0 }}
+<input type="submit" name="action" value="Add">
+{{ else }}
+<input type="submit" name="action" value="Update">
+<input type="submit" name="action" value="Delete">
+{{ end }}
+{{ else }}
+<div id="sorry">You must be logged in as an admin to modify this record</div>
+{{ end }}
+</form>
+</div>
+{{end}}
+

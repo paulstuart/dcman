@@ -1,0 +1,40 @@
+{{define "head"}}<title>{{.Common.Title}}</title>{{end}}
+{{define "javascript"}}
+{{end}}
+
+{{define "body"}}
+<div id="serverform" class="server">
+<form method="post" class="common" id="servo">
+    <fieldset>
+        <legend>Receive RMA Part</legend>
+        <div class="field">
+            <label for="RMANumber">RMA Number</label>
+            <input type="text" name="RMANumber" id="RMANumber" value="{{.RMA.Number}}" readonly/>
+        </div>
+        <div class="field">
+            <label for="PartNumber">Part Number</label>
+            <input type="text" name="PartNumber" id="PartNumber" value="" />
+        </div>
+        <div class="field">
+            <label for="SerialNumber">Serial Number</label>
+            <input type="text" name="SerialNumber" id="SerialNumber" value="" />
+        </div>
+    </fieldset>
+
+
+<input type="hidden" name="RMAID"  value="{{.RMA.ID}}">
+<input type="hidden" name="UID" value="{{.Common.User.ID}}">
+<input type="button" value="Cancel"  onclick="javascript:window.history.go(-1)">
+{{ if .Common.User.Editor }}
+<input type="submit" name="action" value="Add">
+{{/*
+<input type="submit" name="action" value="Update">
+<input type="submit" name="action" value="Delete">
+*/}}
+{{ else }}
+<div id="sorry">You must be logged in as an admin to modify this record</div>
+{{ end }}
+</form>
+</div>
+{{end}}
+

@@ -34,7 +34,7 @@
             <li><a href="{{.Common.Prefix}}/rack/add">Add Rack</a></li>
             <li><a href="{{.Common.Prefix}}/server/dupes">Duplicate Servers</a></li>
             {{ end }}
-            <li><a href="{{$.Common.Prefix}}/rmas">RMAs</a></li>
+            <li><a href="{{$.Common.Prefix}}/rma/list">RMAs</a></li>
         </ul>
       </li>
       <li><a>VMs</a>
@@ -79,13 +79,11 @@
     {{ if .Common.User.Admin }}
       <li><a>Admin</a>
         <ul>
-            <li><a href="{{$.Common.Prefix}}/dc/list">List Datacenters</a></li>
-            <li><a href="{{$.Common.Prefix}}/dc/edit/">Add Datacenter</a></li>
-            <li><a href="{{$.Common.Prefix}}/user/list">List Users</a></li>
-            <li><a href="{{$.Common.Prefix}}/user/add">Add User</a></li>
-            <li><a href="{{$.Common.Prefix}}/part/list">Part List</a></li>
+            <li><a href="{{$.Common.Prefix}}/dc/list">Datacenters</a></li>
+            <li><a href="{{$.Common.Prefix}}/part/use/">Inventory</a></li>
+            <li><a href="{{$.Common.Prefix}}/sku/list">Part Numbers</a></li>
             <li><a href="{{$.Common.Prefix}}/vendor/list">Vendor List</a></li>
-            <li><a href="{{$.Common.Prefix}}/stock/list">Stock List</a></li>
+            <li><a href="{{$.Common.Prefix}}/user/list">List Users</a></li>
             <li><a href="{{$.Common.Prefix}}/settings">System Settings</a></li>
             <li><a href="{{$.Common.Prefix}}/audit/log">Audit Log</a></li>
         </ul>
@@ -137,7 +135,7 @@
 {{end}}
 
 {{define "tablelinks"}}
-<table id="example" class="display cell-border" >
+<table id="{{if .Name}}{{.Name}}{{else}}example{{end}}" class="display cell-border" >
   <thead>
     <tr>
       {{ range .HTMLColumns }}<th>{{.}}</th>{{ end }}

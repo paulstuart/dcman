@@ -738,4 +738,127 @@ select a.id as id, a.dc as dc, a.rack as rack, a.ru as ru,
 	    and a.id != b.id
         ;
 
+
+
+DROP TABLE IF EXISTS "mfgr" ;
+CREATE TABLE "mfgr" (
+    mid integer primary key AUTOINCREMENT,
+    name text not null, -- full given name
+    aka text not null, -- shortened and unique
+    url text not null, 
+    user_id integer not null, 
+    modified date DEFAULT CURRENT_TIMESTAMP,
+    unique (aka)
+);
+
+DROP TABLE IF EXISTS "skus" ;
+CREATE TABLE "skus" (
+    kid integer primary key AUTOINCREMENT,
+    mid integer not null,
+    description text not null,
+    part_no text not null, 
+    user_id integer not null, 
+    modified date DEFAULT CURRENT_TIMESTAMP,
+    unique (mid,part_no)
+);
+
+DROP VIEW IF EXISTS skuview;
+CREATE VIEW skuview as 
+  select k.kid, k.mid, k.user_id, k.part_no, k.description, m.name as mfgr, u.login, k.modified
+  from  skus k
+  left outer join mfgr m on k.mid = m.mid
+  left outer join users u on k.user_id = u.id
+;
+
+DROP TABLE IF EXISTS "parts" ;
+CREATE TABLE "parts" (
+    pid integer primary key AUTOINCREMENT,
+    kid integer not null,
+    vid integer not null default 0,
+    sid integer not null default 0,
+    did integer not null default 0,
+    rma_id integer not null default 0,
+    location text not null default '',
+    serial_no text not null default ' * BLANK * ',
+    asset_tag text not null default '',
+    user_id integer not null default 0, 
+    modified date DEFAULT CURRENT_TIMESTAMP
+);
+
+/*
+DROP VIEW IF EXISTS stock_report;
+CREATE VIEW stock_report as
+    select k
+    */
+
+DROP TABLE IF EXISTS "retired_parts" ;
+CREATE TABLE "retired_parts" (
+    pid integer primary key,
+    kid integer not null,
+    vid integer,
+    sid integer,
+    did integer,
+    serial_no text not null default '',
+    asset_tag text not null default '',
+    user_id integer not null, 
+    modified date DEFAULT CURRENT_TIMESTAMP
+);
+
+DROP TRIGGER IF EXISTS retire_part;
+CREATE TRIGGER retire_part  BEFORE DELETE
+ON parts
+BEGIN
+   INSERT INTO retired_parts (pid,kid,vid,sid,did,serial_no,asset_tag,user_id) 
+   select pid,kid,vid,sid,did,serial_no,asset_tag,user_id from parts where pid=old.pid;
+END;
+
+DROP VIEW IF EXISTS pview;
+CREATE VIEW pview as 
+  select p.pid, p.vid, p.sid, p.did, l.kid, l.mid, p.rma_id, p.user_id, d.name as dc, p.serial_no, l.part_no, 
+         l.description, l.mfgr, p.location, u.login, p.modified
+  from  parts p
+  left outer join skuview l on p.kid = l.kid
+  left outer join users u on p.user_id = u.id
+  left outer join datacenters d on p.did = d.id
+  left outer join sview s on p.sid = s.id
+;
+
+DROP VIEW IF EXISTS parts_available;
+CREATE VIEW parts_available as
+    select * from pview 
+    where rma_id = 0 
+      and sid = 0
+    ;
+
+DROP VIEW IF EXISTS part_totals;
+CREATE VIEW part_totals as
+    select kid, did, dc, count(kid) as cnt, part_no, description from parts_available
+    group by did,kid
+    ;
+
+DROP VIEW IF EXISTS partuse;
+CREATE VIEW partuse as 
+  select d.name as dc, p.*, s.id, s.rack, s.ru, s.hostname,
+    CASE WHEN p.sid > 0
+       THEN 'used'
+       ELSE 'free'
+     END AS used
+  from  pview p
+  left outer join sview s on p.sid = s.id
+  left outer join datacenters d on p.did = d.id
+;
+
+DROP VIEW IF EXISTS part_summary;
+CREATE VIEW part_summary as 
+    select did,kid,mid,user_id,dc,part_no,description,mfgr,used,count(*) as cnt
+    from partuse
+    group by dc,kid,used
+    ;
+
+insert into mfgr (name,aka,url,user_id) values ('Intel Corporation','intel','http://www.intel.com',1);
+insert into skus (mid,description,part_no,user_id) values (1, 'ssd drive', 'iSSD123x', 1);
+
+insert into parts (did,kid,vid,user_id,serial_no,location,asset_tag) values(1,1,1,1,'fakesn','somewhere','mystuff');
+insert into parts (did,kid,vid,user_id,serial_no,location,asset_tag) values(1,1,1,1,'faker_sn','nowhere','mystuff2');
+
 COMMIT;

@@ -54,18 +54,6 @@ list() {
                 echo ${NICS[$I]}=${MACS[$I]}
         done
 
-        RE_ASSET="Asset Tag: ([a-zA-Z0-9-]*)"
-        RE_SERIAL="Serial Number: ([a-zA-Z0-9-]*)"
-
-        while read LINE
-        do
-          [[ $LINE =~ "Chassis Information" ]] && CHASSIS=true && continue
-          [[ $CHASSIS ]] || continue
-          [[ $LINE =~ $RE_ASSET ]] && ASSET=${BASH_REMATCH[1]} && [[ -n $ASSET && $ASSET != "To" ]] && echo Asset=$ASSET
-          [[ $LINE =~ $RE_SERIAL ]] && SN=${BASH_REMATCH[1]} && [[ -n $SN && $SN != "To" ]] && echo SN=$SN  # filter out "To Be Filled By O.E.M."
-          [[ $LINE ]] || break
-        done < <(dmidecode 2>/dev/null)
-
         ipmitool lan print 1 2>/dev/null | awk '/IP Address  |MAC Address/ {print "IPMI_" $1 "=" tolower($4)}'
 
         echo CPU=$(grep 'model name'  /proc/cpuinfo | sed -e 's/^.*: //g' -e 's/.*CPU //g' | sort -u)
@@ -75,6 +63,11 @@ list() {
 }
 
 [[ $1 == "-l" || $DEBUG ]] && list && exit
+
+
+#
+# send the results back to the server
+#
 
 IFS=$'\n'
 ARGS=($(list))

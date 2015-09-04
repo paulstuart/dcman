@@ -1,28 +1,55 @@
 {{define "head"}}<title>{{.Common.Title}}</title>{{end}}
 {{define "javascript"}}
+var make_table = function(name) {
+    return $('#' + name).DataTable( {
+        "bInfo" : false,
+        "bPaginate": false,
+        "bLengthChange": false,
+        "bFilter": false,
+        "iDisplayLength": -1
+        {{/*
+        ,
+        "order": [
+            {{ range .Parts.Sorting }} [ {{.Column}}, "{{ if .Decend }}Desc{{ else }}Asc{{ end }}" ],
+            {{ end }} ]
+        ,
+      "columnDefs": [
+               {{ range $key, $value := .Parts.Types }} { type: '{{$key}}', targets: {{$value}} },
+               {{ end }} ] 
+               */}}
+    });
+};
+$(document).ready(function() {
+
+{{ if .Parts }}
+{{ if .Parts.Rows  }}
+    var table1 = make_table('{{.Parts.Name}}');
+{{ end }}
+{{ end }}
+{{/*
+*/}}
+{{ if .Returns }}
+{{ if .Returns.Rows }}
+    var table2 = make_table('{{.Returns.Name}}');
+{{ end }}
+{{ end }}
+});
 {{end}}
 
 {{define "body"}}
+<form method="GET" action="{{.Common.Prefix}}/rma/received/{{.RMA.ID}}" id="received">
+</form>
 <div id="serverform" class="server">
-{{ $server := .RMA.Server }}
 <form method="post" class="common" id="servo">
     <fieldset>
         <legend>RMA</legend>
         <div class="field">
-            {{ if .RMA.SID }}
-            <label for="Hostname"><a href="{{.Common.Prefix}}/server/edit/{{.RMA.SID}}">Hostname</a></label>
-            {{ else }}
-            <label for="Hostname">Hostname</label>
-            {{ end }}
-            <input type="text" name="Hostname" id="Hostname" value="{{.RMA.Hostname}}" pattern=".+" required/>
-        </div>
-        <div class="field">
             <label for="DC">Datacenter</label>
-            <input type="text" name="DC" id="DC" value="{{$server.DC}}" readonly/>
+            <input type="text" name="DC" id="DC" value="{{.RMA.DC}}" readonly/>
         </div>
         <div class="field">
             <label for="VID">Vendor</label>
-            <select name="VID"/>
+            <select name="VID" id="VID">
                 {{ range .Vendors }}<option value="{{.VID}}" {{if eq .VID $.RMA.VID}}selected{{end}}>{{.Name}}</option>
                 {{ end }}
             </select>
@@ -36,55 +63,38 @@
             <input type="text" name="Jira" id="Jira" value="{{.RMA.Jira}}"/>
         </div>
         <div class="field">
-            <label for="Tracking">Tracking Number</label>
-            <input type="text" name="Tracking" id="Tracking" value="{{.RMA.Tracking}}"/>
+            <label for="DCTicket">Datacenter Ticket</label>
+            <input type="text" name="DCTicket" id="DCTicket" value="{{.RMA.DCTicket}}"/>
+        </div>
+        {{ if .Part.PID }}
+        <div class="field">
+            <label for="PartNumber">Part Number</label>
+            <input type="text" name="PartNumber" id="PartNumber" value="{{.Part.PartNumber }}"/>
         </div>
         <div class="field">
-            <label for="Ticket">Datacenter Ticket</label>
-            <input type="text" name="Ticket" id="Ticket" value="{{.RMA.Ticket}}"/>
+            <label for="Serial">Serial Number</label>
+            <input type="text" name="Serial" id="Serial" value="{{.Part.Serial }}"/>
         </div>
-        <div class="field">
-            <label for="OldSN">Old Serial Number</label>
-            <input type="text" name="OldSN" id="OldSN" value="{{if .RMA.OldSN }}{{ .RMA.OldSN }}{{ else }}{{ $server.SerialNo }}{{ end }}"/>
-        </div>
-        <div class="field">
-            <label for="NewSN">New Serial Number</label>
-            <input type="text" name="NewSN" value="{{.RMA.NewSN}}"/>
-        </div>
-        <div class="field">
-            <label for="Part">Part Number</label>
-            <input type="text" name="Part" value="{{.RMA.Part}}"/>
-        </div>
-        <div class="field">
-            <label id="notelabel" for="Note">Note</label>
-            <textarea cols="35" rows="3" name="Description">{{.RMA.Description}}</textarea>
-        </div>
-    </fieldset>
-
-    <fieldset>
-        <legend>Dates</legend>
+        {{ end }}
         <div class="field">
             <label for="Opened">Opened</label>
             <input type="text" name="Opened" id="Opened" value="{{.RMA.Opened | fixDate}}"/>
         </div>
         <div class="field">
-            <label for="Sent">Sent</label>
-            <input type="text" name="Sent" id="Sent" value="{{.RMA.Sent | fixDate}}"/>
+            <label for="Closed">Closed</label>
+            <input type="text" name="Closed" id="Closed" value="{{.RMA.Closed | fixDate}}"/>
         </div>
         <div class="field">
-            <label for="Received">Received</label>
-            <input type="text" name="Received" id="Received" value="{{.RMA.Received | fixDate}}"/>
+            <label for="Note">Note</label>
+            <textarea cols="35" rows="3" id="Note" name="Note">{{.RMA.Note}}</textarea>
         </div>
-        <div class="field">
-            <label for="Replaced">Replaced</label>
-            <input type="text" name="Replaced" id="Replaced" value="{{.RMA.Replaced | fixDate}}"/>
-        </div>
-    </fieldset>
-
 
 <input type="hidden" name="ID"  value="{{.RMA.ID}}">
-<input type="hidden" name="SID" value="{{.RMA.SID}}">
+<input type="hidden" name="DID"  value="{{.RMA.DID}}">
 <input type="hidden" name="UID" value="{{.Common.User.ID}}">
+{{ if .Part.PID }}
+<input type="hidden" name="PID" value="{{.Part.PID}}">
+{{ end }}
 <input type="button" value="Cancel"  onclick="javascript:window.history.go(-1)">
 {{ if .Common.User.Editor }}
 {{ if eq .RMA.ID 0 }}
@@ -96,7 +106,33 @@
 {{ else }}
 <div id="sorry">You must be logged in as an admin to modify this record</div>
 {{ end }}
+    </fieldset>
+
+{{ if .RMA.ID }}
+    <fieldset>
+{{ if .Parts }}
+        <legend>Parts</legend>
+    {{ template "tablelinks" .Parts }}
+{{ end }}
+    <input type="submit" name="recbut" form="received" value="Receive Parts">
+    </fieldset>
+{{ end }}
+
 </form>
+
+{{ if gt .RMA.ID 0 }}
+<form method="post" class="common" id="rma_returns">
+    <fieldset>
+        <legend>Returns</legend>
+{{ if and .Returns .Returns.Rows }}
+    {{ template "tablelinks" .Returns }}
+{{ end }}
+<input type="submit" name="action" value="Add">
+    </fieldset>
+</form>
+{{ end }}
+
+
 </div>
 {{end}}
 

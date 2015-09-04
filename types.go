@@ -4,11 +4,11 @@ import (
 	"database/sql"
 	"fmt"
 	"html/template"
+	"log"
 	"net"
 	"net/http"
 	"os"
 	"path"
-	"reflect"
 	"regexp"
 	"sort"
 	"strconv"
@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/paulstuart/dbutil"
+	"github.com/paulstuart/dmijson"
 	"github.com/paulstuart/sshclient"
 )
 
@@ -67,24 +68,109 @@ type Vendor struct {
 }
 
 type RMA struct {
-	ID          int64     `sql:"id" key:"true" table:"rmas"`
-	SID         int64     `sql:"sid"`
-	VID         int64     `sql:"vid"`
-	UID         int64     `sql:"user_id"`
-	Number      string    `sql:"rma_no"`
-	Description string    `sql:"description"`
-	Part        string    `sql:"part_no"`
-	OldSN       string    `sql:"old_sn"`
-	NewSN       string    `sql:"new_sn"`
-	Jira        string    `sql:"jira"`
-	Ticket      string    `sql:"dc_ticket"`
-	Tracking    string    `sql:"tracking_no"`
-	Opened      time.Time `sql:"date_opened"`
-	Sent        time.Time `sql:"date_sent"`
-	Received    time.Time `sql:"date_received"`
-	Replaced    time.Time `sql:"date_replaced"`
+	ID       int64     `sql:"rma_id" key:"true" table:"rmas"`
+	DID      int64     `sql:"did"`
+	VID      int64     `sql:"vid"`
+	UID      int64     `sql:"user_id"`
+	Number   string    `sql:"rma_no"`
+	Note     string    `sql:"note"`
+	Jira     string    `sql:"jira"`
+	DCTicket string    `sql:"dc_ticket"`
+	Opened   time.Time `sql:"date_opened"`
+	Closed   time.Time `sql:"date_closed"`
 }
 
+//rma_id|did|vid|pid|sid|user_id|date_opened|date_closed|vendor_name|rma_no|dc|part_no|serial_no|jira|dc_ticket|hostname|rack|ru|note|login|ts|action
+
+func notReturned(s string) bool {
+	return s == "return"
+}
+
+func (r RMA) Table() (*dbutil.Table, error) {
+	//const cols = "rma_id,return_id,pid,sid,user_id,part_no,serial_no,hostname,rack,ru,action"
+	/*
+		const cols = "rma_id,return_id,pid,sid,user_id,part_no,serial_no,hostname,rack,ru,case when action > '' then action else 'return' end as action"
+		const q = "select " + cols + " from rma_report where rma_id=?"
+	*/
+	//rma_id,return_id,pid,sid,user_id,part_no,serial_no,hostname,rack,ru,action
+	const q = "select * from rma_action where rma_id=?"
+	log.Println("RMA ID:", r.ID)
+	table, err := dbTable(q, r.ID)
+	if err != nil {
+		return nil, err
+	}
+	table.Hide(0, 1, 2, 3, 4)
+	setLinks(table, 7, "/server/parts/%s", 3)
+	setLinksWhen(table, notReturned, 10, "/rma/return/add/%s/%s", 2, 1)
+	return table, nil
+}
+
+func (r RMA) Returns() (*dbutil.Table, error) {
+	const q = "select return_id,tracking_no from rma_returns where rma_id=?"
+	table, err := dbTable(q, r.ID)
+	if err != nil {
+		return nil, err
+	}
+	table.Hide(0)
+	setLinks(table, 1, "/rma/return/%s", 0)
+	return table, nil
+}
+
+type Carrier struct {
+	CarrierID int64     `sql:"cr_id" key:"true" table:"carriers"`
+	Name      string    `sql:"name"`
+	URL       string    `sql:"tracking_url"`
+	UID       int64     `sql:"user_id"`
+	Modified  time.Time `sql:"modified"`
+}
+
+func carriers() []Carrier {
+	c, err := dbObjectList(Carrier{})
+	if err != nil || c == nil {
+		log.Println("no carriers:", err)
+		return []Carrier{}
+	}
+	return c.([]Carrier)
+}
+
+type Return struct {
+	ReturnID  int64     `sql:"return_id" key:"true" table:"rma_returns"`
+	RMAID     int64     `sql:"rma_id"`
+	CarrierID int64     `sql:"cr_id"`
+	Tracking  string    `sql:"tracking_no"`
+	UID       int64     `sql:"user_id"`
+	Sent      time.Time `sql:"date_sent"`
+}
+
+type Sent struct {
+	ReturnID int64 `sql:"return_id" table:"rma_sent"`
+	PID      int64 `sql:"pid"`
+}
+
+func (s Sent) Unsent() bool {
+	const q = "select count(*) from rma_sent where return_id=? and pid=?"
+	cnt, _ := dbGetInt(q, s.ReturnID, s.PID)
+	return cnt < 1
+}
+
+type Received struct {
+	RMAID int64     `sql:"rma_id" table:"rma_received"`
+	PID   int64     `sql:"pid"`
+	UID   int64     `sql:"user_id"`
+	TS    time.Time `sql:"date_received"`
+}
+
+func (r RMA) Parts() []Part {
+	p, err := dbObjectListQuery(Part{}, "where rmaid=?", r.ID)
+	if err != nil {
+		log.Println("parts err:", err)
+	}
+	return p.([]Part)
+}
+
+//	PartNumber        string    `sql:"part_no"`
+
+/*
 func (r RMA) Server() Server {
 	s := Server{}
 	if r.SID > 0 {
@@ -101,37 +187,133 @@ func (r RMA) Hostname() string {
 	dbFindByID(&s, r.SID)
 	return s.Hostname
 }
+*/
 
 func (r RMA) DC() string {
-	if r.SID == 0 {
-		return ""
+	if dc, ok := dcIDs[r.DID]; ok {
+		return dc.Name
 	}
-	s := Server{}
-	dbFindByID(&s, r.SID)
-	return s.DC()
+	/*
+		for _, p := range r.Parts() {
+			if s := p.Server(); s != nil {
+				return s.DC()
+			}
+		}
+	*/
+	return ""
 }
 
 type Manufacturer struct {
 	MID      int64     `sql:"mid" key:"true" table:"mfgr"`
 	Name     string    `sql:"name"`
+	AKA      string    `sql:"aka"`
 	URL      string    `sql:"url"`
 	UID      int64     `sql:"user_id"  audit:"user"`
 	Modified time.Time `sql:"modified" audit:"time"`
 }
 
-type Part struct {
-	PID         int64     `sql:"pid" key:"true" table:"parts"`
+func (m *Manufacturer) PageData(r *http.Request) (interface{}, error) {
+	if len(r.URL.Path) > 0 {
+		if err := dbFindByID(m, r.URL.Path); err != nil {
+			return nil, err
+		}
+	}
+	return struct {
+		Common
+		Manufacturer *Manufacturer
+	}{
+		Common:       NewCommon(r, "Edit"),
+		Manufacturer: m,
+	}, nil
+}
+
+type SKU struct {
+	KID         int64     `sql:"kid" key:"true" table:"skus"`
 	MID         int64     `sql:"mid"`
+	PartNumber  string    `sql:"part_no"`
 	Description string    `sql:"description"`
-	PartNo      string    `sql:"part_no"`
 	UID         int64     `sql:"user_id"  audit:"user"`
 	Modified    time.Time `sql:"modified" audit:"time""`
 }
 
-func (p *Part) Manufacturer() Manufacturer {
+func (p *SKU) Manufacturer() Manufacturer {
 	m := Manufacturer{MID: p.MID}
 	dbFindSelf(&m)
 	return m
+}
+
+func (p *SKU) PageData(r *http.Request) (interface{}, error) {
+	if len(r.URL.Path) > 0 {
+		if err := dbFindByID(p, r.URL.Path); err != nil {
+			return nil, err
+		}
+	}
+	return struct {
+		Common
+		SKU *SKU
+	}{
+		Common: NewCommon(r, "Edit"),
+		SKU:    p,
+	}, nil
+}
+
+type Part struct {
+	PID      int64     `sql:"pid" key:"true" table:"parts"`
+	KID      int64     `sql:"kid"`    // part type lookup id
+	SID      int64     `sql:"sid"`    // server id
+	DID      int64     `sql:"did"`    // dc id
+	RMAID    int64     `sql:"rma_id"` // rma id
+	Location string    `sql:"location"`
+	Serial   string    `sql:"serial_no"`
+	AssetTag string    `sql:"asset_tag"`
+	UID      int64     `sql:"user_id"  audit:"user"`
+	Modified time.Time `sql:"modified" audit:"time""`
+}
+
+func (p *Part) SKU() *SKU {
+	pl := &SKU{}
+	if nil == dbFindByID(pl, p.KID) {
+		return pl
+	}
+	return nil
+}
+
+func (p *Part) PartNumber() string {
+	if pl := p.SKU(); pl != nil {
+		return pl.PartNumber
+	}
+	return ""
+}
+
+func (p *Part) Manufacturer() *Manufacturer {
+	m := p.SKU().Manufacturer()
+	return &m
+}
+
+func (p *Part) Server() *Server {
+	if p != nil {
+		s := Server{}
+		if nil == dbFindByID(&s, p.SID) {
+			return &s
+		}
+	}
+	return nil
+}
+
+func (p *Part) Datacenter() *Datacenter {
+	if p == nil {
+		return nil
+	}
+	if p.DID > 0 {
+		if dc, ok := dcIDs[p.DID]; ok {
+			return &dc
+		}
+		return nil
+	}
+	if s := p.Server(); s != nil {
+		return s.Datacenter()
+	}
+	return nil
 }
 
 func (p *Part) PageData(r *http.Request) (interface{}, error) {
@@ -146,38 +328,6 @@ func (p *Part) PageData(r *http.Request) (interface{}, error) {
 	}{
 		Common: NewCommon(r, "Edit"),
 		Part:   p,
-	}, nil
-}
-
-type Stock struct {
-	KID      int64     `sql:"kid" key:"true" table:"stock"`
-	DID      int64     `sql:"did"`
-	PID      int64     `sql:"pid"`
-	VID      int64     `sql:"vid"`
-	SN       string    `sql:"sn"`
-	Amount   int       `sql:"amount"`
-	UID      int64     `sql:"user_id"   audit:"user"`
-	Modified time.Time `sql:"modified"  audit:"time"`
-}
-
-func (s *Stock) PartNo() string {
-	p := Part{PID: s.PID}
-	dbFindSelf(&p)
-	return p.PartNo
-}
-
-func (s *Stock) PageData(r *http.Request) (interface{}, error) {
-	if len(r.URL.Path) > 0 {
-		if err := dbFindByID(s, r.URL.Path); err != nil {
-			return nil, err
-		}
-	}
-	return struct {
-		Common
-		Stock *Stock
-	}{
-		Common: NewCommon(r, "Edit"),
-		Stock:  s,
 	}, nil
 }
 
@@ -216,6 +366,38 @@ type Datacenter struct {
 	RemoteAddr string    `sql:"remote_addr"`
 	UID        int64     `sql:"user_id"  audit:"user"`
 	Modified   time.Time `sql:"modified" audit:"time"`
+}
+
+func sshCmd(host, username, password, cmd string, timeout int) error {
+	log.Println("SSH U:", username, "P:", password)
+	rc, _, _, err := sshclient.Exec(host+":22", username, password, cmd, timeout)
+	/*
+		rc, o, e, err := sshclient.Exec(host+":22", username, password, cmd, timeout)
+			if len(o) > 0 {
+				log.Println("SSH STDOUT:", o)
+			}
+			if len(e) > 0 {
+				log.Println("SSH STDERR:", e)
+			}
+	*/
+	if err != nil {
+		return err
+	}
+	if rc > 0 {
+		return ErrExecFailed
+	}
+	return nil
+}
+
+func sshTest(host, username, password string, timeout int) error {
+	rc, _, _, err := sshclient.Exec(host+":22", username, password, "exit", timeout)
+	if err != nil {
+		return err
+	}
+	if rc > 0 {
+		return ErrExecFailed
+	}
+	return nil
 }
 
 func (dc Datacenter) Remote(cmd string, timeout int) (int, string, string, error) {
@@ -394,6 +576,12 @@ func (s Server) InternalVLAN() string {
 	return v.String()
 }
 
+func (s Server) RunScript(script string) error {
+	cmd := fmt.Sprintf(`curl -s "%sapi/script/%s" | bash`, baseURL, script)
+	log.Println("RUN SCRIPT:", cmd)
+	return sshCmd(s.IPInternal, sshUsername, sshPassword, cmd, 60)
+}
+
 func deleteServerFromRack(rid, ru string) error {
 	s := Server{}
 	query := fmt.Sprintf("delete from %s where rid=? and ru=?", s.TableName())
@@ -545,52 +733,6 @@ func (o Orphan) Delete() error {
 	return err
 }
 
-// for loading an object from an http post
-func objFromForm(obj interface{}, values map[string][]string) {
-	val := reflect.ValueOf(obj)
-	base := reflect.Indirect(val)
-	t := reflect.TypeOf(base.Interface())
-
-	for i := 0; i < t.NumField(); i++ {
-		f := t.Field(i)
-		b := base.Field(i)
-		if val, ok := values[f.Name]; ok {
-			switch b.Interface().(type) {
-			case string:
-				b.SetString(val[0])
-			case int:
-				i, _ := strconv.Atoi(val[0])
-				b.SetInt(int64(i))
-			case int64:
-				i, _ := strconv.ParseInt(val[0], 0, 64)
-				b.SetInt(i)
-			case uint:
-				i, _ := strconv.ParseUint(val[0], 0, 64)
-				b.SetUint(i)
-			case uint32:
-				i, _ := strconv.ParseUint(val[0], 0, 32)
-				b.SetUint(i)
-			case time.Time:
-				if len(val[0]) == 0 {
-					continue
-				}
-				l := date_layout
-				if len(val[0]) > len(date_layout) {
-					l = time_layout
-				}
-				if when, err := time.Parse(l, val[0]); err == nil {
-					v := reflect.ValueOf(when)
-					b.Set(v)
-				} else {
-					fmt.Println("TIME PARSE ERR:", err)
-				}
-			default:
-				fmt.Println("unhandled field type for:", f.Name, "type:", b.Type())
-			}
-		}
-	}
-}
-
 func normalColumns(words []string) {
 	re := regexp.MustCompile("[^a-zA-Z0-9]")
 	for i, word := range words {
@@ -609,13 +751,13 @@ func ServerColumns(words []string) error {
 			if word == "dc" || word == "rack" {
 				continue
 			}
-			valid := []string{"dc", "rack"}
+			vakid := []string{"dc", "rack"}
 			for k, v := range columns {
 				if !v && k != "id" && k != "rid" {
-					valid = append(valid, k)
+					vakid = append(vakid, k)
 				}
 			}
-			return fmt.Errorf("invalid column: %s\nValid columns: %s", word, strings.Join(valid, ","))
+			return fmt.Errorf("invalid column: %s\nVakid columns: %s", word, strings.Join(vakid, ","))
 		} else if key {
 			return fmt.Errorf("invalid column: %s - it is a key field and is internal only", word)
 		}
@@ -1015,4 +1157,35 @@ type PDU struct {
 	Gateway  string `sql:"gateway"`
 	DNS      string `sql:"dns"`
 	AssetTag string `sql:"asset_tag"`
+}
+
+func ServerImportDMI(sid int64, d dmijson.DMI) error {
+	/*
+		log.Println("IMPORT SID:", id)
+		log.Println("IMPORT JSON:", d.ToJSON())
+	*/
+	log.Println("IMPORTING SID:", sid, "RECORDS:", len(d.MemoryDevice))
+	s := Server{}
+	if err := dbFindByID(&s, sid); err != nil {
+		return err
+	}
+	dc := s.Datacenter()
+	did := dc.ID
+
+	for _, m := range d.MemoryDevice {
+		if len(m.Size) == 0 {
+			continue
+		}
+		desc := m.Size + " " + m.Speed
+		if _, err := AddDevicePart(did, sid, m.Manufacturer, m.PartNumber, desc, m.SerialNumber, m.AssetTag, m.Locator); err != nil {
+			log.Println("add error:", err)
+			return err
+		}
+	}
+	b := &d.BaseBoardInformation
+	if _, err := AddDevicePart(did, sid, b.Manufacturer, b.ProductName, b.Type, b.SerialNumber, b.AssetTag, b.LocationInChassis); err != nil {
+		log.Println("add error:", err)
+		return err
+	}
+	return nil
 }
