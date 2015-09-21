@@ -54,6 +54,26 @@ var rma_server = function() {
     return false;
 }
 
+var dc_racks = function(dc) {
+    $.ajax({
+      type: "GET",
+      url: "{{.Common.Prefix}}/dc/racklist/" + dc,
+      dataType: "json",
+      error: function(jqXHR, textStatus, errorThrown) {
+        alert("Error: " + jqXHR.responseText)
+        },
+      success: function(data, textStatus, jqXHR) {
+         var $el = $("#RID");
+         $el.empty(); // remove old options
+         $.each(data, function() {
+           $el.append($("<option></option>")
+                .attr("value", this[0]).text(this[1]));
+         });
+        $el.val("");
+      }
+    });
+    return false;
+}
 
 $(document).ready(function() {
     $('#rackunit').change(function() {
@@ -68,7 +88,46 @@ $(document).ready(function() {
         $("#vlanip").val($('#ipselector').val());
     }
 
+    $('#DC').change(function() {
+        $("#Rack").val("");
+        $("#RU").val("");
+        $("#RID").val("");
+        dc_racks(this.value);
+    })
+
+    $('#RID').change(function() {
+        $("#Rack").val("");
+        $("#RU").val("");
+    })
+
+    $('#RU').change(function() {
+        var ru = $("#RU").val();
+        if (ru.length > 0) {
+            var height = $("#Height").val();
+            var top = parseInt(ru) + parseInt(height);
+            //var rid = $("#RID").val();
+            var rid = $("#RID").find(":selected").text();
+            $.ajax({
+              type: "POST",
+              url: "{{.Common.Prefix}}/server/checkfit",
+              dataType: "text",
+              data: {
+                  RID: rid,
+                  Bottom: ru,
+                  Top: top
+              },
+              error: function(jqXHR, textStatus, errorThrown) {
+                alert("Space conflict: " + jqXHR.responseText);
+                  $("#RU").val("");
+                }
+            });
+        }
+    });
+
    $("#b_discover").click(discover_mac);
+   $("#Delete").click(function() {
+        return confirm("really delete this server?");
+    });
 
 {{ if .Common.User.Editor }}
 {{ if ne .Server.ID 0 }}
@@ -123,11 +182,20 @@ $(document).ready(function() {
         </div>
         <div class="field">
             <label for="DC">Datacenter</label>
-            <input type="text" name="DC" id="DC" value="{{.Server.DC}}" readonly/>
+            {{ $dc := .Server.Datacenter }}
+            <select id="DC" name="DC">
+            {{ range .Common.Datacenters }}
+            <option value="{{.Name}}" {{ if eq .ID $dc.ID }}selected{{ end }}>{{ .Name }}</option>
+            {{ end }}
+            </select>
         </div>
         <div class="field">
-            <label for="Rack"><a href="{{.Common.Prefix}}/rack/view/{{.Server.DC}}/{{.Server.Rack}}">Rack Number</a></label>
-            <input type="text" name="Rack" id="Rack" value="{{.Server.Rack}}"/>
+            <label for="RID"><a href="{{.Common.Prefix}}/rack/view/{{.Server.DC}}/{{.Server.Rack}}">Rack Number</a></label>
+            <select id="RID" name="RID">
+            {{ range $dc.Racks }}
+            <option value="{{.ID}}" {{if eq .ID $.Server.RID}}selected{{end}}>{{.Label}}</option>
+            {{ end }}
+        </select>
         </div>
         <div class="field">
             <label for="RU">Rack Unit</label>
@@ -250,17 +318,19 @@ $(document).ready(function() {
     </fieldset>
 {{end}}
 <input type="hidden" name="ID" value="{{.Server.ID}}">
-<input type="hidden" name="RID" value="{{.Server.RID}}">
 <input type="hidden" name="UID" value="{{.Common.User.ID}}">
 <input type="hidden" name="OriginalRack" value="{{.Server.Rack}}"/>
+<input type="hidden" name="OriginalDID" value="{{.Server.Rack}}"/>
 <input type="button" value="Cancel"  onclick="javascript:window.history.go(-1)">
 {{ if .Common.User.Editor }}
 {{ if eq .Server.ID 0 }}
 <input type="submit" name="action" value="Add">
 {{ else }}
 <input type="submit" name="action" value="Update">
-<input type="submit" name="action" value="Delete">
+<input type="submit" name="action" id="Delete" value="Delete">
+{{/*
 <button id="b_rma">RMA</button>
+*/}}
 <button id="b_parts">Parts</button>
 {{ if .Common.PXEBoot }}
 <button id="b_reimage">Reimage</button>

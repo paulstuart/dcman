@@ -351,6 +351,8 @@ CREATE VIEW sview as
   left outer join racks r on s.rid = r.id
   left outer join datacenters d on r.did = d.id;
 
+create view rackspace as select *,ru+height-1 as top from sview;
+
 CREATE VIEW ipprivate as 
   select id, 'vm' as kind, 'private' as what,  dc, hostname, private as ip, note
   from vview where private > '';

@@ -1,5 +1,10 @@
 {{define "head"}}<title>{{.Common.Title}}</title>{{end}}
 {{define "javascript"}}
+$(document).ready(function() {
+    $("#Delete").click(function() {
+        return confirm("Really delete?");
+    });
+});
 {{end}}
 {{define "body"}}
 <div id="partform">
@@ -21,6 +26,7 @@
     </fieldset>
 
 <input type="hidden" name="KID" value="{{.SKU.KID}}">
+<input type="hidden" name="MID" value="{{.SKU.MID}}">
 <input type="hidden" name="UID" value="{{.Common.User.ID}}">
 <input type="button" value="Cancel"  onclick="javascript:window.history.go(-1)">
 {{ if .Common.User.Editor }}
@@ -28,7 +34,7 @@
 <input type="submit" name="action" value="Add">
 {{ else }}
 <input type="submit" name="action" value="Update">
-<input type="submit" name="action" value="Delete">
+<input type="submit" name="action" id="Delete" value="Delete">
 {{ end }}
 {{ else }}
 <div id="sorry">You must be logged in as an admin to modify this record</div>

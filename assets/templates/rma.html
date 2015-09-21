@@ -7,16 +7,6 @@ var make_table = function(name) {
         "bLengthChange": false,
         "bFilter": false,
         "iDisplayLength": -1
-        {{/*
-        ,
-        "order": [
-            {{ range .Parts.Sorting }} [ {{.Column}}, "{{ if .Decend }}Desc{{ else }}Asc{{ end }}" ],
-            {{ end }} ]
-        ,
-      "columnDefs": [
-               {{ range $key, $value := .Parts.Types }} { type: '{{$key}}', targets: {{$value}} },
-               {{ end }} ] 
-               */}}
     });
 };
 $(document).ready(function() {
@@ -26,13 +16,16 @@ $(document).ready(function() {
     var table1 = make_table('{{.Parts.Name}}');
 {{ end }}
 {{ end }}
-{{/*
-*/}}
 {{ if .Returns }}
 {{ if .Returns.Rows }}
     var table2 = make_table('{{.Returns.Name}}');
 {{ end }}
 {{ end }}
+
+$("#Delete").click(function() {
+    return confirm("Really delete?");
+});
+
 });
 {{end}}
 
@@ -101,7 +94,7 @@ $(document).ready(function() {
 <input type="submit" name="action" value="Add">
 {{ else }}
 <input type="submit" name="action" value="Update">
-<input type="submit" name="action" value="Delete">
+<input type="submit" name="action" id="Delete" value="Delete">
 {{ end }}
 {{ else }}
 <div id="sorry">You must be logged in as an admin to modify this record</div>

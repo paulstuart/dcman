@@ -200,7 +200,11 @@ func DataUpload(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintln(w, "ok")
 		}
 	} else {
-		data := NewCommon(r, "Upload server data")
+		data := struct {
+			Common Common
+		}{
+			Common: NewCommon(r, "Upload server data"),
+		}
 		renderTemplate(w, r, "upload", data)
 	}
 }
@@ -508,6 +512,34 @@ func VMFind(w http.ResponseWriter, r *http.Request) {
 				VMs:    v,
 			}
 			renderTemplate(w, r, "vmfound", data)
+		}
+	}
+}
+
+// check to see if a server can fit in a rack location
+func ServerCheckFit(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "POST" {
+		r.ParseForm()
+		rid := r.Form.Get("RID")
+		bot, err := strconv.Atoi(r.Form.Get("Bottom"))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		top, err := strconv.Atoi(r.Form.Get("Top"))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		const q = "select hostname from rackspace where rid=?  and ((? between ru and top) or (? between ru and top))"
+		hosts, err := dbRows(q, rid, bot, top)
+		if err != nil || len(hosts) == 0 {
+			log.Println("check err:", err)
+			fmt.Fprint(w, "ok")
+		} else {
+			log.Println("conflicting hosts:", hosts)
+			msg := "occupied by: " + strings.Join(hosts, ",")
+			http.Error(w, msg, http.StatusBadRequest)
 		}
 	}
 }
@@ -1297,7 +1329,7 @@ func SKUEdit(w http.ResponseWriter, r *http.Request) {
 			log.Println("part edit error:", err)
 		}
 		//auditLog(user.ID, remote_addr, action, v.Name)
-		redirect(w, r, "/part/list", http.StatusSeeOther)
+		redirect(w, r, "/sku/list", http.StatusSeeOther)
 	} else {
 		data, err := s.PageData(r)
 		if err != nil {
@@ -1324,9 +1356,6 @@ func ServerParts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	/*
-		pid|vid|sid|did|kid|mid|rma_id|user_id|serial_no|part_no|description|mfgr|location|login|modified
-		1|1|0|1|1|1|0|1|fakesn|iSSD123x|ssd drive|Intel Corporation|somewhere|pstuart|2015-08-26 20:13:55
-
 		pid|vid|sid|did|kid|mid|rma_id|user_id|dc|serial_no|part_no|description|mfgr|location|login|modified
 		1|1|0|1|1|1|0|1|AMS|fakesn|iSSD123x|ssd drive|Intel Corporation|somewhere|pstuart|2015-08-26 20:13:55
 
@@ -1335,7 +1364,7 @@ func ServerParts(w http.ResponseWriter, r *http.Request) {
 	table.Adjustment(isBlank, 9)
 	//table.Adjustment(trimTime, 7)
 	setLinks(table, 9, "/part/edit/%s", 0)
-	setLinks(table, 10, "/partlist/edit/%s", 4)
+	setLinks(table, 10, "/sku/edit/%s", 4)
 	setLinks(table, 12, "/mfgr/edit/%s", 5)
 	heading := []string{"Part List for " + s.Hostname}
 	if len(table.Rows) == 0 {
@@ -1358,7 +1387,7 @@ func PartUse(w http.ResponseWriter, r *http.Request) {
 	}
 	table.Hide(0, 1, 2, 3, 4, 5, 6, 7, 13)
 	setLinks(table, 9, "/part/edit/%s", 0)
-	setLinks(table, 10, "/partlist/edit/%s", 4)
+	setLinks(table, 10, "/sku/edit/%s", 4)
 	table.Adjustment(trimTime, 15)
 	//heading := fmt.Sprintf(`Part List <a href="%s/part/edit/">Add</a>`, pathPrefix)
 	heading := "Part Report"
@@ -1669,6 +1698,30 @@ func NetworkAdd(w http.ResponseWriter, r *http.Request) {
 			}
 			ShowRouter(w, r, router)
 		}
+	}
+}
+
+func DCRackList(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	dc, ok := dcLookup[r.URL.Path]
+	if !ok {
+		fmt.Fprint(w, `{"error": "invalid dc - %s"}`, r.URL.Path)
+		return
+	}
+	const q = "select id, rack from racks where did=? order by rack"
+	t, err := dbTable(q, dc.ID)
+	if err != nil {
+		fmt.Fprint(w, `{"error": "%s"}`, err.Error())
+	} else {
+		/*
+			racks := make(map[string]string)
+			for _, row := range t.Rows {
+				racks[row[0]] = row[1]
+			}
+			j, _ := json.MarshalIndent(racks, " ", "  ")
+		*/
+		j, _ := json.MarshalIndent(t.Rows, " ", "  ")
+		fmt.Fprint(w, string(j))
 	}
 }
 
@@ -2712,6 +2765,7 @@ var webHandlers = []HFunc{
 	{"/dc/connections", ConnectionsPage},
 	{"/dc/edit/", DCEdit},
 	{"/dc/list", DCList},
+	{"/dc/racklist/", DCRackList},
 	{"/dc/racks/", DatacenterPage},
 	{"/document/edit/", DocumentEdit},
 	{"/document/get/", DocumentGet},
@@ -2757,6 +2811,7 @@ var webHandlers = []HFunc{
 	{"/rma/return/", RMAReturn},
 	{"/server/add/", ServerEdit},
 	{"/server/audit/", ServerAudit},
+	{"/server/checkfit", ServerCheckFit},
 	{"/server/dupes", ServerDupes},
 	{"/server/edit/", ServerEdit},
 	{"/server/find", ServerFind},
