@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	version           = "0.1.5"
+	version           = "0.1.6"
 	masterMode        = true
 	Hostname, _       = os.Hostname()
 	Basedir, _        = os.Getwd() // get abs path now, as we will be changing dirs
@@ -189,6 +189,5 @@ func main() {
 	if vlan, err := ipVLAN(MyIp()); err == nil {
 		thisDC = dcIDs[vlan.DID]
 	}
-	log.Println("SEEN ANY ACTION?")
 	webServer(webHandlers)
 }
