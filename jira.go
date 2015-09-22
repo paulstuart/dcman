@@ -14,7 +14,7 @@ var (
 func Assignee(j string) string {
 	var blob interface{}
 	if err := json.Unmarshal([]byte(j), &blob); err != nil {
-		fmt.Println("unmarshal text: %s error: %s", j, err)
+		fmt.Printf("unmarshal text: %s error: %s\n", j, err)
 	}
 	issue := blob.(map[string]interface{})
 	if f, ok := issue["fields"]; ok {

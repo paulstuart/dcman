@@ -194,6 +194,7 @@ func DataUpload(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
 		data := r.Form.Get("data")
 		err := LoadServers(strings.Split(data, "\n"))
+		log.Println("UPLOADING DATA")
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusNotAcceptable)
 		} else {
@@ -1705,13 +1706,13 @@ func DCRackList(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	dc, ok := dcLookup[r.URL.Path]
 	if !ok {
-		fmt.Fprint(w, `{"error": "invalid dc - %s"}`, r.URL.Path)
+		fmt.Fprintf(w, `{"error": "invalid dc - %s"}`, r.URL.Path)
 		return
 	}
 	const q = "select id, rack from racks where did=? order by rack"
 	t, err := dbTable(q, dc.ID)
 	if err != nil {
-		fmt.Fprint(w, `{"error": "%s"}`, err.Error())
+		fmt.Fprintf(w, `{"error": "%s"}`, err.Error())
 	} else {
 		/*
 			racks := make(map[string]string)

@@ -189,5 +189,6 @@ func main() {
 	if vlan, err := ipVLAN(MyIp()); err == nil {
 		thisDC = dcIDs[vlan.DID]
 	}
+	log.Println("SEEN ANY ACTION?")
 	webServer(webHandlers)
 }

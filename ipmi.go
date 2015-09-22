@@ -178,8 +178,9 @@ func repairCredentials() (int, int) {
 	var wg sync.WaitGroup
 	for _, ip := range unknown {
 		wg.Add(1)
+		ipv4 := ip // avoid capturing range variable ip
 		go func() {
-			if err := fixCredentials(ip); err == nil {
+			if err := fixCredentials(ipv4); err == nil {
 				mu.Lock()
 				fixed++
 				mu.Unlock()

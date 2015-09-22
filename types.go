@@ -44,7 +44,7 @@ type Document struct {
 	Title      string    `sql:"title"`
 	RemoteAddr string    `sql:"remote_addr"`
 	UID        int64     `sql:"user_id"`
-	Modified   time.Time `sql:"modified`
+	Modified   time.Time `sql:"modified"`
 }
 
 func (d Document) Fullpath() string {
@@ -233,7 +233,7 @@ type SKU struct {
 	PartNumber  string    `sql:"part_no"`
 	Description string    `sql:"description"`
 	UID         int64     `sql:"user_id"  audit:"user"`
-	Modified    time.Time `sql:"modified" audit:"time""`
+	Modified    time.Time `sql:"modified" audit:"time"`
 }
 
 func (p *SKU) Manufacturer() Manufacturer {
@@ -267,7 +267,7 @@ type Part struct {
 	Serial   string    `sql:"serial_no"`
 	AssetTag string    `sql:"asset_tag"`
 	UID      int64     `sql:"user_id"  audit:"user"`
-	Modified time.Time `sql:"modified" audit:"time""`
+	Modified time.Time `sql:"modified" audit:"time"`
 }
 
 func (p *Part) SKU() *SKU {
@@ -757,7 +757,7 @@ func ServerColumns(words []string) error {
 					vakid = append(vakid, k)
 				}
 			}
-			return fmt.Errorf("invalid column: %s\nVakid columns: %s", word, strings.Join(vakid, ","))
+			return fmt.Errorf("invalid column: %s\nValid columns: %s", word, strings.Join(vakid, ","))
 		} else if key {
 			return fmt.Errorf("invalid column: %s - it is a key field and is internal only", word)
 		}
@@ -804,22 +804,26 @@ func ServerAdd(columns, words []string) error {
 		var err error
 		num, err := strconv.Atoi(rack)
 		if err != nil {
-			fmt.Println("bad rack number for rack: %s (%s): %s", rack, dc, err)
+			fmt.Printf("bad rack number for rack: %s (%s): %s\n", rack, dc, err)
 		}
 		rid, err = dbObjectInsert(Rack{DID: d.ID, Label: num})
 		if err != nil {
 			return fmt.Errorf("can't create rack: %s (%s): %s", rack, dc, err)
 		}
+		log.Println("added rid:", rid)
 	}
 	args = append(args, fmt.Sprintf("%d", rid))
 	params = append(params, "rid")
+	dbDebug(true)
 	query := fmt.Sprintf("replace into servers (%s) values (%s)", strings.Join(params, ","), dbutil.Placeholders(len(args)))
 	_, err := dbInsert(query, args...)
+	dbDebug(false)
 	return err
 }
 
 // an array of tab-delimited lines
 func LoadServers(data []string) error {
+	log.Println("Loading!")
 	var columns []string
 	for i, line := range data {
 		if i == 0 {
