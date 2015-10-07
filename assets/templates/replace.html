@@ -1,5 +1,14 @@
 {{define "head"}}<title>{{.Common.Title}}</title>{{end}}
 {{define "javascript"}}
+$(document).ready(function() {
+
+  $("#selector").click(function() {
+    var dialog = document.getElementById('dialog');
+    dialog.show();
+  });
+
+});
+
 {{end}}
 
 {{define "body"}}
@@ -17,28 +26,42 @@
         </div>
         <div class="field">
             <label for="Part">Part Number</label>
-            <input type="text" name="Part" id="Part" value=""/>
+            <input type="text" name="OldPart" id="OldPart" value="{{.Part.PartNumber}}"/>
         </div>
         <div class="field">
-            <label for="OldSN">Original Serial Number</label>
-            <input type="text" name="OldSN" id="OldSN" value=""/>
+            <label for="OldSN">Serial Number</label>
+            <input type="text" name="OldSN" id="OldSN" value="{{.Part.Serial}}"/>
         </div>
         <div class="field">
-            <label for="NewSN">New Serial Number</label>
-            <input type="text" name="NewSN" id="NewSN" value=""/>
+            <label for="newpart">New Part</label>
+            <select id="newpart" name="newpart" size="10">
+                {{ range .Choices }}
+                <option value="{{.ID}}">{{.Label}}</option>
+                {{ end }}
+            </select>
         </div>
     </fieldset>
 
 
-<input type="hidden" name="ID" value="{{.Server.ID}}">
+<input type="hidden" name="SID" value="{{.Server.ID}}">
+<input type="hidden" name="PID" value="{{.Part.PID}}">
 <input type="hidden" name="UID" value="{{.Common.User.ID}}">
 <input type="button" value="Cancel"  onclick="javascript:window.history.go(-1)">
 {{ if .Common.User.Editor }}
+<input type="button" value="Select" id="selector">
 <input type="submit" name="action" value="Replace">
 {{ else }}
 <div id="sorry">You must be logged in as an admin to modify this record</div>
 {{ end }}
 </form>
+<dialog id="dialog">
+    <h3>Are you sure?</h3>
+    <p>You’ve pressed a big red button. It might do… something.
+    <div>
+        <button id="okay">Okay, go ahead</button>
+        <button id="cancel">Cancel</button>
+    </div>
+</dialog>
 </div>
 {{end}}
 

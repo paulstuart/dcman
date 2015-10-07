@@ -4,6 +4,7 @@
 {{define "body"}}
 <div id="partform">
     <form class="common" id="rma" name="rma" action="{{.Common.Prefix}}/rma/add/{{.Part.PID}}"/> </form>
+    <form class="common" id="replace" name="replace" action="{{.Common.Prefix}}/part/replace/{{.Part.PID}}"/> </form>
 <form method="post" class="common" id="servo">
     <fieldset>
         <legend>Part Edit</legend>
@@ -35,7 +36,7 @@
 {{ else }}
 <input type="submit" name="action" value="Update">
 <input type="submit" form="rma" value="RMA">
-<input type="submit" name="action" value="Replace">
+<input type="submit" form="replace" value="Replace">
 {{ end }}
 {{ else }}
 <div id="sorry">You must be logged in as an admin to modify this record</div>

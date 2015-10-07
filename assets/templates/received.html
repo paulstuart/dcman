@@ -1,5 +1,12 @@
 {{define "head"}}<title>{{.Common.Title}}</title>{{end}}
 {{define "javascript"}}
+$(document).ready(function() {
+    $('input[name="PartNumber"]').autoComplete({
+        source: function(term, response){
+            $.getJSON('{{.Common.Prefix}}/api/parts', { q: term }, function(data){ response(data); });
+        }
+    });
+});
 {{end}}
 
 {{define "body"}}
@@ -17,7 +24,7 @@
         </div>
         <div class="field">
             <label for="SerialNumber">Serial Number</label>
-            <input type="text" name="SerialNumber" id="SerialNumber" value="" />
+            <input type="text" name="SerialNumber" id="SerialNumber" value=""  pattern=".+" required />
         </div>
     </fieldset>
 

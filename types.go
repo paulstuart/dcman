@@ -68,16 +68,17 @@ type Vendor struct {
 }
 
 type RMA struct {
-	ID       int64     `sql:"rma_id" key:"true" table:"rmas"`
-	DID      int64     `sql:"did"`
-	VID      int64     `sql:"vid"`
-	UID      int64     `sql:"user_id"`
-	Number   string    `sql:"rma_no"`
-	Note     string    `sql:"note"`
-	Jira     string    `sql:"jira"`
-	DCTicket string    `sql:"dc_ticket"`
-	Opened   time.Time `sql:"date_opened"`
-	Closed   time.Time `sql:"date_closed"`
+	ID        int64     `sql:"rma_id" key:"true" table:"rmas"`
+	DID       int64     `sql:"did"`
+	VID       int64     `sql:"vid"`
+	UID       int64     `sql:"user_id"`
+	Number    string    `sql:"rma_no"`
+	Note      string    `sql:"note"`
+	Jira      string    `sql:"jira"`
+	DCTicket  string    `sql:"dc_ticket"`
+	Receiving string    `sql:"dc_receiving"`
+	Opened    time.Time `sql:"date_opened"`
+	Closed    time.Time `sql:"date_closed"`
 }
 
 //rma_id|did|vid|pid|sid|user_id|date_opened|date_closed|vendor_name|rma_no|dc|part_no|serial_no|jira|dc_ticket|hostname|rack|ru|note|login|ts|action
@@ -227,9 +228,37 @@ func (m *Manufacturer) PageData(r *http.Request) (interface{}, error) {
 	}, nil
 }
 
+type PartType struct {
+	TID      int64     `sql:"tid" key:"true" table:"part_types"`
+	Name     string    `sql:"name"`
+	UID      int64     `sql:"user_id"  audit:"user"`
+	Modified time.Time `sql:"ts" audit:"time"`
+}
+
+func (p *PartType) PageData(r *http.Request) (interface{}, error) {
+	if len(r.URL.Path) > 0 {
+		if err := dbFindByID(p, r.URL.Path); err != nil {
+			return nil, err
+		}
+	}
+	return struct {
+		Common
+		PartType *PartType
+	}{
+		Common:   NewCommon(r, "Edit"),
+		PartType: p,
+	}, nil
+}
+
+func partTypes() []PartType {
+	pt, _ := dbObjectList(PartType{})
+	return pt.([]PartType)
+}
+
 type SKU struct {
 	KID         int64     `sql:"kid" key:"true" table:"skus"`
 	MID         int64     `sql:"mid"`
+	TID         int64     `sql:"tid"`
 	PartNumber  string    `sql:"part_no"`
 	Description string    `sql:"description"`
 	UID         int64     `sql:"user_id"  audit:"user"`
@@ -242,6 +271,16 @@ func (p *SKU) Manufacturer() Manufacturer {
 	return m
 }
 
+func (s *SKU) PartType() *PartType {
+	if s != nil {
+		pt := &PartType{}
+		if err := dbFindByID(pt, s.TID); err == nil {
+			return pt
+		}
+	}
+	return nil
+}
+
 func (p *SKU) PageData(r *http.Request) (interface{}, error) {
 	if len(r.URL.Path) > 0 {
 		if err := dbFindByID(p, r.URL.Path); err != nil {
@@ -250,10 +289,12 @@ func (p *SKU) PageData(r *http.Request) (interface{}, error) {
 	}
 	return struct {
 		Common
-		SKU *SKU
+		SKU   *SKU
+		Types []PartType
 	}{
 		Common: NewCommon(r, "Edit"),
 		SKU:    p,
+		Types:  partTypes(),
 	}, nil
 }
 
@@ -274,6 +315,15 @@ func (p *Part) SKU() *SKU {
 	pl := &SKU{}
 	if nil == dbFindByID(pl, p.KID) {
 		return pl
+	}
+	return nil
+}
+
+func (p *Part) PartType() *PartType {
+	if s := p.SKU(); s != nil {
+		if nil == dbFindByID(s, p.KID) {
+			return s.PartType()
+		}
 	}
 	return nil
 }
@@ -331,6 +381,11 @@ func (p *Part) PageData(r *http.Request) (interface{}, error) {
 	}, nil
 }
 
+func (p *Part) Log(action string, u User) {
+	const q = "insert into part_log (pid, action, ts, user_id) values (?,?,?,?)"
+	dbExec(q, p.PID, action, time.Now(), u.ID)
+}
+
 func (u User) Admin() bool {
 	return u.Level > 1
 }
@@ -371,15 +426,6 @@ type Datacenter struct {
 func sshCmd(host, username, password, cmd string, timeout int) error {
 	log.Println("SSH U:", username, "P:", password)
 	rc, _, _, err := sshclient.Exec(host+":22", username, password, cmd, timeout)
-	/*
-		rc, o, e, err := sshclient.Exec(host+":22", username, password, cmd, timeout)
-			if len(o) > 0 {
-				log.Println("SSH STDOUT:", o)
-			}
-			if len(e) > 0 {
-				log.Println("SSH STDERR:", e)
-			}
-	*/
 	if err != nil {
 		return err
 	}
@@ -579,7 +625,7 @@ func (s Server) InternalVLAN() string {
 func (s Server) RunScript(script string) error {
 	cmd := fmt.Sprintf(`curl -s "%sapi/script/%s" | bash`, baseURL, script)
 	log.Println("RUN SCRIPT:", cmd)
-	return sshCmd(s.IPInternal, sshUsername, sshPassword, cmd, 60)
+	return sshCmd(s.IPInternal, cfg.SSH.Username, cfg.SSH.Password, cmd, 60)
 }
 
 func deleteServerFromRack(rid, ru string) error {
@@ -1163,11 +1209,20 @@ type PDU struct {
 	AssetTag string `sql:"asset_tag"`
 }
 
+func typeID(name string) int64 {
+	pt := PartType{}
+	if err := dbObjectLoad(&pt, "where name=?", name); err != nil {
+		log.Println("type id lookup failed:", err)
+		return 0
+	}
+	return pt.TID
+}
+
+type DiskInfo struct {
+	Size, Location, Manufacturer, PartNumber, SerialNumber string
+}
+
 func ServerImportDMI(sid int64, d dmijson.DMI) error {
-	/*
-		log.Println("IMPORT SID:", id)
-		log.Println("IMPORT JSON:", d.ToJSON())
-	*/
 	log.Println("IMPORTING SID:", sid, "RECORDS:", len(d.MemoryDevice))
 	s := Server{}
 	if err := dbFindByID(&s, sid); err != nil {
@@ -1175,21 +1230,43 @@ func ServerImportDMI(sid int64, d dmijson.DMI) error {
 	}
 	dc := s.Datacenter()
 	did := dc.ID
+	tid := typeID("memory")
 
 	for _, m := range d.MemoryDevice {
 		if len(m.Size) == 0 {
 			continue
 		}
 		desc := m.Size + " " + m.Speed
-		if _, err := AddDevicePart(did, sid, m.Manufacturer, m.PartNumber, desc, m.SerialNumber, m.AssetTag, m.Locator); err != nil {
+		if _, err := AddDevicePart(did, sid, tid, m.Manufacturer, m.PartNumber, desc, m.SerialNumber, m.AssetTag, m.Locator); err != nil {
 			log.Println("add error:", err)
 			return err
 		}
 	}
+	tid = typeID("motherboard")
 	b := &d.BaseBoardInformation
-	if _, err := AddDevicePart(did, sid, b.Manufacturer, b.ProductName, b.Type, b.SerialNumber, b.AssetTag, b.LocationInChassis); err != nil {
+	if _, err := AddDevicePart(did, sid, tid, b.Manufacturer, b.ProductName, b.Type, b.SerialNumber, b.AssetTag, b.LocationInChassis); err != nil {
 		log.Println("add error:", err)
 		return err
+	}
+	return nil
+}
+
+func ServerImportDisks(sid interface{}, disks []DiskInfo) error {
+	log.Println("IMPORTING DISK SID:", sid, "RECORDS:", len(disks))
+	s := Server{}
+	if err := dbFindByID(&s, sid); err != nil {
+		return err
+	}
+	dc := s.Datacenter()
+	did := dc.ID
+	tid := typeID("disk")
+
+	for _, disk := range disks {
+		desc := disk.Size
+		if _, err := AddDevicePart(did, s.ID, tid, disk.Manufacturer, disk.PartNumber, desc, disk.SerialNumber, "", disk.Location); err != nil {
+			log.Println("disk add error:", err)
+			return err
+		}
 	}
 	return nil
 }

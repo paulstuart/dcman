@@ -34,14 +34,12 @@ var (
 	systemLocation, _ = time.LoadLocation("Local")
 	pathPrefix        string
 	bannerText        string
-	// ************** DELETE BEFORE COMMIT!!!!
-	sshUsername string = "pstuart"
-	sshPassword string = "drAwuPa7rUtR"
-	cfg                = struct {
+	cfg               = struct {
 		Main    MainConfig
 		Backups BackupConfig
 		Jira    JiraConfig
 		SAML    SAMLConfig
+		SSH     SSHConfig
 	}{}
 )
 
@@ -70,12 +68,19 @@ type SAMLConfig struct {
 	PlaceHolder string `gcfg:"placeholder"`
 	OKTACookie  string `gcfg:"OKTACookie"`
 	OKTAHash    string `gcfg:"OKTAHash"`
+	Disabled    bool   `gcfg:"disabled"`
 }
 
 type JiraConfig struct {
 	Username string `gcfg:"username"`
 	Password string `gcfg:"password"`
 	URL      string `gcfg:"url"`
+}
+
+type SSHConfig struct {
+	Username string `gcfg:"username"`
+	Password string `gcfg:"password"`
+	Key      string `gcfg:"private_key"`
 }
 
 const (

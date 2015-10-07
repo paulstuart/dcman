@@ -59,6 +59,10 @@ $("#Delete").click(function() {
             <label for="DCTicket">Datacenter Ticket</label>
             <input type="text" name="DCTicket" id="DCTicket" value="{{.RMA.DCTicket}}"/>
         </div>
+        <div class="field">
+            <label for="Receiving">Datacenter Receiving Ticket</label>
+            <input type="text" name="Receiving" id="Receiving" value="{{.RMA.Receiving}}"/>
+        </div>
         {{ if .Part.PID }}
         <div class="field">
             <label for="PartNumber">Part Number</label>

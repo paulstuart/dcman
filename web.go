@@ -33,7 +33,7 @@ const (
 var (
 	assetDir    = "assets"
 	tdir        string
-	ip          = MyIp()
+	serverIP    = MyIp()
 	htmlTmpl    map[string]*template.Template
 	textTmpl    map[string]*ttext.Template
 	http_server string
@@ -57,7 +57,7 @@ func RemoteHost(r *http.Request) string {
 	}
 	// check if running on same host
 	if len(remote_addr) > 0 && remote_addr[0] == ':' {
-		remote_addr = ip
+		remote_addr = serverIP
 	}
 	return remote_addr
 }
@@ -479,8 +479,8 @@ func webServer(handlers []HFunc) {
 	}
 
 	http_server = fmt.Sprintf(":%d", cfg.Main.Port)
-	baseURL = fmt.Sprintf("http://%s:%d/%s", ip, cfg.Main.Port, pathPrefix)
-	fmt.Printf("serve up web: http://%s%s/\n", ip, http_server)
+	baseURL = fmt.Sprintf("http://%s:%d/%s", serverIP, cfg.Main.Port, pathPrefix)
+	fmt.Printf("serve up web: http://%s%s/\n", serverIP, http_server)
 	err = http.ListenAndServe(http_server, gorilla.CompressHandler(userMiddleware(gorilla.LoggingHandler(accessLog, http.DefaultServeMux))))
 	if err != nil {
 		panic(err)

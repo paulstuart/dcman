@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	dbu "github.com/paulstuart/dbutil"
@@ -54,9 +55,7 @@ type Common struct {
 }
 
 func (c *Common) AddHeadings(headings ...string) {
-	//log.Println("ADD HEADINGS:", headings)
 	for _, h := range headings {
-		//	log.Println("ADD HEADING:", h)
 		c.Heading = append(c.Heading, template.HTML(h))
 	}
 }
@@ -289,6 +288,15 @@ func DocumentEdit(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func AutoPage(w http.ResponseWriter, r *http.Request) {
+	data := struct {
+		Common Common
+	}{
+		Common: NewCommon(r, "Autocomplete Test"),
+	}
+	renderTemplate(w, r, "auto", data)
+}
+
 func DocumentList(w http.ResponseWriter, r *http.Request) {
 	t, err := dbTable("select id, did, dc, filename, title, login, modified, remote_addr from docview")
 	if err != nil {
@@ -299,8 +307,6 @@ func DocumentList(w http.ResponseWriter, r *http.Request) {
 	setLinks(t, 4, "/document/edit/%s", 0)
 
 	t.Hide(0, 1)
-	// BAD?t.Adjustment(trimTime, 6)
-	//t.SetType("ip-address", 3, 4)
 	data := Tabular{
 		Common: NewCommon(r, "Document List"),
 		Table:  t,
@@ -660,6 +666,71 @@ func ServerReplace(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+type Choice struct {
+	ID    int64  `sql:"pid" table:"part_choices"`
+	Label string `sql:"label"`
+}
+
+func PartReplace(w http.ResponseWriter, r *http.Request) {
+	part := &Part{}
+	if r.Method == "POST" {
+		r.ParseForm()
+		if err := dbFindByID(part, r.URL.Path); err != nil {
+			http.Error(w, "part:"+err.Error(), http.StatusBadRequest)
+			return
+		}
+		newPart := &Part{}
+		if err := dbFindByID(newPart, r.Form.Get("newpart")); err != nil {
+			log.Println("NEWPART:", r.Form.Get("newpart"))
+			http.Error(w, "new part:"+err.Error(), http.StatusBadRequest)
+			return
+		}
+		server := &Server{}
+		if err := dbFindByID(server, part.SID); err != nil {
+			http.Error(w, "server error:"+err.Error(), http.StatusBadRequest)
+			return
+		}
+		u := currentUser(r)
+		part.Log("removed from server: "+server.Hostname, u)
+		newPart.Log("installed in server: "+server.Hostname, u)
+		newPart.SID = part.SID
+		part.SID = 0
+		dbSave(part)
+		dbSave(newPart)
+		redirect(w, r, "/part/totals", http.StatusSeeOther)
+	} else {
+		if err := dbFindByID(part, r.URL.Path); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		const q = "select id, label from part_choices where did=? and tid=?"
+		sku := part.SKU()
+		if sku == nil {
+			http.Error(w, "no sku for part", http.StatusBadRequest)
+			return
+		}
+		ch, err := dbObjectListQuery(Choice{}, "where did=? and tid=?", part.DID, sku.TID)
+		if err != nil {
+			log.Println("query error:", err)
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		choices := ch.([]Choice)
+		data := struct {
+			Common
+			Server  *Server
+			Part    *Part
+			Choices []Choice
+		}{
+			Common:  NewCommon(r, "Replace part:"+part.Serial),
+			Server:  part.Server(),
+			Part:    part,
+			Choices: choices,
+		}
+		renderTemplate(w, r, "replace", data)
+	}
+}
+
 func RackAdjust(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		r.ParseForm()
@@ -885,11 +956,6 @@ func RackEdit(w http.ResponseWriter, r *http.Request) {
 
 func RMAAdd(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
-		/*
-			for k, v := range r.Form {
-				log.Println("K:", k, "V:", v)
-			}
-		*/
 		pid := r.URL.Path
 		log.Println("**** RMA ADD ****** PID:", pid)
 		//log.Println("**** RMA FORM:", r.Form)
@@ -902,11 +968,9 @@ func RMAAdd(w http.ResponseWriter, r *http.Request) {
 		log.Println("**** part sid:", p.SID)
 		// see if we already have an RMA for the server
 		rma := RMA{}
-		//dbDebug(true)
 		if err := objPost(r, &rma); err != nil {
 			log.Println("rma error:", err)
 		}
-		////dbDebug(false)
 		log.Println("rma id:", rma.ID)
 		p.RMAID = rma.ID
 		if err := dbSave(&p); err != nil {
@@ -921,11 +985,9 @@ func RMAAdd(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		p := &Part{}
-		//dbDebug(true)
 		if err := dbFindByID(p, r.URL.Path); err != nil {
 			log.Println("PART ERR:", err)
 			notFound(w, r)
-			//	dbDebug(false)
 			return
 		}
 		var did int64
@@ -1218,14 +1280,14 @@ func RMAReceived(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
 		pn := r.Form.Get("PartNumber")
 		sn := r.Form.Get("SerialNumber")
-		//		rmaid := r.Form.Get("RMAID")
+		var tid int64
 		rma := RMA{}
 		if err := dbFindByID(&rma, r.URL.Path); err != nil {
 			log.Println("BAD RMA ID:", r.URL.Path, "ERR:", err)
 			notFound(w, r)
 			return
 		}
-		part, err := AddDevicePart(rma.DID, 0, "", pn, "", sn, "", "")
+		part, err := AddDevicePart(rma.DID, 0, tid, "", pn, "", sn, "", "")
 		if err != nil {
 			log.Println("add device part err:", err)
 		}
@@ -1270,24 +1332,6 @@ func RMAReceived(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func StockList(w http.ResponseWriter, r *http.Request) {
-	const q = "select * from pview where rma_id=0 and sid=0"
-	table, err := dbTable(q)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
-		return
-	}
-	/*
-		table.Adjustment(isBlank, 10)
-		table.Hide(0, 1, 2, 3, 4, 5, 6)
-		//setLinks(table, 3, "/server/edit/%s", 1)
-		setLinks(table, 10, "/rma/edit/%s", 0)
-		//setLinks(table, 9, "/vendor/edit/%s", 2)
-		table.Adjustment(trimDate, 7, 8)
-	*/
-	renderTabular(w, r, table, "Stock Report")
-}
-
 func MfgrEdit(w http.ResponseWriter, r *http.Request) {
 	m := &Manufacturer{}
 	if r.Method == "POST" {
@@ -1312,7 +1356,7 @@ func PartEdit(w http.ResponseWriter, r *http.Request) {
 			log.Println("part edit error:", err)
 		}
 		//auditLog(user.ID, remote_addr, action, v.Name)
-		redirect(w, r, "/part/list", http.StatusSeeOther)
+		redirect(w, r, "/part/totals", http.StatusSeeOther)
 	} else {
 		data, err := s.PageData(r)
 		if err != nil {
@@ -1329,7 +1373,6 @@ func SKUEdit(w http.ResponseWriter, r *http.Request) {
 		if err := objPost(r, s); err != nil {
 			log.Println("part edit error:", err)
 		}
-		//auditLog(user.ID, remote_addr, action, v.Name)
 		redirect(w, r, "/sku/list", http.StatusSeeOther)
 	} else {
 		data, err := s.PageData(r)
@@ -1342,9 +1385,7 @@ func SKUEdit(w http.ResponseWriter, r *http.Request) {
 }
 
 func ServerParts(w http.ResponseWriter, r *http.Request) {
-	//const cols = "pid,mid,user_id,description,part_no,mfgr,login,modified"
-	const cols = "*"
-	const q = "select " + cols + " from pview where sid=?"
+	const q = "select * from pview where sid=?"
 	id := r.URL.Path
 	s := Server{}
 	if err := dbFindByID(&s, id); err != nil {
@@ -1357,28 +1398,26 @@ func ServerParts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	/*
-		pid|vid|sid|did|kid|mid|rma_id|user_id|dc|serial_no|part_no|description|mfgr|location|login|modified
-		1|1|0|1|1|1|0|1|AMS|fakesn|iSSD123x|ssd drive|Intel Corporation|somewhere|pstuart|2015-08-26 20:13:55
-
+		pid|vid|sid|did|kid|tid|mid|rma_id|user_id|dc|serial_no|part_no|description|mfgr|location|part_type|login|modified|rack|ru|hostname|used
+		1|1|0|1|1|1|1|0|1|AMS|fakesn|iSSD123x|ssd drive|Intel Corporation|somewhere|disk|pstuart|2015-09-29 20:08:13||||free
+		2|1|0|1|1|1|1|0|1|AMS|faker_sn|iSSD123x|ssd drive|Intel Corporation|nowhere|disk|pstuart|2015-09-29 20:08:14||||free
+		3|0|2447|2|2|2|2|0|0|SFO|13A466B4|M393B2G70BH0-YH9|16384 MB 1333 MHz|Samsung|P1-DIMMA1|memory||0001-01-01 00:00:00|1|33|sfo1hyp079|used
 	*/
 	table.Hide(0, 1, 2, 3, 4, 5, 6, 7, 8)
-	table.Adjustment(isBlank, 9)
+	table.Adjustment(isBlank, 10)
 	//table.Adjustment(trimTime, 7)
-	setLinks(table, 9, "/part/edit/%s", 0)
-	setLinks(table, 10, "/sku/edit/%s", 4)
-	setLinks(table, 12, "/mfgr/edit/%s", 5)
+	setLinks(table, 10, "/part/edit/%s", 0)
+	setLinks(table, 11, "/sku/edit/%s", 4)
+	setLinks(table, 13, "/mfgr/edit/%s", 7)
 	heading := []string{"Part List for " + s.Hostname}
 	if len(table.Rows) == 0 {
-		heading = append(heading, fmt.Sprintf(`<a href="%s/api/dmidecode/%s">Find Parts</a>`, pathPrefix, id))
+		button := scriptButton(id, "Find Parts", "/api/diskinfo/,/api/dmidecode/")
+		heading = append(heading, button)
 	}
 	renderTabular(w, r, table, "Parts for server:"+s.Hostname, heading...)
 }
 
 func PartUse(w http.ResponseWriter, r *http.Request) {
-	/*
-		const cols = "*"
-		const q = "select " + cols + " from part_summary"
-	*/
 	// pid|vid|sid|did|kid|mid|rma_id|user_id|dc|serial_no|part_no|description|mfgr|location|login|modified
 	const q = "select * from pview where rma_id=0 and sid=0"
 	table, err := dbTable(q)
@@ -1390,7 +1429,6 @@ func PartUse(w http.ResponseWriter, r *http.Request) {
 	setLinks(table, 9, "/part/edit/%s", 0)
 	setLinks(table, 10, "/sku/edit/%s", 4)
 	table.Adjustment(trimTime, 15)
-	//heading := fmt.Sprintf(`Part List <a href="%s/part/edit/">Add</a>`, pathPrefix)
 	heading := "Part Report"
 	renderTabular(w, r, table, heading)
 }
@@ -1454,18 +1492,47 @@ func PartList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	/*
-		dc|pid|sid|did|kid|mid|user_id|serial_no|part_no|description|mfgr|location|login|modified|id|rack|ru|hostname|used
-		AMS|1|0|1|1|1|1|fakesn|iSSD123x|ssd drive|Intel Corporation|somewhere|pstuart|2015-08-15 18:52:23|||||free
+		pid|vid|sid|did|kid|tid|mid|rma_id|user_id|dc|serial_no|part_no|description|mfgr|location|part_type|login|modified|rack|ru|hostname|used
+		3|0|2447|2|2|2|2|0|0|SFO|13A466B4|M393B2G70BH0-YH9|16384 MB 1333 MHz|Samsung|P1-DIMMA1|memory||0001-01-01 00:00:00|1|33|sfo1hyp079|used
 	*/
-	table.Hide(1, 2, 3, 4, 5, 6, 14)
-	setLinks(table, 7, "/part/edit/%s", 1)
-	setLinks(table, 8, "/sku/edit/%s", 4)
+	table.Hide(1, 2, 3, 4, 5, 6, 7, 8, 16)
+	setLinks(table, 10, "/part/edit/%s", 0)
+	setLinks(table, 11, "/sku/edit/%s", 4)
 	/*
 		table.Adjustment(trimTime, 7)
 		setLinks(table, 5, "/mfgr/edit/%s", 1)
 	*/
 	heading := fmt.Sprintf(`Part List <a href="%s/part/edit/">Add</a>`, pathPrefix)
 	renderTabular(w, r, table, heading)
+}
+
+func TypeEdit(w http.ResponseWriter, r *http.Request) {
+	s := &PartType{}
+	if r.Method == "POST" {
+		if err := objPost(r, s); err != nil {
+			log.Println("part type error:", err)
+		}
+		redirect(w, r, "/part/types", http.StatusSeeOther)
+	} else {
+		data, err := s.PageData(r)
+		if err != nil {
+			notFound(w, r)
+			return
+		}
+		renderTemplate(w, r, "part_type", data)
+	}
+}
+
+func TypeList(w http.ResponseWriter, r *http.Request) {
+	table, err := dbTable("select tid, name from part_types")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	table.Hide(0)
+	setLinks(table, 1, "/part/type/%s", 0)
+	heading := fmt.Sprintf(`Part Types <a href="%s/part/type/">Add</a>`, pathPrefix)
+	renderTabular(w, r, table, "Part Types", heading)
 }
 
 func SKUList(w http.ResponseWriter, r *http.Request) {
@@ -1476,16 +1543,21 @@ func SKUList(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
-	table.Hide(0, 1, 2)
-	table.Adjustment(trimTime, 7)
-	setLinks(table, 3, "/sku/edit/%s", 0)
-	setLinks(table, 5, "/mfgr/edit/%s", 1)
+	/*
+		kid|mid|tid|user_id|part_no|part_type|description|mfgr|login|modified
+		1|1|1|1|iSSD123x|disk|ssd drive|Intel Corporation|pstuart|2015-09-29 18:22:42
+	*/
+	table.Hide(0, 1, 2, 3)
+	table.Adjustment(trimTime, 9)
+	setLinks(table, 4, "/sku/edit/%s", 0)
+	setLinks(table, 7, "/mfgr/edit/%s", 1)
 	title := "SKU List"
-	heading := []string{title}
 	if u := currentUser(r); u.Editor() {
-		heading = append(heading, fmt.Sprintf(`<a href="%s/sku/edit/">Add</a>`, pathPrefix))
+		heading := fmt.Sprintf(`%s <a href="%s/sku/edit/">Add</a>`, title, pathPrefix)
+		renderTabular(w, r, table, title, heading)
+	} else {
+		renderTabular(w, r, table, title)
 	}
-	renderTabular(w, r, table, title, heading...)
 }
 
 func VendorList(w http.ResponseWriter, r *http.Request) {
@@ -1600,13 +1672,6 @@ func RackZone(w http.ResponseWriter, r *http.Request) {
 		notFound(w, r)
 		return
 	}
-	/*
-		where := "where rid=?"
-			sx, err := dbObjectListQuery(Server{}, where, bits[1])
-			if err != nil {
-				log.Println("error loading objects:", err)
-			}
-	*/
 	w.Header().Set("Content-Type", "text/plain")
 	const query = "select * from servers_history where id=? order by rowid desc"
 	id, err := strconv.Atoi(r.URL.Path)
@@ -1635,7 +1700,6 @@ func ServerAudit(w http.ResponseWriter, r *http.Request) {
 			Common: NewCommon(r, "Audit History"),
 			Table:  table.Diff(true, skip...),
 		}
-		//renderTemplate(w, r, "server_audit", data)
 		table.Hide(0, 1, 2)
 		renderTemplate(w, r, "table", data)
 	}
@@ -1714,13 +1778,6 @@ func DCRackList(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fmt.Fprintf(w, `{"error": "%s"}`, err.Error())
 	} else {
-		/*
-			racks := make(map[string]string)
-			for _, row := range t.Rows {
-				racks[row[0]] = row[1]
-			}
-			j, _ := json.MarshalIndent(racks, " ", "  ")
-		*/
 		j, _ := json.MarshalIndent(t.Rows, " ", "  ")
 		fmt.Fprint(w, string(j))
 	}
@@ -2505,8 +2562,8 @@ func SettingsHandler(w http.ResponseWriter, r *http.Request) {
 		u := r.FormValue("ssh_user")
 		p := r.FormValue("ssh_pass")
 		if len(u) > 0 && len(p) > 0 {
-			sshUsername = u
-			sshPassword = p
+			cfg.SSH.Username = u
+			cfg.SSH.Password = p
 		}
 		redirect(w, r, "/", http.StatusSeeOther)
 	} else {
@@ -2519,7 +2576,7 @@ func SettingsHandler(w http.ResponseWriter, r *http.Request) {
 		}{
 			Common:   common,
 			ReadOnly: cfg.Main.ReadOnly,
-			SSHUser:  sshUsername,
+			SSHUser:  cfg.SSH.Username,
 		}
 		renderTemplate(w, r, "banner", data)
 	}
@@ -2574,6 +2631,31 @@ func APIUpload(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func DiskPage(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Path[len(pathPrefix+"/api/diskinfo/"):]
+	log.Println("DISKPAGE SID:", path)
+	if r.Method == "POST" {
+		decoder := json.NewDecoder(r.Body)
+		var d []DiskInfo
+		if err := decoder.Decode(&d); err != nil {
+			log.Println("decode error:", err)
+			badRequest(w, err)
+			return
+		}
+		log.Println("DISK INFO:", d)
+		if err := ServerImportDisks(path, d); err != nil {
+			badRequest(w, err)
+			return
+		}
+		w.Header().Set("Content-Type", "text/plain")
+		fmt.Fprintln(w, "ok")
+	} else if r.Method == "GET" {
+		data := struct{ URL string }{baseURL + r.URL.Path}
+		log.Println("PROBE DISKINFO FOR SID:", path)
+		renderTextTemplate(w, r, "diskinfo.sh", data)
+	}
+}
+
 func ServerDiscover(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	ipmi := r.URL.Path
@@ -2601,6 +2683,26 @@ func APIUpdate(w http.ResponseWriter, r *http.Request) {
 		go server.FixMac()
 		time.Sleep(1 * time.Second)
 	}
+}
+
+func ApiParts(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	for k, v := range r.Form {
+		log.Println("K:", k, "V:", v)
+	}
+	pn := strings.ToLower(r.Form.Get("q")) + "%"
+	const query = "select part_no from skus where part_no like ?"
+	dbDebug(true)
+	rows, err := dbRows(query, pn)
+	dbDebug(false)
+	if err != nil {
+		log.Println("db error:", err)
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	j, _ := json.MarshalIndent(rows, " ", " ")
+	w.Header().Set("Content-Type", "application/json")
+	fmt.Fprint(w, string(j))
 }
 
 func BulkPings(w http.ResponseWriter, r *http.Request) {
@@ -2653,8 +2755,22 @@ func IPMICredentialsSet(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func fullURL(path ...string) string {
+	return "http://" + serverIP + http_server + pathPrefix + strings.Join(path, "")
+}
+
+func scriptButton(sid, label, path string) string {
+	const tmpl = `<form method="POST" action="%s/api/remote">
+	<input type="submit" value="%s">
+	<input type="hidden" name="path" value="%s">
+	<input type="hidden" name="sid"  value="%s">
+	</form>`
+	return fmt.Sprintf(tmpl, pathPrefix, label, path, sid)
+}
+
 func ServerDmiDecode(w http.ResponseWriter, r *http.Request) {
-	path := r.URL.Path[len(pathPrefix+"/api/dmidecode/"):]
+	const here = "/api/dmidecode/"
+	path := r.URL.Path[len(pathPrefix+here):]
 	log.Println("LOOK FOR SID:", path)
 	id, err := strconv.ParseInt(path, 0, 64)
 	if err != nil && len(path) > 0 {
@@ -2663,6 +2779,7 @@ func ServerDmiDecode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Println("DMI DECODE METHOD:", r.Method)
 	if r.Method == "POST" {
 		if id == 0 {
 			badRequest(w, fmt.Errorf("id is 0"))
@@ -2684,20 +2801,58 @@ func ServerDmiDecode(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "")
 
 	} else {
-		base := "http://" + ip + http_server + pathPrefix + "/api/dmidecode/"
-		cmd := fmt.Sprintf(`curl -s "%s" | sudo DECODE=true bash | curl -X POST -d@- "%s%d"`, base+"script", base, id)
-		log.Println("CMD:", cmd)
-		s := Server{}
-		if err := dbFindByID(&s, id); err != nil {
-			log.Println("DMI JSON SERVER ERR:", err)
-			notFound(w, r)
+		w.Header().Set("Content-Type", "text/plain")
+		if s, err := dmijson.Script(); err != nil {
+			log.Println(err)
+		} else {
+			fmt.Fprintln(w, s)
+		}
+	}
+}
+
+func remoteServer(sid, path string) error {
+	s := Server{}
+	if err := dbFindByID(&s, sid); err != nil {
+		log.Println("REMOTE SERVER ERR:", err)
+		return err
+	}
+	url := fullURL(path, sid)
+	cmd := fmt.Sprintf(`curl -s "%s" | sudo bash | curl -X POST -d@- "%s"`, url, url)
+	log.Println("REMOTE CMD:", cmd)
+	return sshCmd(s.IPInternal, cfg.SSH.Username, cfg.SSH.Password, cmd, 60)
+}
+
+func RemoteScript(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "POST" {
+		r.ParseForm()
+		paths := r.Form.Get("path")
+		if len(paths) == 0 {
+			badRequest(w, fmt.Errorf("no path specified"))
 			return
 		}
-		if err := sshCmd(s.IPInternal, sshUsername, sshPassword, cmd, 60); err != nil {
-			badRequest(w, err)
+		sid := r.Form.Get("sid")
+		if len(sid) == 0 {
+			badRequest(w, fmt.Errorf("no server id specified"))
 			return
 		}
-		redirect(w, r, "/server/parts/"+path, http.StatusSeeOther)
+		var wg sync.WaitGroup
+		var rerr error
+		for _, path := range strings.Split(paths, ",") {
+			wg.Add(1)
+			go func(p string) {
+				if err := remoteServer(sid, p); err != nil {
+					log.Println("remote error:", err)
+					rerr = err
+				}
+				wg.Done()
+			}(path)
+		}
+		wg.Wait()
+		if rerr != nil {
+			badRequest(w, rerr)
+			return
+		}
+		http.Redirect(w, r, r.Referer(), http.StatusSeeOther)
 	}
 }
 
@@ -2715,7 +2870,6 @@ func ApiScript(w http.ResponseWriter, r *http.Request) {
 	skip := len(pathPrefix + "/api/script/")
 	script := r.URL.Path[skip:]
 	if r.Method == "POST" {
-		//data := struct{ BaseURL string, UserID int64 }{baseURL, u.UID}
 		data := struct {
 			BaseURL string
 			UserID  int64
@@ -2723,21 +2877,18 @@ func ApiScript(w http.ResponseWriter, r *http.Request) {
 			BaseURL: baseURL,
 			UserID:  u.ID,
 		}
-		//data := struct{ BaseURL string }{baseURL}
-		//data := struct{ UserID int64 }{u.UID}
-
-		// TODO: validate valid filename and exists!!
 		renderTextTemplate(w, r, script, data)
 	}
 }
 
-/*
-func DmiJson(w http.ResponseWriter, r *http.Request) {
-	base := "http://" + ip + http_server + "/" + pathPrefix + "api/dmidecode/"
-	data := struct{ Script, Callback string }{base + "script", base}
-	renderTextTemplate(w, r, "dmidecode.sh", data)
+type KV struct {
+	Key, Value string
 }
-*/
+
+type BackTalk struct {
+	Script, Callback string
+	Envy             []KV
+}
 
 var webHandlers = []HFunc{
 	{"/favicon.ico", FaviconPage},
@@ -2747,11 +2898,14 @@ var webHandlers = []HFunc{
 	{"/api/credentials/set", IPMICredentialsSet},
 	{"/api/dmidecode/script", ServerDecodeScript},
 	{"/api/dmidecode/", ServerDmiDecode},
-	//{"/api/dmijson/", DmiJson},
+	{"/api/diskinfo/", DiskPage},
+	{"/api/parts", ApiParts},
 	{"/api/pings", BulkPings},
+	{"/api/remote", RemoteScript},
 	{"/api/script/", ApiScript},
 	{"/api/upload", APIUpload},
 	{"/api/update", APIUpdate},
+	{"/auto", AutoPage},
 	{"/audit/log", auditPage},
 	{"/data/server/discover/", ServerDiscover},
 	{"/data/mactable", MacTable},
@@ -2788,8 +2942,11 @@ var webHandlers = []HFunc{
 	{"/network/vlans", VlansPage},
 	{"/part/edit/", PartEdit},
 	{"/part/list/", PartList},
+	{"/part/replace/", PartReplace},
 	{"/part/use/", PartUse},
 	{"/part/totals", PartTotals},
+	{"/part/type/", TypeEdit},
+	{"/part/types", TypeList},
 	{"/pdu/edit", PDUEdit},
 	{"/ping", pingPage},
 	{"/profile/view", ProfileView},
@@ -2823,8 +2980,6 @@ var webHandlers = []HFunc{
 	{"/settings", SettingsHandler},
 	{"/sku/edit/", SKUEdit},
 	{"/sku/list", SKUList},
-	//{"/stock/edit/", StockEdit},
-	{"/stock/list", StockList},
 	{"/user/add", UserEdit},
 	{"/user/edit/", UserEdit},
 	{"/user/list", usersListPage},

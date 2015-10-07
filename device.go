@@ -130,13 +130,6 @@ var removeWords = []string{
 
 func ManufacturerID(name string) int64 {
 	aka := strings.ToLower(name)
-	/*
-		aka = strings.Replace(aka, "the ", "", -1)
-		aka = strings.Replace(aka, "inc.", "", -1)
-		aka = strings.Replace(aka, "incorporated", "", -1)
-		aka = strings.Replace(aka, "corporation", "", -1)
-		aka = strings.Replace(aka, "company", "", -1)
-	*/
 	for _, word := range removeWords {
 		aka = strings.Replace(aka, word, "", -1)
 	}
@@ -149,20 +142,21 @@ func ManufacturerID(name string) int64 {
 	return m.MID
 }
 
-func skuID(mid int64, pn, d string) int64 {
-	pl := SKU{MID: mid, PartNumber: pn, Description: d}
+func skuID(mid, tid int64, pn, d string) int64 {
+	log.Println("ADD:", d)
+	pl := SKU{MID: mid, TID: tid, PartNumber: pn, Description: d}
 	if err := dbObjectLoad(&pl, "where mid=? and part_no=?", mid, pn); err != nil {
-		fmt.Println("plist load err:", err)
+		//fmt.Println("plist load err:", err)
 		dbAdd(&pl)
 	}
 	return pl.KID
 }
 
-func AddDevicePart(did, sid int64, manufacturer, productName, description, serialNumber, assetTag, location string) (*Part, error) {
+func AddDevicePart(did, sid, tid int64, manufacturer, productName, description, serialNumber, assetTag, location string) (*Part, error) {
 	part := Part{
 		SID:      sid,
 		DID:      did,
-		KID:      skuID(ManufacturerID(manufacturer), productName, description),
+		KID:      skuID(ManufacturerID(manufacturer), tid, productName, description),
 		Serial:   serialNumber,
 		AssetTag: assetTag,
 		Location: location,
