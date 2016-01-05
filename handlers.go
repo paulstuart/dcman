@@ -1400,15 +1400,17 @@ func ServerParts(w http.ResponseWriter, r *http.Request) {
 	/*
 		pid|vid|sid|did|kid|tid|mid|rma_id|user_id|dc|serial_no|part_no|description|mfgr|location|part_type|login|modified|rack|ru|hostname|used
 		1|1|0|1|1|1|1|0|1|AMS|fakesn|iSSD123x|ssd drive|Intel Corporation|somewhere|disk|pstuart|2015-09-29 20:08:13||||free
-		2|1|0|1|1|1|1|0|1|AMS|faker_sn|iSSD123x|ssd drive|Intel Corporation|nowhere|disk|pstuart|2015-09-29 20:08:14||||free
-		3|0|2447|2|2|2|2|0|0|SFO|13A466B4|M393B2G70BH0-YH9|16384 MB 1333 MHz|Samsung|P1-DIMMA1|memory||0001-01-01 00:00:00|1|33|sfo1hyp079|used
+
+		pid|vid|sid|did|kid|tid|mid|rma_id|user_id|dc|serial_no|part_no|description|mfgr|location|part_type|login|modified
+		3|0|2087|3|2|1|2|0|0|NYC|WD-WCC1P0740453WDC|WD2000FYYZ-01UL1B1|1.819TB|Western Digital|0,0,0|disk||0001-01-01 00:00:00
+
 	*/
 	table.Hide(0, 1, 2, 3, 4, 5, 6, 7, 8)
 	table.Adjustment(isBlank, 10)
 	//table.Adjustment(trimTime, 7)
 	setLinks(table, 10, "/part/edit/%s", 0)
 	setLinks(table, 11, "/sku/edit/%s", 4)
-	setLinks(table, 13, "/mfgr/edit/%s", 7)
+	setLinks(table, 13, "/mfgr/edit/%s", 6)
 	heading := []string{"Part List for " + s.Hostname}
 	if len(table.Rows) == 0 {
 		button := scriptButton(id, "Find Parts", "/api/diskinfo/,/api/dmidecode/")
@@ -2633,7 +2635,6 @@ func APIUpload(w http.ResponseWriter, r *http.Request) {
 
 func DiskPage(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path[len(pathPrefix+"/api/diskinfo/"):]
-	log.Println("DISKPAGE SID:", path)
 	if r.Method == "POST" {
 		decoder := json.NewDecoder(r.Body)
 		var d []DiskInfo
@@ -2642,7 +2643,6 @@ func DiskPage(w http.ResponseWriter, r *http.Request) {
 			badRequest(w, err)
 			return
 		}
-		log.Println("DISK INFO:", d)
 		if err := ServerImportDisks(path, d); err != nil {
 			badRequest(w, err)
 			return
@@ -2651,7 +2651,6 @@ func DiskPage(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "ok")
 	} else if r.Method == "GET" {
 		data := struct{ URL string }{baseURL + r.URL.Path}
-		log.Println("PROBE DISKINFO FOR SID:", path)
 		renderTextTemplate(w, r, "diskinfo.sh", data)
 	}
 }
@@ -2660,7 +2659,6 @@ func ServerDiscover(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	ipmi := r.URL.Path
 	if len(ipmi) == 0 {
-		log.Println("DISCOVER IPMI:", ipmi)
 		notFound(w, r)
 		return
 	}
@@ -2771,7 +2769,6 @@ func scriptButton(sid, label, path string) string {
 func ServerDmiDecode(w http.ResponseWriter, r *http.Request) {
 	const here = "/api/dmidecode/"
 	path := r.URL.Path[len(pathPrefix+here):]
-	log.Println("LOOK FOR SID:", path)
 	id, err := strconv.ParseInt(path, 0, 64)
 	if err != nil && len(path) > 0 {
 		log.Println("BAD INT:", err)
@@ -2779,21 +2776,13 @@ func ServerDmiDecode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("DMI DECODE METHOD:", r.Method)
 	if r.Method == "POST" {
+		fmt.Println("dmidecoding")
 		if id == 0 {
 			badRequest(w, fmt.Errorf("id is 0"))
 			return
 		}
-		log.Println("DMI SID:", id)
-		decoder := json.NewDecoder(r.Body)
-		var d dmijson.DMI
-		if err := decoder.Decode(&d); err != nil {
-			log.Println("decode error:", err)
-			badRequest(w, err)
-			return
-		}
-		if err := ServerImportDMI(id, d); err != nil {
+		if err := ServerImportDMI(id, r.Body); err != nil {
 			badRequest(w, err)
 			return
 		}
@@ -2802,11 +2791,8 @@ func ServerDmiDecode(w http.ResponseWriter, r *http.Request) {
 
 	} else {
 		w.Header().Set("Content-Type", "text/plain")
-		if s, err := dmijson.Script(); err != nil {
-			log.Println(err)
-		} else {
-			fmt.Fprintln(w, s)
-		}
+		fmt.Println("dmidecode!")
+		fmt.Fprintln(w, "dmidecode")
 	}
 }
 
@@ -2817,7 +2803,8 @@ func remoteServer(sid, path string) error {
 		return err
 	}
 	url := fullURL(path, sid)
-	cmd := fmt.Sprintf(`curl -s "%s" | sudo bash | curl -X POST -d@- "%s"`, url, url)
+	//cmd := fmt.Sprintf(`curl -s "%s" | sudo bash | curl -X POST -d@- "%s"`, url, url)
+	cmd := fmt.Sprintf(`curl -s "%s" | sudo bash | curl -X POST --data-binary @- "%s"`, url, url)
 	log.Println("REMOTE CMD:", cmd)
 	return sshCmd(s.IPInternal, cfg.SSH.Username, cfg.SSH.Password, cmd, 60)
 }

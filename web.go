@@ -404,6 +404,7 @@ func authMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+/*
 func StripPrefix(prefix string, h http.Handler) http.Handler {
 	if prefix == "" {
 		return h
@@ -417,6 +418,7 @@ func StripPrefix(prefix string, h http.Handler) http.Handler {
 		}
 	})
 }
+*/
 
 func redirect(w http.ResponseWriter, r *http.Request, path string, status int) {
 	http.Redirect(w, r, pathPrefix+path, status)

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"html/template"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -16,7 +17,6 @@ import (
 	"time"
 
 	"github.com/paulstuart/dbutil"
-	"github.com/paulstuart/dmijson"
 	"github.com/paulstuart/sshclient"
 )
 
@@ -81,19 +81,11 @@ type RMA struct {
 	Closed    time.Time `sql:"date_closed"`
 }
 
-//rma_id|did|vid|pid|sid|user_id|date_opened|date_closed|vendor_name|rma_no|dc|part_no|serial_no|jira|dc_ticket|hostname|rack|ru|note|login|ts|action
-
 func notReturned(s string) bool {
 	return s == "return"
 }
 
 func (r RMA) Table() (*dbutil.Table, error) {
-	//const cols = "rma_id,return_id,pid,sid,user_id,part_no,serial_no,hostname,rack,ru,action"
-	/*
-		const cols = "rma_id,return_id,pid,sid,user_id,part_no,serial_no,hostname,rack,ru,case when action > '' then action else 'return' end as action"
-		const q = "select " + cols + " from rma_report where rma_id=?"
-	*/
-	//rma_id,return_id,pid,sid,user_id,part_no,serial_no,hostname,rack,ru,action
 	const q = "select * from rma_action where rma_id=?"
 	log.Println("RMA ID:", r.ID)
 	table, err := dbTable(q, r.ID)
@@ -169,38 +161,10 @@ func (r RMA) Parts() []Part {
 	return p.([]Part)
 }
 
-//	PartNumber        string    `sql:"part_no"`
-
-/*
-func (r RMA) Server() Server {
-	s := Server{}
-	if r.SID > 0 {
-		dbFindByID(&s, r.SID)
-	}
-	return s
-}
-
-func (r RMA) Hostname() string {
-	if r.SID == 0 {
-		return ""
-	}
-	s := Server{}
-	dbFindByID(&s, r.SID)
-	return s.Hostname
-}
-*/
-
 func (r RMA) DC() string {
 	if dc, ok := dcIDs[r.DID]; ok {
 		return dc.Name
 	}
-	/*
-		for _, p := range r.Parts() {
-			if s := p.Server(); s != nil {
-				return s.DC()
-			}
-		}
-	*/
 	return ""
 }
 
@@ -424,7 +388,6 @@ type Datacenter struct {
 }
 
 func sshCmd(host, username, password, cmd string, timeout int) error {
-	log.Println("SSH U:", username, "P:", password)
 	rc, _, _, err := sshclient.Exec(host+":22", username, password, cmd, timeout)
 	if err != nil {
 		return err
@@ -458,7 +421,6 @@ func (d Datacenter) Count() int {
 	return c
 }
 
-//func (d Datacenter) Selected() string {
 func (d Datacenter) Selected() template.HTML {
 	if thisDC.ID == d.ID {
 		return template.HTML("selected")
@@ -559,7 +521,6 @@ func (r Rack) RackUnits() []RackUnit {
 			continue
 		}
 		if zero > 0 {
-			//fmt.Println("ZERO RU:",units[idx].RU)
 			units[idx].Height = 0
 			zero--
 		}
@@ -1222,8 +1183,7 @@ type DiskInfo struct {
 	Size, Location, Manufacturer, PartNumber, SerialNumber string
 }
 
-func ServerImportDMI(sid int64, d dmijson.DMI) error {
-	log.Println("IMPORTING SID:", sid, "RECORDS:", len(d.MemoryDevice))
+func ServerImportDMI(sid int64, r io.Reader) error {
 	s := Server{}
 	if err := dbFindByID(&s, sid); err != nil {
 		return err
@@ -1232,8 +1192,15 @@ func ServerImportDMI(sid int64, d dmijson.DMI) error {
 	did := dc.ID
 	tid := typeID("memory")
 
-	for _, m := range d.MemoryDevice {
+	sys := ParseDMI(r)
+	if sys == nil {
+		return fmt.Errorf("dmi parse failed")
+	}
+	for _, m := range sys.Memory {
 		if len(m.Size) == 0 {
+			continue
+		}
+		if m.PartNumber == "NO DIMM" || m.SerialNumber == "NO DIMM" {
 			continue
 		}
 		desc := m.Size + " " + m.Speed
@@ -1243,7 +1210,7 @@ func ServerImportDMI(sid int64, d dmijson.DMI) error {
 		}
 	}
 	tid = typeID("motherboard")
-	b := &d.BaseBoardInformation
+	b := sys.Motherboard
 	if _, err := AddDevicePart(did, sid, tid, b.Manufacturer, b.ProductName, b.Type, b.SerialNumber, b.AssetTag, b.LocationInChassis); err != nil {
 		log.Println("add error:", err)
 		return err
@@ -1252,7 +1219,7 @@ func ServerImportDMI(sid int64, d dmijson.DMI) error {
 }
 
 func ServerImportDisks(sid interface{}, disks []DiskInfo) error {
-	log.Println("IMPORTING DISK SID:", sid, "RECORDS:", len(disks))
+	//log.Println("IMPORTING DISK SID:", sid, "RECORDS:", len(disks))
 	s := Server{}
 	if err := dbFindByID(&s, sid); err != nil {
 		return err

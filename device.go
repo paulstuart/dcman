@@ -34,9 +34,8 @@ type Contract struct {
 }
 
 type Device struct {
-	DID int64 `sql:"did" key:"true" table:"devices"`
-	VID int64 `sql:"vid"`
-	//	CID        int64      `sql:"cid"`
+	DID        int64        `sql:"did" key:"true" table:"devices"`
+	VID        int64        `sql:"vid"`
 	RID        int64        `sql:"rid"`
 	RU         int          `sql:"ru"`
 	Height     int          `sql:"height"`
@@ -50,9 +49,8 @@ type Device struct {
 	AssetTag   string       `sql:"asset_tag"`
 	SerialNo   string       `sql:"sn"`
 	Note       string       `sql:"note"`
-	// audit info
-	Modified time.Time `sql:"modified"`
-	UID      int       `sql:"uid"`
+	Modified   time.Time    `sql:"modified"`
+	UID        int          `sql:"uid"`
 }
 
 const q = `select d.*, 
@@ -75,15 +73,14 @@ const (
 )
 
 type Port struct {
-	PID        int64    `sql:"pid" key:"true" table:"ports"`
-	DID        int64    `sql:"did"`
-	PortType   portType `sql:"port_type"`
-	MAC        string   `sql:"mac"`
-	CableTag   string   `sql:"cable_tag"`
-	SwitchPort string   `sql:"switch_port"`
-	// audit info
-	Modified time.Time `sql:"modified"`
-	UID      int       `sql:"uid"`
+	PID        int64     `sql:"pid" key:"true" table:"ports"`
+	DID        int64     `sql:"did"`
+	PortType   portType  `sql:"port_type"`
+	MAC        string    `sql:"mac"`
+	CableTag   string    `sql:"cable_tag"`
+	SwitchPort string    `sql:"switch_port"`
+	Modified   time.Time `sql:"modified"`
+	UID        int       `sql:"uid"`
 }
 
 type ipType int
@@ -96,11 +93,10 @@ const (
 )
 
 type IP struct {
-	IID  int64  `sql:"iid" key:"true" table:"ips"`
-	DID  int64  `sql:"did"`
-	Type ipType `sql:"ip_type"`
-	Int  uint32 `sql:"ip_int"`
-	// audit info
+	IID      int64     `sql:"iid" key:"true" table:"ips"`
+	DID      int64     `sql:"did"`
+	Type     ipType    `sql:"ip_type"`
+	Int      uint32    `sql:"ip_int"`
 	Modified time.Time `sql:"modified"`
 	UID      int       `sql:"uid"`
 }
@@ -121,7 +117,8 @@ func (ip IP) String() string {
 }
 
 var removeWords = []string{
-	"the ",
+	" ",
+	"the",
 	"inc.",
 	"incorporated",
 	"corporation",
@@ -143,10 +140,9 @@ func ManufacturerID(name string) int64 {
 }
 
 func skuID(mid, tid int64, pn, d string) int64 {
-	log.Println("ADD:", d)
+	//log.Println("ADD:", d)
 	pl := SKU{MID: mid, TID: tid, PartNumber: pn, Description: d}
 	if err := dbObjectLoad(&pl, "where mid=? and part_no=?", mid, pn); err != nil {
-		//fmt.Println("plist load err:", err)
 		dbAdd(&pl)
 	}
 	return pl.KID
