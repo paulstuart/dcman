@@ -1,0 +1,30 @@
+{{define "head"}}<title>{{.Common.Title}}</title>{{end}}
+{{define "javascript"}}
+{{end}}
+{{define "body"}}
+<div id="tagform">
+<form method="post" class="common" id="servo">
+    <fieldset>
+        <legend>Tag Edit</legend>
+        <div class="field">
+            <label for="Name">Tag</label>
+            <input type="text" name="Name" id="Name" value="{{.Tag.Name}}"/>
+        </div>
+    </fieldset>
+
+<input type="hidden" name="TID" value="{{.Tag.TID}}">
+<input type="button" value="Cancel"  onclick="javascript:window.history.go(-1)">
+{{ if .Common.User.Editor }}
+{{ if eq .Tag.TID 0 }}
+<input type="submit" name="action" value="Add">
+{{ else }}
+<input type="submit" name="action" value="Update">
+<input type="submit" name="action" value="Delete">
+{{ end }}
+{{ else }}
+<div id="sorry">You must be logged in as an admin to modify this record</div>
+{{ end }}
+</form>
+</div>
+{{end}}
+
