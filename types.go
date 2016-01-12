@@ -196,7 +196,7 @@ type PartType struct {
 	TID      int64     `sql:"tid" key:"true" table:"part_types"`
 	Name     string    `sql:"name"`
 	UID      int64     `sql:"user_id"  audit:"user"`
-	Modified time.Time `sql:"ts" audit:"time"`
+	Modified time.Time `sql:"modified" audit:"time"`
 }
 
 func (p *PartType) PageData(r *http.Request) (interface{}, error) {

@@ -1550,7 +1550,6 @@ func SKUList(w http.ResponseWriter, r *http.Request) {
 		1|1|1|1|iSSD123x|disk|ssd drive|Intel Corporation|pstuart|2015-09-29 18:22:42
 	*/
 	table.Hide(0, 1, 2, 3)
-	table.Adjustment(trimTime, 9)
 	setLinks(table, 4, "/sku/edit/%s", 0)
 	setLinks(table, 7, "/mfgr/edit/%s", 1)
 	title := "SKU List"
