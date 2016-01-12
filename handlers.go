@@ -1561,6 +1561,41 @@ func SKUList(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func TagEdit(w http.ResponseWriter, r *http.Request) {
+	t := &Tag{}
+	if r.Method == "POST" {
+		if err := objPost(r, t); err != nil {
+			log.Println("tag edit error:", err)
+		}
+		redirect(w, r, "/tag/list", http.StatusSeeOther)
+	} else {
+		data, err := t.PageData(r)
+		if err != nil {
+			notFound(w, r)
+			return
+		}
+		renderTemplate(w, r, "tag", data)
+	}
+}
+
+func TagList(w http.ResponseWriter, r *http.Request) {
+	const q = "select * from tags"
+	table, err := dbTable(q)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	table.Hide(0)
+	setLinks(table, 1, "/tag/edit/%s", 0)
+	title := "Tag List"
+	if u := currentUser(r); u.Editor() {
+		heading := fmt.Sprintf(`%s <a href="%s/tag/edit/">Add</a>`, title, pathPrefix)
+		renderTabular(w, r, table, title, heading)
+	} else {
+		renderTabular(w, r, table, title)
+	}
+}
+
 func VendorList(w http.ResponseWriter, r *http.Request) {
 	const cols = "*"
 	const q = "select " + cols + " from vendors"
@@ -2096,7 +2131,7 @@ func auditPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func ListingPage(w http.ResponseWriter, r *http.Request) {
-	const query = "select id,dc,rack,ru,hostname,alias,profile,assigned,ip_ipmi,ip_internal,ip_public,note,asset_tag,vendor_sku,sn from sview"
+	const query = "select id,dc,rack,ru,hostname,alias,tag,profile,assigned,ip_ipmi,ip_internal,ip_public,note,asset_tag,vendor_sku,sn from sview"
 	table, _ := dbTable(query)
 	data := Tabular{
 		Common: NewCommon(r, "Physical Servers"),
@@ -2966,6 +3001,8 @@ var webHandlers = []HFunc{
 	{"/settings", SettingsHandler},
 	{"/sku/edit/", SKUEdit},
 	{"/sku/list", SKUList},
+	{"/tag/edit/", TagEdit},
+	{"/tag/list", TagList},
 	{"/user/add", UserEdit},
 	{"/user/edit/", UserEdit},
 	{"/user/list", usersListPage},

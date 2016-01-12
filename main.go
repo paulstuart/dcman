@@ -182,6 +182,13 @@ func main() {
 		go Backups(cfg.Backups.Freq, cfg.Backups.Dir)
 	}
 
+	/*
+		for _, t := range tagList() {
+			log.Println("TAG:", t)
+		}
+		return
+	*/
+
 	getColumns()
 	LoadVLANs()
 

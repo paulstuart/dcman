@@ -116,7 +116,7 @@ func objPost(r *http.Request, o dbutil.DBObject, validators ...Validator) error 
 	action := r.Form.Get("action")
 	user := currentUser(r)
 	o.ModifiedBy(user.ID, time.Now())
-	fmt.Println("POST OBJ:", o)
+	//fmt.Println("POST OBJ:", o)
 	name := fmt.Sprintf("%v", reflect.TypeOf(o))
 	for _, v := range validators {
 		if err := v(action); err != nil {
@@ -147,6 +147,7 @@ func loadTemplates() {
 		"plusOne":   plusOne,
 		"fixDate":   fixDate,
 		"userLogin": userLogin,
+		"tags":      tagList,
 	}
 	htmlTmpl = make(map[string]*template.Template)
 	textTmpl = make(map[string]*ttext.Template)
@@ -221,6 +222,15 @@ func isBlank(s string) string {
 		return s
 	}
 	return " * blank * "
+}
+
+func tagList() []Tag {
+	if t, err := dbObjectList(Tag{}); err == nil {
+		return t.([]Tag)
+	} else {
+		fmt.Println("TAGS ERR:", err)
+	}
+	return []Tag{}
 }
 
 func plusOne(in interface{}) string {

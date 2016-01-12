@@ -210,6 +210,15 @@ $(document).ready(function() {
             <input type="text" name="Profile" id="Profile" value="{{.Server.Profile}}"/>
         </div>
         <div class="field">
+            <label for="TID">Tag</label>
+            <select id="TID" name="TID">
+            <option value="0"></option>
+            {{ range tags }}
+            <option value="{{.TID}}" {{ if eq .TID $.Server.TID }}selected{{ end }}>{{ .Name }}</option>
+            {{ end }}
+            </select>
+        </div>
+        <div class="field">
             <label for="AssetTag">Asset Tag</label>
             <input type="text" name="AssetTag" id="AssetTag" value="{{.Server.AssetTag}}"/>
         </div>

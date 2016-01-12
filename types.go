@@ -262,6 +262,21 @@ func (p *SKU) PageData(r *http.Request) (interface{}, error) {
 	}, nil
 }
 
+func (t *Tag) PageData(r *http.Request) (interface{}, error) {
+	if len(r.URL.Path) > 0 {
+		if err := dbFindByID(t, r.URL.Path); err != nil {
+			return nil, err
+		}
+	}
+	return struct {
+		Common
+		Tag *Tag
+	}{
+		Common: NewCommon(r, "Edit"),
+		Tag:    t,
+	}, nil
+}
+
 type Part struct {
 	PID      int64     `sql:"pid" key:"true" table:"parts"`
 	KID      int64     `sql:"kid"`    // part type lookup id
@@ -544,9 +559,15 @@ func (s ServerVMs) List() []ServerVMs {
 	return vms.([]ServerVMs)
 }
 
+type Tag struct {
+	TID  int64  `sql:"tid" key:"true" table:"tags"`
+	Name string `sql:"tag"`
+}
+
 type Server struct {
 	ID         int64     `sql:"id" key:"true" table:"servers"`
 	RID        int64     `sql:"rid"`
+	TID        int64     `sql:"tid"`
 	RU         int       `sql:"ru"`
 	Height     int       `sql:"height"`
 	Hostname   string    `sql:"hostname"`
@@ -974,6 +995,14 @@ func (s Server) DC() string {
 	r, _ := getRack(q, s.RID)
 	if dc, ok := dcIDs[r.DID]; ok {
 		return dc.Name
+	}
+	return ""
+}
+
+func (s Server) Tag() string {
+	t := Tag{}
+	if err := dbFindByID(&t, s.TID); err == nil {
+		return t.Name
 	}
 	return ""
 }
