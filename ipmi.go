@@ -236,7 +236,6 @@ func ipmiCredentials(ipmi string) (string, string, error) {
 	if len(results) < 2 {
 		return "", "", fmt.Errorf("incomplete results")
 	}
-	log.Println("RESULTS:", results)
 	return results[0], results[1], nil
 }
 
