@@ -1450,8 +1450,9 @@ func PartTotals(w http.ResponseWriter, r *http.Request) {
 		table.Adjustment(trimTime, 15)
 	*/
 	//heading := fmt.Sprintf(`Part List <a href="%s/part/edit/">Add</a>`, pathPrefix)
-	heading := "Part Totals"
-	renderTabular(w, r, table, heading)
+	title := "Part Totals"
+	heading := fmt.Sprintf(`%s <a href="%s/part/edit/">Add</a>`, title, pathPrefix)
+	renderTabular(w, r, table, title, heading)
 }
 
 func partTable(dc, used, kid string) (*dbu.Table, error) {
@@ -2081,12 +2082,15 @@ func VlanEdit(w http.ResponseWriter, r *http.Request) {
 		var v VLAN
 		objFromForm(&v, r.Form)
 		action := r.Form.Get("action")
-		fmt.Println("VLAN ACTION:", action, "VLAN:", v)
 		if action == "Add" {
 			if dc, ok := dcLookup[r.Form.Get("DC")]; ok {
 				v.DID = dc.ID
-				v.Insert()
+				if _, err := v.Insert(); err != nil {
+					fmt.Println("ADD ERROR:", err)
+				}
 				LoadVLANs()
+			} else {
+				fmt.Println("NO DC FOUND FOR:", r.Form.Get("DC"))
 			}
 		} else if action == "Update" {
 			v.Update()

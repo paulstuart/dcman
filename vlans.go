@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"strconv"
+	"time"
 )
 
 var (
@@ -18,14 +19,16 @@ type VProfile struct {
 }
 
 type VLAN struct {
-	ID      int64  `sql:"id" key:"true" table:"vlans"`
-	DID     int64  `sql:"did"`
-	Name    int    `sql:"name"`
-	Profile string `sql:"profile"`
-	Gateway string `sql:"gateway"`
-	Route   string `sql:"route"`
-	Netmask string `sql:"netmask"`
-	ipnet   net.IPNet
+	ID       int64     `sql:"id" key:"true" table:"vlans"`
+	DID      int64     `sql:"did"`
+	Name     int       `sql:"name"`
+	Profile  string    `sql:"profile"`
+	Gateway  string    `sql:"gateway"`
+	Route    string    `sql:"route"`
+	Netmask  string    `sql:"netmask"`
+	Modified time.Time `sql:"modified" audit:"time"`
+	UID      int64     `sql:"user_id"  audit:"user"`
+	ipnet    net.IPNet
 }
 
 func (v VLAN) String() string {
