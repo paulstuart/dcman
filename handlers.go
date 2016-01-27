@@ -528,6 +528,7 @@ func ServerCheckFit(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		r.ParseForm()
 		rid := r.Form.Get("RID")
+		hostname := r.Form.Get("Hostname")
 		bot, err := strconv.Atoi(r.Form.Get("Bottom"))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -538,13 +539,13 @@ func ServerCheckFit(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		const q = "select hostname from rackspace where rid=?  and ((? between ru and top) or (? between ru and top))"
-		hosts, err := dbRows(q, rid, bot, top)
+		const q = "select hostname from rackspace where rid=? and hostname != ? and (ru >= ?) and (top < ?) order by ru desc"
+		hosts, err := dbRows(q, rid, hostname, bot, top)
 		if err != nil || len(hosts) == 0 {
-			log.Println("check err:", err)
+			//log.Println("check err:", err)
 			fmt.Fprint(w, "ok")
 		} else {
-			log.Println("conflicting hosts:", hosts)
+			//log.Println("conflicting hosts:", hosts)
 			msg := "occupied by: " + strings.Join(hosts, ",")
 			http.Error(w, msg, http.StatusBadRequest)
 		}

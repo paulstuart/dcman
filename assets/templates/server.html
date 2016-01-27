@@ -17,37 +17,6 @@ var discover_mac = function(amount) {
     return false;
 }
 
-{{ if .Common.PXEBoot }}
-var reimage_server = function() {
-    var jira = prompt("Jira ticket #");
-    if (jira == null) {
-        return false;
-    }
-    if (jira.length == 0) {
-        alert("You must enter a Jira ticket assigned to you");
-        return false;
-    }
-    $.ajax({
-      type: "POST",
-      url: "{{.Common.Prefix}}/server/reimage",
-      dataType: "text",
-      data: {
-          SID: {{.Server.ID}},
-          Jira: jira,
-          Menu: "autoimage"
-      },
-      error: function(jqXHR, textStatus, errorThrown) {
-        alert("Error: " + jqXHR.responseText)
-        },
-      success: function(data, textStatus, jqXHR) {
-         //alert("GOT:" + data);
-         alert("Server should now be imaging");
-      }
-    });
-    return false;
-}
-{{ end }}
-
 var rma_server = function() {
     var url = "{{.Common.Prefix}}/rma/?SID={{.Server.ID}}";
     window.location.replace(url);
@@ -75,6 +44,38 @@ var dc_racks = function(dc) {
     return false;
 }
 
+var check_fit = function(e) {
+    var ru = $("#RU").val();
+    if (ru.length > 0) {
+        var height = $("#Height").val();
+        var hostname = $("#Hostname").val();
+        var top = parseInt(ru) + parseInt(height);
+        var rid = $("#RID").find(":selected").val();
+        $.ajax({
+          type: "POST",
+          url: "{{.Common.Prefix}}/server/checkfit",
+          dataType: "text",
+          data: {
+              RID: rid,
+              Hostname: hostname,
+              Bottom: ru,
+              Top: top
+          },
+          error: function(jqXHR, textStatus, errorThrown) {
+            alert("Space conflict: " + jqXHR.responseText);
+            if (e.target.id == "RU") {
+              $("#RU").val(prev_ru);
+              }
+            else if (e.target.id == "Height") {
+              $("#Height").val(prev_height);
+            }
+              //$("#RU").val("");
+              //reset()
+          }
+        });
+    }
+}
+
 $(document).ready(function() {
     $('#rackunit').change(function() {
         window.location.assign("/"+$(this).val()+"/add/{{.Server.DC}}/{{.Server.Rack}}/{{.Server.RU}}")
@@ -100,29 +101,14 @@ $(document).ready(function() {
         $("#RU").val("");
     })
 
-    $('#RU').change(function() {
-        var ru = $("#RU").val();
-        if (ru.length > 0) {
-            var height = $("#Height").val();
-            var top = parseInt(ru) + parseInt(height);
-            //var rid = $("#RID").val();
-            var rid = $("#RID").find(":selected").text();
-            $.ajax({
-              type: "POST",
-              url: "{{.Common.Prefix}}/server/checkfit",
-              dataType: "text",
-              data: {
-                  RID: rid,
-                  Bottom: ru,
-                  Top: top
-              },
-              error: function(jqXHR, textStatus, errorThrown) {
-                alert("Space conflict: " + jqXHR.responseText);
-                  $("#RU").val("");
-                }
-            });
-        }
-    });
+    $("#RU").on('focus', function () {
+        // Store the current value on focus and on change
+        prev_ru = $("#RU").val();
+    }).change(check_fit)
+    $("#Height").on('focus', function () {
+        // Store the current value on focus and on change
+        prev_height = $("#Height").val();
+    }).change(check_fit)
 
    $("#b_discover").click(discover_mac);
    $("#Delete").click(function() {
@@ -131,9 +117,6 @@ $(document).ready(function() {
 
 {{ if .Common.User.Editor }}
 {{ if ne .Server.ID 0 }}
-{{ if .Common.PXEBoot }}
-   $("#b_reimage").click(reimage_server);
-{{ end }}
    $("#b_rma").click(rma_server);
    $("#b_parts").click(function() {
         window.location.replace("{{.Common.Prefix}}/server/parts/{{.Server.ID}}");
@@ -341,9 +324,6 @@ $(document).ready(function() {
 <button id="b_rma">RMA</button>
 */}}
 <button id="b_parts">Parts</button>
-{{ if .Common.PXEBoot }}
-<button id="b_reimage">Reimage</button>
-{{ end }}
 {{ end }}
 {{ else }}
 <div id="sorry">You must be logged in as an admin to modify this record</div>

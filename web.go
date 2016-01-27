@@ -161,6 +161,9 @@ func loadTemplates() {
 			//fmt.Println("skipping base.html")
 			continue
 		}
+		if strings.HasSuffix(name, ".swp") {
+			continue
+		}
 		if strings.HasSuffix(name, ".html") {
 			t := template.New(name).Funcs(funcMap)
 			htmlTmpl[name] = template.Must(t.ParseFiles(file, tdir+"/base.html"))
