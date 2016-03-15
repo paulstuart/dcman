@@ -209,6 +209,36 @@ func DataUpload(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func PartsLoad(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "POST" {
+		r.ParseForm()
+		data := r.Form.Get("data")
+		did := r.Form.Get("DID")
+		test := r.Form.Get("test")
+		fmt.Println("test:", test)
+		fmt.Println("DID:", did)
+		fmt.Println("Data:", data)
+		id, err := strconv.ParseInt(did, 0, 64)
+		if err != nil {
+			http.Error(w, "invalid datacenter id: "+did, http.StatusNotAcceptable)
+			return
+		}
+		err = LoadParts(id, strings.Split(data, "\n"))
+		log.Println("UPLOADING PARTS")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusNotAcceptable)
+		} else {
+			fmt.Fprintln(w, "ok")
+		}
+	} else {
+		data := struct {
+			Common Common
+		}{
+			Common: NewCommon(r, "Upload server data"),
+		}
+		renderTemplate(w, r, "loadparts", data)
+	}
+}
 func DocumentEdit(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		r.ParseMultipartForm(32 << 20)
@@ -2673,16 +2703,17 @@ func APIUpload(w http.ResponseWriter, r *http.Request) {
 }
 
 func DiskPage(w http.ResponseWriter, r *http.Request) {
-	path := r.URL.Path[len(pathPrefix+"/api/diskinfo/"):]
+	//path := r.URL.Path[len(pathPrefix+"/api/diskinfo/"):]
 	if r.Method == "POST" {
 		decoder := json.NewDecoder(r.Body)
-		var d []DiskInfo
+		var d DiskInfo
 		if err := decoder.Decode(&d); err != nil {
 			log.Println("decode error:", err)
 			badRequest(w, err)
 			return
 		}
-		if err := ServerImportDisks(path, d); err != nil {
+		log.Println("DISKINFO:", d)
+		if err := ServerImportDisks(d); err != nil {
 			badRequest(w, err)
 			return
 		}
@@ -2939,6 +2970,7 @@ var webHandlers = []HFunc{
 	{"/data/servers.json", ServersJSON},
 	{"/data/servers.tab", ServersTab},
 	{"/data/upload", DataUpload},
+	{"/data/parts/load", PartsLoad},
 	{"/data/vms.csv", VMsCSV},
 	{"/data/vms.tab", VMsTab},
 	{"/db/debug/", DebugPage},

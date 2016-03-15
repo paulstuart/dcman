@@ -140,10 +140,22 @@ func ManufacturerID(name string) int64 {
 }
 
 func skuID(mid, tid int64, pn, d string) int64 {
-	//log.Println("ADD:", d)
+	// TODO: just query for the damn sku id
 	pl := SKU{MID: mid, TID: tid, PartNumber: pn, Description: d}
-	if err := dbObjectLoad(&pl, "where mid=? and part_no=?", mid, pn); err != nil {
-		dbAdd(&pl)
+	if mid == 0 || len(pn) == 0 {
+		if err := dbObjectLoad(&pl, "where description=?", d); err != nil {
+			log.Println("ADD SKU MID:", mid, "PN:", pn, "DESC:", d)
+			if err := dbAdd(&pl); err != nil {
+				log.Println("ADD SKU ERR:", err)
+			}
+		}
+	} else {
+		if err := dbObjectLoad(&pl, "where mid=? and part_no=?", mid, pn); err != nil {
+			log.Println("ADD SKU MID:", mid, "PN:", pn, "DESC:", d)
+			if err := dbAdd(&pl); err != nil {
+				log.Println("ADD SKU ERR:", err)
+			}
+		}
 	}
 	return pl.KID
 }
@@ -153,6 +165,20 @@ func AddDevicePart(did, sid, tid int64, manufacturer, productName, description, 
 		SID:      sid,
 		DID:      did,
 		KID:      skuID(ManufacturerID(manufacturer), tid, productName, description),
+		Serial:   serialNumber,
+		AssetTag: assetTag,
+		Location: location,
+	}
+	if err := dbAdd(&part); err != nil {
+		return nil, err
+	}
+	return &part, nil
+}
+
+func AddPart(did int64, manufacturer, productName, description, serialNumber, assetTag, location string) (*Part, error) {
+	part := Part{
+		DID:      did,
+		KID:      skuID(ManufacturerID(manufacturer), 0, productName, description),
 		Serial:   serialNumber,
 		AssetTag: assetTag,
 		Location: location,

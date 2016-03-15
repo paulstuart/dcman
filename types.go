@@ -870,6 +870,85 @@ func LoadServers(data []string) error {
 	return nil
 }
 
+func LoadParts(did int64, data []string) error {
+	var columns []string
+	valid := []string{"qty", "item", "mfgr", "part_no", "asset_tag", "sn"}
+	log.Println("Loading parts!")
+	for i, line := range data {
+		line = strings.TrimSpace(line)
+		if len(line) == 0 {
+			continue
+		}
+		if i == 0 {
+			columns = strings.Split(line, "\t")
+			normalColumns(columns)
+			for _, col := range columns {
+				if !stringInSlice(col, valid) {
+					return fmt.Errorf("invalid column: %s. must be one of: %s\n", col, strings.Join(valid, ","))
+				}
+			}
+			//			log.Println("COL OK:", columns)
+			continue
+		}
+		words := strings.Split(line, "\t")
+		//		log.Println("LINE:", i, "WORDS:", strings.Join(words, ","))
+		if err := PartsAdd(did, columns, words); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func PartsAdd(did int64, columns, words []string) error {
+	var item, mfgr, asset, part_no, sn string
+	qty := 1
+	/*
+		2016/01/27 10:57:29 COL OK: [qty mfgr item]
+		2016/01/27 10:57:29 LINE: 1 WORDS: 3,Cisco,48 port Gigabit module
+		2016/01/27 10:57:29 ADDING MFGR:  PN:  DESC:
+
+		2016/01/27 10:59:36 COL OK: [qty mfgr item]
+		2016/01/27 10:59:36 LINE: 1 WORDS: 3,Cisco,48 port Gigabit module
+		2016/01/27 10:59:36 PARTS COLS: []
+		2016/01/27 10:59:36 ADDING MFGR:  PN:  DESC:
+		2016/01/27 10:59:36 ADD SKU MID: 6 PN:  DESC:
+		2016/01/27 10:59:36 LINE: 2 WORDS: 1,Cisco,6500 Supervisor module
+		2016/01/27 10:59:36 PARTS COLS: []
+
+	*/
+	log.Println("PARTS COLS:", columns)
+	var err error
+	for i, col := range columns {
+		word := strings.TrimSpace(words[i])
+		//	log.Println("COL:", col, "WORD:", word)
+		switch {
+		case col == "qty":
+			qty, err = strconv.Atoi(word)
+			if err != nil {
+				return err
+			}
+		case col == "asset_tag":
+			asset = word
+		case col == "item":
+			item = word
+		case col == "mfgr":
+			mfgr = word
+		case col == "part_no":
+			part_no = word
+		case col == "sn":
+			sn = word
+		default:
+			return fmt.Errorf("unknown column: " + col)
+		}
+	}
+	log.Println("ADDING MFGR:", mfgr, "PN:", part_no, "DESC:", item)
+	for i := 0; i < qty; i++ {
+		if _, err = AddPart(did, mfgr, part_no, item, sn, asset, ""); err != nil {
+			return err
+		}
+	}
+	return err
+}
 func serversByQuery(where string, args ...interface{}) []Server {
 	s, _ := dbObjectListQuery(Server{}, where, args...)
 	return s.([]Server)
@@ -1209,6 +1288,11 @@ func typeID(name string) int64 {
 }
 
 type DiskInfo struct {
+	Hostname, IP string
+	Disks        []DiskData
+}
+
+type DiskData struct {
 	Size, Location, Manufacturer, PartNumber, SerialNumber string
 }
 
@@ -1247,17 +1331,22 @@ func ServerImportDMI(sid int64, r io.Reader) error {
 	return nil
 }
 
-func ServerImportDisks(sid interface{}, disks []DiskInfo) error {
+func ServerImportDisks(d DiskInfo) error {
 	//log.Println("IMPORTING DISK SID:", sid, "RECORDS:", len(disks))
+	dot := strings.Index(d.Hostname, ".")
+	if dot < 0 {
+		dot = len(d.Hostname)
+	}
+	hostname := d.Hostname[:dot]
 	s := Server{}
-	if err := dbFindByID(&s, sid); err != nil {
+	if err := dbObjectLoad(&s, "where hostname=?", hostname); err != nil {
 		return err
 	}
 	dc := s.Datacenter()
 	did := dc.ID
 	tid := typeID("disk")
 
-	for _, disk := range disks {
+	for _, disk := range d.Disks {
 		desc := disk.Size
 		if _, err := AddDevicePart(did, s.ID, tid, disk.Manufacturer, disk.PartNumber, desc, disk.SerialNumber, "", disk.Location); err != nil {
 			log.Println("disk add error:", err)
@@ -1265,4 +1354,13 @@ func ServerImportDisks(sid interface{}, disks []DiskInfo) error {
 		}
 	}
 	return nil
+}
+
+func stringInSlice(a string, list []string) bool {
+	for _, b := range list {
+		if b == a {
+			return true
+		}
+	}
+	return false
 }
