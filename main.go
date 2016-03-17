@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	version           = "0.1.7"
+	version           = "0.1.8"
 	masterMode        = true
 	Hostname, _       = os.Hostname()
 	Basedir, _        = os.Getwd() // get abs path now, as we will be changing dirs
@@ -39,7 +39,6 @@ var (
 		Backups BackupConfig
 		Jira    JiraConfig
 		SAML    SAMLConfig
-		SSH     SSHConfig
 	}{}
 )
 
@@ -75,12 +74,6 @@ type JiraConfig struct {
 	Username string `gcfg:"username"`
 	Password string `gcfg:"password"`
 	URL      string `gcfg:"url"`
-}
-
-type SSHConfig struct {
-	Username string `gcfg:"username"`
-	Password string `gcfg:"password"`
-	Key      string `gcfg:"private_key"`
 }
 
 const (

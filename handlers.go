@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	dbu "github.com/paulstuart/dbutil"
@@ -387,26 +386,6 @@ func ServerFind(w http.ResponseWriter, r *http.Request) {
 				Servers: s,
 			}
 			renderTemplate(w, r, "found", data)
-		}
-	}
-}
-
-func ServerReimage(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "POST" {
-		r.ParseForm()
-		u := currentUser(r)
-		sid := r.Form.Get("SID")
-		jira := r.Form.Get("Jira")
-		menu := r.Form.Get("Menu")
-		err := serverReimage(sid, jira, u.Email, menu)
-		s := Server{}
-		dbFindByID(&s, sid)
-		auditLog(u.ID, RemoteHost(r), "reimage: "+s.Hostname, err.Error())
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusForbidden)
-			log.Println("reimage error:", err)
-		} else {
-			fmt.Fprintf(w, "")
 		}
 	}
 }
@@ -915,6 +894,8 @@ func RackNetwork(w http.ResponseWriter, r *http.Request) {
 		objFromForm(&rn, r.Form)
 		action := r.Form.Get("action")
 		OriginalVID := r.Form.Get("OriginalVID")
+		rn.MinIP = ipFromString(rn.FirstIP)
+		rn.MaxIP = ipFromString(rn.LastIP)
 		if action == "Add" {
 			if _, err := dbObjectInsert(rn); err != nil {
 				log.Println("Racknet add error:", err)
@@ -2630,12 +2611,6 @@ func SettingsHandler(w http.ResponseWriter, r *http.Request) {
 		} else {
 			cfg.Main.ReadOnly = false
 		}
-		u := r.FormValue("ssh_user")
-		p := r.FormValue("ssh_pass")
-		if len(u) > 0 && len(p) > 0 {
-			cfg.SSH.Username = u
-			cfg.SSH.Password = p
-		}
 		redirect(w, r, "/", http.StatusSeeOther)
 	} else {
 		common := NewCommon(r, "Edit System Settings")
@@ -2643,11 +2618,9 @@ func SettingsHandler(w http.ResponseWriter, r *http.Request) {
 		data := struct {
 			Common
 			ReadOnly bool
-			SSHUser  string
 		}{
 			Common:   common,
 			ReadOnly: cfg.Main.ReadOnly,
-			SSHUser:  cfg.SSH.Username,
 		}
 		renderTemplate(w, r, "banner", data)
 	}
@@ -2866,53 +2839,6 @@ func ServerDmiDecode(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func remoteServer(sid, path string) error {
-	s := Server{}
-	if err := dbFindByID(&s, sid); err != nil {
-		log.Println("REMOTE SERVER ERR:", err)
-		return err
-	}
-	url := fullURL(path, sid)
-	//cmd := fmt.Sprintf(`curl -s "%s" | sudo bash | curl -X POST -d@- "%s"`, url, url)
-	cmd := fmt.Sprintf(`curl -s "%s" | sudo bash | curl -X POST --data-binary @- "%s"`, url, url)
-	log.Println("REMOTE CMD:", cmd)
-	return sshCmd(s.IPInternal, cfg.SSH.Username, cfg.SSH.Password, cmd, 60)
-}
-
-func RemoteScript(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "POST" {
-		r.ParseForm()
-		paths := r.Form.Get("path")
-		if len(paths) == 0 {
-			badRequest(w, fmt.Errorf("no path specified"))
-			return
-		}
-		sid := r.Form.Get("sid")
-		if len(sid) == 0 {
-			badRequest(w, fmt.Errorf("no server id specified"))
-			return
-		}
-		var wg sync.WaitGroup
-		var rerr error
-		for _, path := range strings.Split(paths, ",") {
-			wg.Add(1)
-			go func(p string) {
-				if err := remoteServer(sid, p); err != nil {
-					log.Println("remote error:", err)
-					rerr = err
-				}
-				wg.Done()
-			}(path)
-		}
-		wg.Wait()
-		if rerr != nil {
-			badRequest(w, rerr)
-			return
-		}
-		http.Redirect(w, r, r.Referer(), http.StatusSeeOther)
-	}
-}
-
 func ServerDecodeScript(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	if s, err := dmijson.Script(); err != nil {
@@ -2958,7 +2884,6 @@ var webHandlers = []HFunc{
 	{"/api/diskinfo/", DiskPage},
 	{"/api/parts", ApiParts},
 	{"/api/pings", BulkPings},
-	{"/api/remote", RemoteScript},
 	{"/api/script/", ApiScript},
 	{"/api/upload", APIUpload},
 	{"/api/update", APIUpdate},
@@ -3032,7 +2957,6 @@ var webHandlers = []HFunc{
 	{"/server/edit/", ServerEdit},
 	{"/server/find", ServerFind},
 	{"/server/parts/", ServerParts},
-	{"/server/reimage", ServerReimage},
 	{"/server/replace/", ServerReplace},
 	{"/server/vms", VMListing},
 	{"/settings", SettingsHandler},

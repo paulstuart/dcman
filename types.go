@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"github.com/paulstuart/dbutil"
-	"github.com/paulstuart/sshclient"
 )
 
 var (
@@ -402,32 +401,6 @@ type Datacenter struct {
 	Modified   time.Time `sql:"modified" audit:"time"`
 }
 
-func sshCmd(host, username, password, cmd string, timeout int) error {
-	rc, _, _, err := sshclient.Exec(host+":22", username, password, cmd, timeout)
-	if err != nil {
-		return err
-	}
-	if rc > 0 {
-		return ErrExecFailed
-	}
-	return nil
-}
-
-func sshTest(host, username, password string, timeout int) error {
-	rc, _, _, err := sshclient.Exec(host+":22", username, password, "exit", timeout)
-	if err != nil {
-		return err
-	}
-	if rc > 0 {
-		return ErrExecFailed
-	}
-	return nil
-}
-
-func (dc Datacenter) Remote(cmd string, timeout int) (int, string, string, error) {
-	return sshclient.Exec(dc.PXEHost+":22", dc.PXEUser, dc.PXEPass, cmd, timeout)
-}
-
 func (d Datacenter) Count() int {
 	c, err := dbGetInt("select count(*) from rackunits where dc=?", d.Name)
 	if err != nil {
@@ -602,12 +575,6 @@ func (s Server) InternalVLAN() string {
 		return "vlan error:" + err.Error()
 	}
 	return v.String()
-}
-
-func (s Server) RunScript(script string) error {
-	cmd := fmt.Sprintf(`curl -s "%sapi/script/%s" | bash`, baseURL, script)
-	log.Println("RUN SCRIPT:", cmd)
-	return sshCmd(s.IPInternal, cfg.SSH.Username, cfg.SSH.Password, cmd, 60)
 }
 
 func deleteServerFromRack(rid, ru string) error {
@@ -959,38 +926,6 @@ func getServer(where string, args ...interface{}) (Server, error) {
 	return s, dbObjectLoad(&s, where, args...)
 }
 
-func serverReimage(id, jira, email, menu string) error {
-	if err := JiraAssigned(jira, email); err != nil {
-		return err
-	}
-	s, err := getServer("where id=?", id)
-	if err != nil {
-		return err
-	}
-	dc := s.Datacenter()
-	timeout := 30
-
-	// pxemenu command looks for list of ips on stdin
-	// it gets confused when running over ssh, so just
-	// pipe the single IP so it uses stdin
-	cmd := fmt.Sprintf("echo %s | pxemenu %s", s.IPIpmi, menu)
-	rc, stdout, stderr, err := dc.Remote(cmd, timeout)
-	if err != nil {
-		return err
-	}
-	if rc != 0 {
-		return fmt.Errorf("RC:%d OUT:%s ERR:%s", rc, stdout, stderr)
-	}
-	username, password, err := GetCredentials(s.IPIpmi)
-	if err != nil {
-		return err
-	}
-	if err = ipmigo(s.IPIpmi, username, password, "chassis bootdev pxe"); err != nil {
-		return err
-	}
-	return ipmigo(s.IPIpmi, username, password, "chassis power cycle")
-}
-
 func getRouter(where string, args ...interface{}) (Router, error) {
 	var s Router
 	return s, dbObjectLoad(&s, where, args...)
@@ -1194,6 +1129,7 @@ func InternalIPs() IPList {
 }
 
 func NextIPs(rid int64) (map[string]string, error) {
+	fmt.Println("NEXTIPS RID:", rid)
 	next := map[string]string{}
 
 	data, err := dbObjectListQuery(RackNet{}, "where rid=? order by min_ip", rid)
