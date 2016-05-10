@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	ErrEmptyCookie = fmt.Errorf("user cookie is empty!")
+	ErrEmptyCookie = fmt.Errorf("user cookie is empty")
 )
 
 func UserByID(id interface{}) (User, error) {

@@ -831,17 +831,17 @@ func rackItemUpdate(r *http.Request, rid, ru string) error {
 	return err
 }
 
-func rackItemAdd(r *http.Request, rid_string, ru_string string) error {
-	log.Println("ADD RID:", rid_string, "RU:", ru_string)
+func rackItemAdd(r *http.Request, ridString, ruString string) error {
+	log.Println("ADD RID:", ridString, "RU:", ruString)
 	height, err := strconv.Atoi(r.Form.Get("height"))
 	if err != nil {
 		return err
 	}
-	ru, err := strconv.Atoi(ru_string)
+	ru, err := strconv.Atoi(ruString)
 	if err != nil {
 		return err
 	}
-	rid, err := strconv.ParseInt(rid_string, 0, 64)
+	rid, err := strconv.ParseInt(ridString, 0, 64)
 	if err != nil {
 		return err
 	}
@@ -1631,9 +1631,9 @@ func VendorEdit(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
 		objFromForm(&v, r.Form)
 		user := currentUser(r)
-		remote_addr := RemoteHost(r)
+		remoteAddr := RemoteHost(r)
 		v.Modified = time.Now()
-		v.RemoteAddr = remote_addr
+		v.RemoteAddr = remoteAddr
 		v.UID = user.ID
 		action := r.Form.Get("action")
 		var err error
@@ -1647,7 +1647,7 @@ func VendorEdit(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Println("VENDOR ERR:", err)
 		}
-		auditLog(user.ID, remote_addr, action, v.Name)
+		auditLog(user.ID, remoteAddr, action, v.Name)
 		redirect(w, r, "/vendor/list", http.StatusSeeOther)
 	} else {
 		dbFindByID(&v, r.URL.Path)
@@ -2490,9 +2490,9 @@ func DatacenterPage(w http.ResponseWriter, r *http.Request) {
 
 func pingPage(w http.ResponseWriter, r *http.Request) {
 	status := "ok"
-	uptime := time.Since(start_time)
+	uptime := time.Since(startTime)
 	stats := strings.Join(dbStats(), "\n")
-	fmt.Fprintf(w, "status: %s\nversion: %s\nhostname: %s\nstarted:%s\nuptime: %s\ndb stats:\n%s\n", status, version, Hostname, start_time, uptime, stats)
+	fmt.Fprintf(w, "status: %s\nversion: %s\nhostname: %s\nstarted:%s\nuptime: %s\ndb stats:\n%s\n", status, version, Hostname, startTime, uptime, stats)
 }
 
 func DebugPage(w http.ResponseWriter, r *http.Request) {
@@ -2560,15 +2560,15 @@ func Remember(w http.ResponseWriter, u *User) {
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	msg := ""
 	if r.Method == "POST" {
-		remote_addr := RemoteHost(r)
+		remoteAddr := RemoteHost(r)
 		username := r.PostFormValue("username")
 		password := r.PostFormValue("password")
 		user, err := UserByEmail(username)
 		if err != nil {
 			msg = username + " is not authorized for access"
-			auditLog(0, remote_addr, "Login", msg)
+			auditLog(0, remoteAddr, "Login", msg)
 		} else if Authenticate(username, password) {
-			auditLog(user.ID, remote_addr, "Login", "Login succeeded for "+username)
+			auditLog(user.ID, remoteAddr, "Login", "Login succeeded for "+username)
 			Authorized(w, true)
 			Remember(w, &user)
 			// did we timeout and need to login before accessing a page?
@@ -2584,7 +2584,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			return
 		} else {
-			auditLog(0, remote_addr, "Login", "Invalid credentials for "+username)
+			auditLog(0, remoteAddr, "Login", "Invalid credentials for "+username)
 			msg = "Invalid login credentials"
 		}
 	}
@@ -2726,7 +2726,7 @@ func APIUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func ApiParts(w http.ResponseWriter, r *http.Request) {
+func APIParts(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	for k, v := range r.Form {
 		log.Println("K:", k, "V:", v)
@@ -2797,7 +2797,7 @@ func IPMICredentialsSet(w http.ResponseWriter, r *http.Request) {
 }
 
 func fullURL(path ...string) string {
-	return "http://" + serverIP + http_server + pathPrefix + strings.Join(path, "")
+	return "http://" + serverIP + httpServer + pathPrefix + strings.Join(path, "")
 }
 
 func scriptButton(sid, label, path string) string {
@@ -2848,7 +2848,7 @@ func ServerDecodeScript(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func ApiScript(w http.ResponseWriter, r *http.Request) {
+func APIScript(w http.ResponseWriter, r *http.Request) {
 	u := currentUser(r)
 	skip := len(pathPrefix + "/api/script/")
 	script := r.URL.Path[skip:]
@@ -2882,9 +2882,9 @@ var webHandlers = []HFunc{
 	{"/api/dmidecode/script", ServerDecodeScript},
 	{"/api/dmidecode/", ServerDmiDecode},
 	{"/api/diskinfo/", DiskPage},
-	{"/api/parts", ApiParts},
+	{"/api/parts", APIParts},
 	{"/api/pings", BulkPings},
-	{"/api/script/", ApiScript},
+	{"/api/script/", APIScript},
 	{"/api/upload", APIUpload},
 	{"/api/update", APIUpdate},
 	{"/auto", AutoPage},

@@ -31,15 +31,15 @@ const (
 )
 
 var (
-	assetDir    = "assets"
-	tdir        string
-	serverIP    = MyIp()
-	htmlTmpl    map[string]*template.Template
-	textTmpl    map[string]*ttext.Template
-	http_server string
-	baseURL     string
-	errorFile   *os.File
-	authCookie  string
+	assetDir   = "assets"
+	tdir       string
+	serverIP   = MyIP()
+	htmlTmpl   map[string]*template.Template
+	textTmpl   map[string]*ttext.Template
+	httpServer string
+	baseURL    string
+	errorFile  *os.File
+	authCookie string
 )
 
 type HFunc struct {
@@ -48,18 +48,18 @@ type HFunc struct {
 }
 
 func RemoteHost(r *http.Request) string {
-	if remote_addr := r.Header.Get("X-Forwarded-For"); len(remote_addr) > 0 {
-		return remote_addr
+	if remoteAddr := r.Header.Get("X-Forwarded-For"); len(remoteAddr) > 0 {
+		return remoteAddr
 	}
-	remote_addr, _, err := net.SplitHostPort(r.RemoteAddr)
+	remoteAddr, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "REMOTE ADDR ERR:", err)
 	}
 	// check if running on same host
-	if len(remote_addr) > 0 && remote_addr[0] == ':' {
-		remote_addr = serverIP
+	if len(remoteAddr) > 0 && remoteAddr[0] == ':' {
+		remoteAddr = serverIP
 	}
-	return remote_addr
+	return remoteAddr
 }
 
 // for loading an object from an http post
@@ -91,9 +91,9 @@ func objFromForm(obj interface{}, values map[string][]string) {
 				if len(val[0]) == 0 {
 					continue
 				}
-				l := date_layout
-				if len(val[0]) > len(date_layout) {
-					l = time_layout
+				l := dateLayout
+				if len(val[0]) > len(dateLayout) {
+					l = timeLayout
 				}
 				if when, err := time.Parse(l, val[0]); err == nil {
 					v := reflect.ValueOf(when)
@@ -228,11 +228,11 @@ func isBlank(s string) string {
 }
 
 func tagList() []Tag {
-	if t, err := dbObjectList(Tag{}); err == nil {
+	t, err := dbObjectList(Tag{})
+	if err == nil {
 		return t.([]Tag)
-	} else {
-		fmt.Println("TAGS ERR:", err)
 	}
+	fmt.Println("TAGS ERR:", err)
 	return []Tag{}
 }
 
@@ -246,7 +246,7 @@ func fixDate(d time.Time) string {
 	if d.IsZero() {
 		return ""
 	}
-	return d.Format(date_layout)
+	return d.Format(dateLayout)
 }
 
 // render an html template that inherits the "base" template
@@ -371,8 +371,8 @@ func StaticPage(w http.ResponseWriter, r *http.Request) {
 
 func ErrorLog(r *http.Request, msg string, args ...interface{}) {
 	user := currentUser(r)
-	remote_addr := RemoteHost(r)
-	fmt.Fprintln(errorFile, time.Now().Format(log_layout), remote_addr, user.ID, msg, args)
+	remoteAddr := RemoteHost(r)
+	fmt.Fprintln(errorFile, time.Now().Format(logLayout), remoteAddr, user.ID, msg, args)
 }
 
 // allows logging to show user id
@@ -493,10 +493,10 @@ func webServer(handlers []HFunc) {
 		log.Panic("Error opening error log:", err)
 	}
 
-	http_server = fmt.Sprintf(":%d", cfg.Main.Port)
+	httpServer = fmt.Sprintf(":%d", cfg.Main.Port)
 	baseURL = fmt.Sprintf("http://%s:%d/%s", serverIP, cfg.Main.Port, pathPrefix)
-	fmt.Printf("serve up web: http://%s%s/\n", serverIP, http_server)
-	err = http.ListenAndServe(http_server, gorilla.CompressHandler(userMiddleware(gorilla.LoggingHandler(accessLog, http.DefaultServeMux))))
+	fmt.Printf("serve up web: http://%s%s/\n", serverIP, httpServer)
+	err = http.ListenAndServe(httpServer, gorilla.CompressHandler(userMiddleware(gorilla.LoggingHandler(accessLog, http.DefaultServeMux))))
 	if err != nil {
 		panic(err)
 	}

@@ -22,7 +22,7 @@ var (
 	Basedir, _        = os.Getwd() // get abs path now, as we will be changing dirs
 	execDir, _        = osext.ExecutableFolder()
 	uploadDir         = filepath.Join(execDir, "uploads")
-	start_time        = time.Now()
+	startTime         = time.Now()
 	sqlDir            = "sql" // dir containing sql schemas, etc
 	sqlSchema         = sqlDir + "/schema.sql"
 	dbFile            = execDir + "/inventory.db"
@@ -35,14 +35,14 @@ var (
 	pathPrefix        string
 	bannerText        string
 	cfg               = struct {
-		Main    MainConfig
+		Main    Config
 		Backups BackupConfig
 		Jira    JiraConfig
 		SAML    SAMLConfig
 	}{}
 )
 
-type MainConfig struct {
+type Config struct {
 	Name     string `gcfg:"name"`
 	Port     int    `gcfg:"port"`
 	Prefix   string `gcfg:"prefix"`
@@ -79,9 +79,9 @@ type JiraConfig struct {
 const (
 	sessionMinutes = 120
 	configFile     = "config.gcfg"
-	log_layout     = "2006-01-02 15:04:05.999"
-	date_layout    = "2006-01-02"
-	time_layout    = "2006-01-02 15:04:05"
+	logLayout      = "2006-01-02 15:04:05.999"
+	dateLayout     = "2006-01-02"
+	timeLayout     = "2006-01-02 15:04:05"
 )
 
 func init() {
@@ -131,7 +131,7 @@ func init() {
 	}
 }
 
-func MyIp() string {
+func MyIP() string {
 	addrs, _ := net.InterfaceAddrs()
 	for _, addr := range addrs {
 		if ipnet, ok := addr.(*net.IPNet); ok && !strings.HasPrefix(ipnet.String(), "127.") && strings.Index(ipnet.String(), ":") == -1 {
@@ -191,7 +191,7 @@ func main() {
 		dcLookup[dc.Name] = dc
 		dcIDs[dc.ID] = dc
 	}
-	if vlan, err := ipVLAN(MyIp()); err == nil {
+	if vlan, err := ipVLAN(MyIP()); err == nil {
 		thisDC = dcIDs[vlan.DID]
 	}
 	webServer(webHandlers)

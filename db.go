@@ -311,7 +311,7 @@ func Backups(freq int, to string) {
 }
 
 func trimDate(s string) string {
-	const date = len(date_layout)
+	const date = len(dateLayout)
 	if len(s) < date {
 		return s
 	}
@@ -323,7 +323,7 @@ func trimDate(s string) string {
 }
 
 func trimTime(s string) string {
-	const t = len(time_layout)
+	const t = len(timeLayout)
 	if len(s) < t {
 		return s
 	}

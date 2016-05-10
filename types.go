@@ -228,8 +228,8 @@ type SKU struct {
 	Modified    time.Time `sql:"modified" audit:"time"`
 }
 
-func (p *SKU) Manufacturer() Manufacturer {
-	m := Manufacturer{MID: p.MID}
+func (s *SKU) Manufacturer() Manufacturer {
+	m := Manufacturer{MID: s.MID}
 	dbFindSelf(&m)
 	return m
 }
@@ -244,9 +244,9 @@ func (s *SKU) PartType() *PartType {
 	return nil
 }
 
-func (p *SKU) PageData(r *http.Request) (interface{}, error) {
+func (s *SKU) PageData(r *http.Request) (interface{}, error) {
 	if len(r.URL.Path) > 0 {
-		if err := dbFindByID(p, r.URL.Path); err != nil {
+		if err := dbFindByID(s, r.URL.Path); err != nil {
 			return nil, err
 		}
 	}
@@ -256,7 +256,7 @@ func (p *SKU) PageData(r *http.Request) (interface{}, error) {
 		Types []PartType
 	}{
 		Common: NewCommon(r, "Edit"),
-		SKU:    p,
+		SKU:    s,
 		Types:  partTypes(),
 	}, nil
 }
@@ -434,7 +434,7 @@ type DCView struct {
 	Hostname    string    `sql:"hostname"`
 	AssetNumber string    `sql:"asset_number"`
 	CPU         string    `sql:"cpu_id"`
-	CPU_Speed   int       `sql:"cpu_speed"`
+	CPUSpeed    int       `sql:"cpu_speed"`
 	MemoryMB    int       `sql:"memory"`
 	Created     time.Time `sql:"created" update:"false"`
 }
@@ -689,9 +689,9 @@ func (r Rack) RackNets() []RackNet {
 
 type RackNets []RackNet
 
-func (a RackNets) Len() int           { return len(a) }
-func (a RackNets) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a RackNets) Less(i, j int) bool { return a[i].MinIP < a[j].MinIP }
+func (rn RackNets) Len() int           { return len(rn) }
+func (rn RackNets) Swap(i, j int)      { rn[i], rn[j] = rn[j], rn[i] }
+func (rn RackNets) Less(i, j int) bool { return rn[i].MinIP < rn[j].MinIP }
 
 type VM struct {
 	ID         int64     `sql:"id" key:"true" table:"vms"`
@@ -867,7 +867,7 @@ func LoadParts(did int64, data []string) error {
 }
 
 func PartsAdd(did int64, columns, words []string) error {
-	var item, mfgr, asset, part_no, sn string
+	var item, mfgr, asset, partNo, sn string
 	qty := 1
 	/*
 		2016/01/27 10:57:29 COL OK: [qty mfgr item]
@@ -901,16 +901,16 @@ func PartsAdd(did int64, columns, words []string) error {
 		case col == "mfgr":
 			mfgr = word
 		case col == "part_no":
-			part_no = word
+			partNo = word
 		case col == "sn":
 			sn = word
 		default:
 			return fmt.Errorf("unknown column: " + col)
 		}
 	}
-	log.Println("ADDING MFGR:", mfgr, "PN:", part_no, "DESC:", item)
+	log.Println("ADDING MFGR:", mfgr, "PN:", partNo, "DESC:", item)
 	for i := 0; i < qty; i++ {
-		if _, err = AddPart(did, mfgr, part_no, item, sn, asset, ""); err != nil {
+		if _, err = AddPart(did, mfgr, partNo, item, sn, asset, ""); err != nil {
 			return err
 		}
 	}
@@ -1037,24 +1037,24 @@ func (r Router) Rack() int {
 	return rack.Label
 }
 
-func (s Router) Insert() (int64, error) {
-	return dbObjectInsert(s)
+func (r Router) Insert() (int64, error) {
+	return dbObjectInsert(r)
 }
 
-func (s Router) Delete() error {
-	return dbObjectDelete(s)
+func (r Router) Delete() error {
+	return dbObjectDelete(r)
 }
 
-func (s Router) Update() error {
-	return dbObjectUpdate(s)
+func (r Router) Update() error {
+	return dbObjectUpdate(r)
 }
 
-func (s VM) Insert() (int64, error) {
-	return dbObjectInsert(s)
+func (v VM) Insert() (int64, error) {
+	return dbObjectInsert(v)
 }
 
-func (s VM) Update() error {
-	return dbObjectUpdate(s)
+func (v VM) Update() error {
+	return dbObjectUpdate(v)
 }
 
 func getUser(where string, args ...interface{}) (User, error) {
@@ -1194,8 +1194,8 @@ type Audit struct {
 	Eth1     string `sql:"eth1"`
 	SN       string `sql:"sn"`
 	Asset    string `sql:"asset"`
-	IPMI_IP  string `sql:"ipmi_ip"`
-	IPMI_MAC string `sql:"ipmi_mac"`
+	IpmiIP   string `sql:"ipmi_ip"`
+	IpmiMac  string `sql:"ipmi_mac"`
 	CPU      string `sql:"cpu"`
 	Mem      string `sql:"mem"`
 	VMs      string `sql:"vms"`
