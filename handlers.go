@@ -2010,6 +2010,54 @@ func VMEdit(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+type VMType struct {
+	DC       string
+	Server   string
+	Hostname string
+	VIP      string
+	Internal string
+	Public   string
+	Profile  string
+	Note     string
+}
+
+func APIVM(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "POST" {
+		r.ParseForm()
+		var v VMType
+		objFromForm(&v, r.Form)
+
+		const q1 = "select id from sview where dc=? and hostname=?"
+		sid, err := dbGetInt(q1, v.DC, v.Server)
+		if err != nil {
+			msg := fmt.Sprintf("could not find server %s in datacenter:%s", v.Server, v.DC)
+			http.Error(w, msg, http.StatusBadRequest)
+			return
+		}
+
+		const q2 = "select id from vview where dc=? and sid=? and hostname=?"
+		if chk, _ := dbGetInt(q2, v.DC, sid, v.Hostname); chk > 0 {
+			msg := fmt.Sprintf("vm %s already exists on server %s in datacenter %s", v.Hostname, v.Server, v.DC)
+			http.Error(w, msg, http.StatusBadRequest)
+			return
+		}
+		vm := VM{
+			SID:      int64(sid),
+			Hostname: v.Hostname,
+			Private:  v.Internal,
+			Public:   v.Public,
+			VIP:      v.VIP,
+			Profile:  v.Profile,
+			Note:     v.Note,
+		}
+		if _, err := dbObjectInsert(vm); err != nil {
+			badRequest(w, err)
+			return
+		}
+		fmt.Fprintln(w, "ok")
+	}
+}
+
 func DCEdit(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		r.ParseForm()
@@ -2887,6 +2935,7 @@ var webHandlers = []HFunc{
 	{"/api/script/", APIScript},
 	{"/api/upload", APIUpload},
 	{"/api/update", APIUpdate},
+	{"/api/vm", APIVM},
 	{"/auto", AutoPage},
 	{"/audit/log", auditPage},
 	{"/data/server/discover/", ServerDiscover},
