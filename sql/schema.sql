@@ -3,8 +3,15 @@ PRAGMA journal_mode = WAL;
 
 BEGIN TRANSACTION;
 
-CREATE TABLE "datacenters" (
-    id integer primary key AUTOINCREMENT,
+DROP TABLE IF EXISTS "db_debug";
+CREATE TABLE "db_debug" (
+    log text,
+    ts timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+DROP TABLE IF EXISTS sites;
+CREATE TABLE "sites" (
+    sti integer primary key,
     name text not null,
     address text not null,
     city text not null,
@@ -12,18 +19,68 @@ CREATE TABLE "datacenters" (
     phone text not null,
     web text not null,
     dcman text not null,
-    pxehost text not null,
-    pxeuser text not null,
-    pxepass text not null,
-    pxekey text not null,
     remote_addr text not null default '', 
     modified timestamp, 
     user_id int default 0
-    );
+);
 
+DROP TABLE IF EXISTS "racks";
+CREATE TABLE "racks" (
+    rid integer primary key,
+    rack integer,
+    sti int,
+    x_pos text default '',
+    y_pos text default '',
+    rackunits int default 45,
+    uid int default 0,
+    ts timestamp DEFAULT CURRENT_TIMESTAMP, 
+    vendor_id text default '',
+    FOREIGN KEY(sti) REFERENCES sites(sti)
+);
+
+DROP TABLE IF EXISTS "part_types" ;
+CREATE TABLE "part_types" (
+    pti integer primary key,
+    name text not null COLLATE NOCASE,
+    user_id integer not null default 0, 
+    modified date DEFAULT CURRENT_TIMESTAMP,
+    unique (name)
+);
+
+insert into part_types (name) values('misc');
+
+
+DROP TABLE IF EXISTS "mfgrs" ;
+CREATE TABLE "mfgrs" (
+    mid integer primary key,
+    name text not null COLLATE NOCASE, -- full given name
+    aka text , -- shortened and unique
+    url text , 
+    user_id integer , 
+    modified date DEFAULT CURRENT_TIMESTAMP,
+    unique (name)
+);
+-- ensure we have a 'catch all'
+insert into mfgrs (name) values('unknown');
+
+
+DROP TABLE IF EXISTS "skus" ;
+CREATE TABLE "skus" (
+    kid integer primary key,
+    vid integer,
+    mid integer,
+    pti integer,
+    description text not null,
+    part_no text , 
+    user_id integer , 
+    modified date DEFAULT CURRENT_TIMESTAMP,
+    unique (mid,description),
+    FOREIGN KEY(mid) REFERENCES mfgrs(mid)
+    FOREIGN KEY(pti) REFERENCES part_types(pti)
+);
 
 CREATE TABLE "vendors" (
-    vid integer primary key AUTOINCREMENT,
+    vid integer primary key,
     name text not null ,
     www text not null default '',
     phone text not null default '',
@@ -38,1019 +95,182 @@ CREATE TABLE "vendors" (
     modified date DEFAULT CURRENT_TIMESTAMP
 );
 
+DROP TABLE IF EXISTS "parts" ;
+CREATE TABLE "parts" (
+    pid integer primary key,
+    kid integer default 0,
+    vid integer default 0,
+    did integer default 0,
+    sti integer default 0,
+    --rma_id integer default 0, -- needs foreign key to rmas
+    unused integer default 0, -- boolean (1 is unused)
+    bad    integer default 0, -- boolean (1 is bad)
+    location text,
+    serial_no text,
+    asset_tag text, 
+    user_id integer not null default 0, 
+    modified date DEFAULT CURRENT_TIMESTAMP  ,
+    FOREIGN KEY(sti) REFERENCES sites(sti)
+    FOREIGN KEY(kid) REFERENCES skus(kid)
+    /*
+    FOREIGN KEY(vid) REFERENCES vendors(vid)
+    */
+);
+
+
 DROP TABLE IF EXISTS "rmas" ;
 CREATE TABLE "rmas" (
-    id integer primary key AUTOINCREMENT,
-    sid integer not null, -- server id
-    vid integer not null, -- server id
-    user_id integer not null, 
-    rma_no text not null default '',
-    description text not null default '',
-    old_sn text not null default '',
-    new_sn text not null default '',
-    part_no text not null default '',
-    tracking_no text not null default '',
-    jira text not null default '',
-    dc_ticket text not null default '',
-    date_opened date DEFAULT CURRENT_TIMESTAMP,
-    date_sent date,
+    rma_id integer primary key,
+    sti integer default 0, -- site id
+    did integer default 0, -- device id
+    vid integer default 0, -- vendor id
+    old_pid integer default 0,
+    new_pid integer default 0,
+    vendor_rma text default '',
+    ship_tracking text default '',
+    recv_tracking text default '',
+    jira text default '',
+    dc_ticket text default '',
+    dc_receiving text default '',
+    note text default '',
+    date_shipped date,
     date_received date,
-    date_replaced date 
+    date_closed date,
+    date_created date DEFAULT CURRENT_TIMESTAMP,
+    user_id integer default 0 ,
+    FOREIGN KEY(sti) REFERENCES sites(sti)
 );
 
-DROP VIEW IF EXISTS rma_report;
-CREATE VIEW rma_report as 
-  select r.*, u.login, s.dc, s.hostname, s.sn as server_sn, s.rack, s.ru, v.name as vendor_name
-  from  rmas r
-  left outer join users u on r.user_id = u.id
-  left outer join sview s on r.sid = s.id
-  left outer join vendors v on r.vid = v.vid
-;
 
-CREATE TABLE master (
-    rack    text,
-    ru	    int,
-    profile text,
-    hostname text,
-    sn text default '',
-    ip_ipmi	text,
-    ip_internal text
+DROP TABLE IF EXISTS "tags";
+CREATE TABLE "tags" (
+    tid integer primary key,
+    tag text,
+    unique(tag)
 );
 
-CREATE TABLE "audit_log" (
-    id integer primary key AUTOINCREMENT,
-    ts timestamp DEFAULT CURRENT_TIMESTAMP, 
-    uid int,
-    action text,
-    ip text,
-    msg text
+drop table if exists device_types;
+CREATE TABLE "device_types" (
+    dti integer primary key,
+    name text not null COLLATE NOCASE
 );
 
-CREATE TABLE "racks" (
-    id integer primary key AUTOINCREMENT,
-    rack integer,
-    did int,
-    x_pos text default '',
-    y_pos text default '',
-    rackunits int default 45,
-    uid int default 0,
-    ts timestamp DEFAULT CURRENT_TIMESTAMP, 
-    vendor_id text default ''
-);
-
-CREATE TABLE pdus (
-  id integer primary key AUTOINCREMENT,
-  rid int,
-  hostname text default '',
-  asset_tag text default '',
-  ip_address text default '',
-  netmask text default '',
-  gateway text default '',
-  dns text default ''
-);
-
-CREATE TABLE "kinds" (
-    kid integer primary key AUTOINCREMENT,
-    name text not null,
-    tbl text not null,
-    fld text not null
-);
-
-CREATE TABLE "ipaddr" (
-    iid integer primary key AUTOINCREMENT,
-    kid integer,
-    old_id integer, -- we'll kill this later
-    ip32 integer,
-    ipv4 text,
-    mac text default '',
-    ts timestamp DEFAULT CURRENT_TIMESTAMP, 
-    uid int default 0
-);
-
-CREATE TABLE "racknet" (
-    rid integer,
-    vid integer,
-    cidr text default '',
-    actual text default '',
-    subnet int default 24,
-    min_ip int default 0,
-    max_ip int default 0,
-    first_ip text default '',
-    last_ip text default '',
-    unique(rid, vid)
-);
-
-CREATE TABLE "audit_racks" (
-    id integer,
-    rack integer,
-    did int,
-    x_pos text default '',
-    y_pos text default '',
-    rackunits int default 45,
-    uid int default 0,
-    ts timestamp DEFAULT CURRENT_TIMESTAMP, 
-    vendor_id text default ''
-);
-
-CREATE TABLE users (
-    id integer primary key AUTOINCREMENT,
-    login text,
-    firstname text not null,
-    lastname text not null,
-    email text not null,
-    password text not null,
-    admin int default 0
+drop table if exists devices;
+CREATE TABLE "devices" (
+    did integer primary key,
+    kid integer default 0,    -- vendor sku ID
+    rid integer default 0,    -- rack ID
+    dti integer default 0,    -- device type ID
+    tid integer default 0,    -- tag ID
+    ru  integer default 0,
+    height    int default 1,
+    hostname  text not null COLLATE NOCASE,
+    alias     text,
+    asset_tag text,
+    sn        text,
+    profile   text,
+    assigned  text,
+    note      text,
+    user_id   integer not null default 0, 
+    modified  date DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(rid) REFERENCES racks(rid)
+    FOREIGN KEY(dti) REFERENCES device_types(dti)
 );
 
 CREATE TABLE "vms" (
-    id integer primary key AUTOINCREMENT,
-    sid int,
+    vmi integer primary key,
+    did int,
     hostname text,
     profile text default '',
-    note text default '', 
-    private text default '', 
-    public  text default '', 
-    vip  text default '',
-    modified timestamp DEFAULT CURRENT_TIMESTAMP, 
-    remote_addr text default '', 
-    uid int default 0
-);
-
-CREATE TABLE "audit_vms" (
-    id integer,
-    sid int,
-    hostname text default '',
-    profile text default '',
-    note text default '', 
-    private text default '', 
-    public  text default '', 
-    vip  text default '',
-    modified timestamp, 
-    remote_addr text default '', 
-    uid int default 0
-);
-
-CREATE TABLE audit_servers (
-    id integer,
-    rid int,
-    ru int,
-    height int default 1,
-    asset_tag text default '',
-    vendor_sku text default '',
-    sn text default '',
-    profile default '', 
-    hostname text not null COLLATE NOCASE,
-    ip_internal text default '',
-    ip_ipmi text default '',
-    port_eth0 text default '',
-    port_eth1 text default '',
-    port_ipmi text default '',
-    cable_eth0 text default '',
-    cable_eth1 text default '',
-    cable_ipmi text default '',
-    cpu text default '',
-    memory int default 0,  -- what unit should this be in?
-    mac_port0 text  default '', 
-    mac_port1 text default '',
-    mac_ipmi text default '',
-    note text default '', 
-    modified timestamp CURRENT_TIMESTAMP, 
-    uid int default 0, 
-    remote_addr text default '', 
-    ip_public text default '', 
-    alias text default '', 
-    assigned text default ''
-);
-
-CREATE TRIGGER servers_audit BEFORE UPDATE
-ON servers
-BEGIN
-   INSERT INTO audit_servers select * from servers where id=old.id;
-END;
-
-CREATE TABLE "routers" (
-    id integer primary key AUTOINCREMENT,
-    rid int,
-    ru int,
-    height int default 1,
-    make text,
-    model text,
-    asset_tag text,
-    sku text,
-    sn text,
-    hostname text,
-    ip_mgmt text default '',
     note text default '',
-    modified timestamp DEFAULT CURRENT_TIMESTAMP, 
-    uid int default 0, 
-    remote_addr text default ''
+    user_id int default 0,
+    modified timestamp DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(did) REFERENCES devices(did)
 );
 
-CREATE TABLE "audit_routers" (
-    id integer,
-    rid int,
-    ru int,
-    height int default 1,
-    make text,
-    model text,
+drop table if exists interfaces;
+CREATE TABLE "interfaces" (
+    ifd integer primary key,
+    did integer,
+    mgmt integer default 0,   -- boolean (1 if mgmt port, 0 otherwise)
+    port text,    -- eth0, eth1, etc
+    mac text default '', 
+    cable_tag text default '', 
+    switch_port text default '',
+    FOREIGN KEY(did) REFERENCES devices(did)
+);
+
+drop table if exists ip_types;
+create table "ip_types" (
+    ipt integer primary key,
+    name text
+);
+
+drop table if exists ips;
+create table "ips" (
+    iid integer primary key,
+    ifd integer,    -- interface ID
+    vmi integer,    -- VM ID, if applicable
+    vli integer,    -- VLAN ID, for reserved IPs
+    ipt integer,    -- ip type ID
+    ip32 integer default 0,    -- ip address as integer
+    ipv4 text default '',    -- ip address as string
+    note text,
+    user_id integer not null default 0, 
+    modified date DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(ifd) REFERENCES interfaces(ifd)
+    FOREIGN KEY(vmi) REFERENCES vms(vmi)
+    FOREIGN KEY(ipt) REFERENCES ip_types(ipt)
+);
+
+drop table if exists audit_devices;
+CREATE TABLE "audit_devices" (
+    did integer,
+    kid integer,    -- vendor sku ID
+    rid integer,    -- rack ID
+    dti integer,    -- device type ID
+    tid integer,    -- tag ID
+    ru  integer,
+    height integer,
+    hostname  text,
+    alias     text,
     asset_tag text,
-    sku text,
-    sn text,
-    hostname text,
-    ip_mgmt text default '',
-    note text default '',
-    modified timestamp DEFAULT CURRENT_TIMESTAMP, 
-    uid int default 0, 
-    remote_addr text default ''
+    sn        text,
+    profile   text,
+    assigned  text,
+    note      text,
+    user_id   integer,
+    modified  date
 );
 
-CREATE TABLE "servers" (
-    id integer primary key AUTOINCREMENT,
-    rid int,
-    ru int,
-    height int default 1,
-    asset_tag text default '',
-    vendor_sku text default '',
-    sn text default '',
-    profile default '', 
-    hostname text not null COLLATE NOCASE,
-    ip_internal text default '',
-    ip_ipmi text default '',
-    port_eth0 text default '',
-    port_eth1 text default '',
-    port_ipmi text default '',
-    cable_eth0 text default '',
-    cable_eth1 text default '',
-    cable_ipmi text default '',
-    cpu text default '',
-    memory int default 0,  -- what unit should this be in?
-    mac_port0 text  default '', 
-    mac_port1 text default '',
-    mac_ipmi text default '',
-    note text default '', 
-    modified timestamp DEFAULT CURRENT_TIMESTAMP, 
-    uid int default 0, 
-    remote_addr text default '', 
-    ip_public text default '', 
-    alias text default '', 
-    assigned text default ''
+DROP TABLE IF EXISTS users;
+CREATE TABLE users (
+    id integer primary key,
+    login text, -- optional unix login name
+    firstname text,
+    lastname text,
+    email text,
+    salt text,
+    admin int default 0, 
+    pw_hash text, -- bcrypt hashed password
+    pw_salt text default (lower(hex(randomblob(32)))),
+    apikey text default (lower(hex(randomblob(32))))
 );
 
+-- rack specific vlans
+DROP TABLE IF EXISTS "vlans";
 CREATE TABLE "vlans" (
-    id integer primary key not null,
-    did integer not null,
+    vli integer primary key,
+    sti integer not null,
     name integer not null,
     profile string not null,
     gateway text not null,
     netmask text not null,
     route text not null,
+    note text,
     user_id int not null,
     modified timestamp DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE vmtmp (
-    dc text,
-    hostname text,
-    vm1 text,
-    vm2 text,
-    vm3 text,
-    vm4 text,
-    vm5 text,
-    vm6 text
-    );
-
-CREATE TABLE vmdetail (
-    dc text,
-    hostname text,
-    private text,
-    public text,
-    vip text,
-    note text
-    );
-
-CREATE TABLE vmorphans(
-  rowid INT,
-  dc TEXT,
-  hostname TEXT,
-  private TEXT,
-  public TEXT,
-  vip TEXT,
-  note TEXT
-);
-
-CREATE VIEW vview as
-  select d.name as dc, r.rack as rack, s.rid, v.*
-  from vms v
-  left outer join servers s on v.sid = s.id
-  left outer join racks r on s.rid = r.id
-  left outer join datacenters d on r.did = d.id;
-
-CREATE VIEW sview as
-  select d.name as dc, r.rack as rack, s.*
-  from servers s
-  left outer join racks r on s.rid = r.id
-  left outer join datacenters d on r.did = d.id;
-
-create view rackspace as select *,ru+height-1 as top from sview;
-
-CREATE VIEW ipprivate as 
-  select id, 'vm' as kind, 'private' as what,  dc, hostname, private as ip, note
-  from vview where private > '';
-
-CREATE VIEW ipinternal as 
-  select id, 'server' as kind, 'internal' as what, dc, hostname, ip_internal as ip, note
-  from sview s
-  where ip_internal > '';
-
-CREATE VIEW ippublic as 
-  select id, 'vm' as kind, 'public' as what, dc, hostname, public as ip, note
-  from vview where public > ''
-  union
-  select id, 'vm' as kind, 'vip' as what, dc, hostname, vip as ip, note
-  from vview where vip > ''
-  union
-  select id, 'server' as kind, 'public' as what, dc, hostname, ip_public as ip, note
-  from sview where ip_public > '';
-
-CREATE VIEW ipipmi as 
-  select id, 'server' as kind, 'ipmi' as what, dc, hostname, ip_ipmi as ip, note
-  from sview where ip_ipmi > '';
-
-CREATE VIEW ipinside as
-  select * from ipinternal
-  union
-  select * from ipipmi
-  union
-  select * from ipprivate;
-
-CREATE VIEW ipmstr as
-  select * from ipinside
-  union
-  select * from ippublic;
-
-CREATE VIEW ippool as 
-  select ip_internal as ip from servers where ip_internal > ''
-  union
-  select ip_ipmi as ip from servers where ip_ipmi > ''
-  union
-  select private as ip from vms where private > '';
-
-DELETE FROM sqlite_sequence;
-
-CREATE INDEX iplookup on "ipaddr" (ip32);
-
-CREATE INDEX slookup on "ipaddr" (old_id);
-
-CREATE INDEX kname on kinds (name);
-
-CREATE INDEX ikid on "ipaddr" (kid);
-
-CREATE INDEX oldid on "ipaddr"(old_id);
-
-CREATE INDEX range on racknet (min_ip,max_ip);
-
-CREATE VIEW server_totals as select dc,count(*) as servers from sview group by dc order by dc;
-
-CREATE VIEW server_summary as select * from server_totals union select '~TOTAL~' as datacenter, count(*) as servers from servers group by datacenter order by datacenter;
-
-CREATE VIEW vmlist as
-  select s.id as sid, v.id as vid, s.dc, s.hostname as server,v.hostname as vm, v.profile, v.private, v.public, v.vip, v.note
-  from sview s, vms as v
-    where s.id = v.sid;
-
-CREATE VIEW piview as 
-select b.old_id as id, b.ipv4 as ip_internal
-from kinds a, ipaddr b
-where a.name='internal'
-  and a.kid=b.kid;
-
-CREATE VIEW ipmiv as 
-select b.old_id as id, b.ipv4 as ip_ipmi
-from kinds a, ipaddr b
-where a.name='ipmi'
-  and a.kid=b.kid;
-
-CREATE VIEW iview as 
-select a.kid, b.id as old_id, b.ip_ipmi as ip
-from kinds a, servers b
-where a.name='ipmi';
-
-CREATE VIEW fix1 as select iid, substr(ipv4,0,instr(ipv4,'.')) as fix, substr(ipv4,instr(ipv4,'.')+1) as remainder from ipaddr;
-
-CREATE VIEW fix2 as select iid, substr(remainder,0,instr(remainder,'.')) as fix, substr(remainder,instr(remainder,'.')+1) as remainder from fix1;
-
-CREATE VIEW fix34 as select iid, substr(remainder,0,instr(remainder,'.')) as fix, substr(remainder,instr(remainder,'.')+1) as remainder from fix2;
-
-CREATE VIEW fixbinary as
-select a.iid, (a.fix * 16777216)+(b.fix * 65536)+(c.fix * 256) + c.remainder as ip32
-  from fix1 a, fix2 b, fix34 c
-  where a.iid = b.iid
-    and a.iid = c.iid;
-
-CREATE VIEW rnet as
-select c.name as dc, b.rack, a.*
-from racknet a, racks b, datacenters c
-where a.rid = b.id
-  and b.did = c.id;
-
-CREATE VIEW vlanview as 
-select rid, vid, "start" as action, first_ip as ip from racknet
-union
-select rid, vid, "stop" as action, last_ip as ip from racknet;
-
-CREATE TRIGGER ipadd AFTER INSERT ON "ipaddr"
-BEGIN
-    UPDATE IPADDR set ip32=(SELECT ipcalc FROM ipsub i where i.IID=NEW.IID) where iid=NEW.IID;
-END;
-
-CREATE VIEW lim1 as select rid, vid, action, substr(ip,0,instr(ip,'.')) as lim, substr(ip,instr(ip,'.')+1) as remainder, ip from vlanview;
-
-CREATE VIEW lim2 as select rid, vid, action, substr(remainder,0,instr(remainder,'.')) as lim, substr(remainder,instr(remainder,'.')+1) as remainder from lim1;
-
-CREATE VIEW lim34 as select rid, vid, action, substr(remainder,0,instr(remainder,'.')) as lim, substr(remainder,instr(remainder,'.')+1) as remainder from lim2;
-
-CREATE VIEW lims as
-select a.rid, a.vid, a.action, (a.lim * 16777216)+(b.lim * 65536)+(c.lim * 256) + c.remainder as ip32, a.ip
-  from lim1 a, lim2 b, lim34 c
-  where a.rid = b.rid
-    and a.vid = b.vid
-    and a.action = b.action
-    and a.rid = c.rid
-    and a.vid = c.vid
-    and a.action = c.action;
-    
-
-CREATE VIEW limbinary as
-select a.rid, a.vid, a.action, (a.lim * 16777216)+(b.lim * 65536)+(c.lim * 256) + c.remainder as ip32, a.ip
-  from lim1 a, lim2 b, lim34 c
-  where a.rid = b.rid
-    and a.vid = b.vid
-    and a.action = b.action
-    and a.rid = c.rid
-    and a.vid = c.vid
-    and a.action = c.action;
-
-CREATE VIEW binary_ips as
-select a.rid, a.vid, a.ip32 as min_ip, b.ip32 as max_ip
-  from limbinary a, limbinary b
-  where a.rid = b.rid
-    and a.vid = b.vid
-    and a.action = "start"
-    and b.action = "stop";
-
-CREATE TRIGGER backfit_racknet 
-INSTEAD OF UPDATE ON binary_ips 
-BEGIN
-  update racknet set min_ip=OLD.min_ip, max_ip=OLD.max_ip where rid=OLD.rid and vid=OLD.vid;
-END;
-
-CREATE VIEW rackips as
- select b.rack, b.did, a.*
- from racknet a, racks b
-   where a.rid = b.id;
-
-
-CREATE VIEW ipkinds as
-select b.name as kind, a.*
-from ipaddr a, kinds b
-where a.kid = b.kid;
-
-CREATE VIEW dcracks as
-  select d.name as dc, r.did, r.rack 
-  from racks r, datacenters d
-  where r.did = d.id
-  order by dc,rack;
-
-CREATE VIEW nview as
-  select d.name as dc, r.rack as rack, n.*
-  from routers n
-  left outer join racks r on n.rid = r.id
-  left outer join datacenters d on r.did = d.id;
-
-CREATE VIEW rackunits as
-select * from (
-    select dc, rack, 0 as nid, id as sid, rid, ru, height, hostname, alias, ip_ipmi as ipmi, ip_internal as internal, asset_tag, sn, note  from sview
-    union
-    select dc, rack, id as nid, 0 as sid, rid, ru, height,  hostname, '' as alias, '' as ipmi, ip_mgmt as ip_internal, asset_tag, sn, note from nview
-) order by rid, ru desc;
-
-CREATE VIEW inside_ip as
-  select b.name as kind, a.* from ipaddr a, kinds b
-  where a.kid in (select kid from kinds where name in ('internal','ipmi'))
-  and b.kid = a.kid;
-
-CREATE VIEW ip4server as
-  select b.name as kind, a.* from ipaddr a, kinds b
-  where a.kid in (select kid from kinds where name in ('internal','ipmi'))
-  and b.kid = a.kid;
-
-CREATE VIEW ipsub1  as select iid, substr(ipv4,0,instr(ipv4,'.')) as ipsub, substr(ipv4,instr(ipv4,'.')+1) as remainder from ipaddr;
-
-CREATE VIEW ipsub2  as select iid, substr(remainder,0,instr(remainder,'.')) as ipsub, substr(remainder,instr(remainder,'.')+1) as remainder from ipsub1;
-
-CREATE VIEW ipsub34 as select iid, substr(remainder,0,instr(remainder,'.')) as ipsub, substr(remainder,instr(remainder,'.')+1) as remainder from ipsub2;
-
-CREATE VIEW ipvminternal as
-  select * from ipaddr where kid=(select kid from kinds where name='vminternal');
-
-CREATE VIEW ip4vm as
-  select b.name as kind, a.* from ipaddr a, kinds b
-  where a.kid in (select kid from kinds where name in ('vminternal'))
-  and b.kid = a.kid;
-
-CREATE VIEW vm_group_totals as select dc,profile, count(*) as VMs from vview group by dc,profile order by dc,profile;
-
-CREATE VIEW vm_totals as select dc, '~TOTAL~' as profile, count(*) as VMs from vview group by dc order by dc;
-
-CREATE VIEW vm_summary as select * from vm_group_totals union select * from vm_totals order by dc,profile;
-
-CREATE VIEW servervms as
-  select s.id, s.dc, s.hostname,
-  group_concat(v.hostname) as vms,
-  group_concat(v.id) as ids
-  from sview as s
-    left outer join vms as v on v.sid = s.id
-      group by(s.id);
-
-CREATE TRIGGER ipcalc AFTER UPDATE OF ipv4 ON "ipaddr"
-BEGIN
-    UPDATE IPADDR set ip32=(SELECT ipcalc FROM ipsub i where i.IID=OLD.IID) where iid=OLD.IID;
-END
-;
-
-CREATE VIEW ipsub as
-select d.*, ((a.ipsub * 16777216)+(b.ipsub * 65536)+(c.ipsub * 256) + c.remainder) as ipcalc
-  from ipsub1 a, ipsub2 b, ipsub34 c, ipaddr d
-  where a.iid = b.iid
-    and a.iid = c.iid
-    and a.iid = d.iid
-;
-
-CREATE VIEW bips as
-select a.rid, a.vid, a.ip32 as min_ip, b.ip32 as max_ip, a.ip as addr_start, b.ip as addr_stop
-  from limbinary a, limbinary b
-  where a.rid = b.rid
-    and a.vid = b.vid
-    and a.action = "start"
-    and b.action = "stop";
-
-CREATE TRIGGER racks_audit BEFORE UPDATE
-ON racks
-BEGIN
-   INSERT INTO audit_racks select * from racks where id=old.id;
-END;
-
-CREATE VIEW vlanrange as
-select a.*, b.ip32 from
-vlanview a, limbinary b
-  where a.rid = b.rid
-    and a.vid = b.vid
-    and a.action = b.action;
-
-CREATE TRIGGER startstop AFTER UPDATE OF actual ON racknet
-BEGIN
-update racknet set
-first_ip = substr(actual,0,instr(actual,"-")),
-last_ip = rtrim(substr(actual,0,instr(actual,"-")),'0123456789') || substr(actual,instr(actual,"-")+1)
-where rid=old.rid;
-END;
-
-CREATE TRIGGER net_first AFTER UPDATE of first_ip ON racknet
-BEGIN
-    UPDATE racknet set min_ip=(SELECT min_ip FROM binary_ips i where i.RID=NEW.RID and i.VID=NEW.VID) where rid=NEW.RID and vid=NEW.VID;
-END;
-
-CREATE TRIGGER net_last AFTER UPDATE of last_ip ON racknet
-BEGIN
-    UPDATE racknet set max_ip=(SELECT max_ip FROM binary_ips i where i.RID=NEW.RID and i.VID=NEW.VID) where rid=NEW.RID and vid=NEW.VID;
-END;
-
-CREATE TRIGGER vm_changes BEFORE UPDATE 
-ON "vms"
-BEGIN
-   INSERT INTO audit_vms select * from vms where id=old.id;
-END;
-
-CREATE VIEW vms_history as 
-select s.*, u.login from (
-select rowid,* from vms
-union 
-select rowid,* from audit_vms
-order by id asc,modified desc) as s
-left outer join users u on s.uid=u.id
-order by rowid desc;
-
-CREATE VIEW servers_history as 
-select s.*, u.login from (
-select rowid,* from servers
-union 
-select rowid,* from audit_servers
-order by id asc,modified desc) as s
-left outer join users u on s.uid=u.id
-order by rowid desc;
-
-CREATE VIEW routers_history as 
-select s.*, u.login from (
-select rowid,* from routers
-union 
-select rowid,* from audit_routers
-order by id asc,modified desc) as s
-left outer join users u on s.uid=u.id
-order by rowid desc;
-
-CREATE TRIGGER router_changes BEFORE UPDATE 
-ON routers
-BEGIN
-   INSERT INTO audit_routers select * from routers where id=old.id;
-END;
-
-CREATE VIEW dcvlans as
- select d.name as dc, v.* 
- from datacenters d, vlans v
- where d.id = v.did;
-
-CREATE TRIGGER vlan_load 
-INSTEAD OF INSERT ON dcvlans 
-BEGIN
-  insert into vlans (did,name,gateway,netmask,route)
-  values ((select id from datacenters where name like new.dc), 
-  new.name, new.gateway, new.netmask, new.route)
-  ;
-END;
-
-CREATE VIEW profiles as
-select id,'server' as kind, dc, hostname, profile, ip_internal as ip, ip_public as public from sview
-union
-select id,'vm' as kind, dc, hostname, profile, private as ip, public from vview;
-
-CREATE VIEW audit_view as select b.login,a.* 
-  from audit_log a
-  LEFT OUTER JOIN users b on a.uid=b.id;
-
-CREATE VIEW vmbase as
-   select a.dc, a.id as sid, b.vm1 as hostname from sview a, vmtmp b
-   where a.dc = b.dc 
-    and a.hostname = b.hostname
-    and b.vm1 > ''
-union
-   select a.dc, a.id as sid, b.vm2 as hostname from sview a, vmtmp b
-   where a.dc = b.dc 
-    and a.hostname = b.hostname
-    and b.vm2 > ''
-union
-   select a.dc, a.id as sid, b.vm3 as hostname from sview a, vmtmp b
-   where a.dc = b.dc 
-    and a.hostname = b.hostname
-    and b.vm3 > ''
-union
-   select a.dc, a.id as sid, b.vm4 as hostname from sview a, vmtmp b
-   where a.dc = b.dc 
-    and a.hostname = b.hostname
-    and b.vm4 > ''
-union
-   select a.dc, a.id as sid, b.vm5 as hostname from sview a, vmtmp b
-   where a.dc = b.dc 
-    and a.hostname = b.hostname
-    and b.vm5 > ''
-union
-   select a.dc, a.id as sid, b.vm6 as hostname from sview a, vmtmp b
-   where a.dc = b.dc 
-    and a.hostname = b.hostname
-    and b.vm6 > '';
-
-CREATE VIEW vmload as
-    select b.rowid as did, a.*, b.private, b.public, b.vip, b.note
-    from vmbase a, vmdetail b
-    where a.dc = b.dc
-      and a.hostname = b.hostname;
-
-CREATE VIEW vmbad as 
-select rowid,* from vmdetail where rowid not in (select did from vmload);
-
-drop view if exists server_dupes;
-create view server_dupes as
-select a.id as id, a.dc as dc, a.rack as rack, a.ru as ru,
-        a.hostname as hostname ,a.alias as alias, a.profile as profile, 
-        a.assigned, a.ip_ipmi as ip_ipmi, a.ip_internal as ip_internal, 
-        a.ip_public as ip_putlic,a.asset_tag,a.vendor_sku as vender_sku,
-        a.sn  as sn, b.id as dupe
-	from sview a, sview b
-	where a.rid = b.rid
-	  and a.ru  = b.ru
-	    and a.id != b.id
-        ;
-
-
-
-DROP TABLE IF EXISTS "mfgr" ;
-CREATE TABLE "mfgr" (
-    mid integer primary key AUTOINCREMENT,
-    name text not null, -- full given name
-    aka text not null, -- shortened and unique
-    url text not null, 
-    user_id integer not null, 
-    modified date DEFAULT CURRENT_TIMESTAMP,
-    unique (aka)
-);
-
-DROP TABLE IF EXISTS "skus" ;
-CREATE TABLE "skus" (
-    kid integer primary key AUTOINCREMENT,
-    mid integer not null,
-    description text not null,
-    part_no text not null, 
-    user_id integer not null, 
-    modified date DEFAULT CURRENT_TIMESTAMP,
-    unique (mid,part_no)
-);
-
-DROP VIEW IF EXISTS skuview;
-CREATE VIEW skuview as 
-  select k.kid, k.mid, k.user_id, k.part_no, k.description, m.name as mfgr, u.login, k.modified
-  from  skus k
-  left outer join mfgr m on k.mid = m.mid
-  left outer join users u on k.user_id = u.id
-;
-
-DROP TABLE IF EXISTS "parts" ;
-CREATE TABLE "parts" (
-    pid integer primary key AUTOINCREMENT,
-    kid integer not null,
-    vid integer not null default 0,
-    sid integer not null default 0,
-    did integer not null default 0,
-    rma_id integer not null default 0,
-    location text not null default '',
-    serial_no text not null default ' * BLANK * ',
-    asset_tag text not null default '',
-    user_id integer not null default 0, 
-    modified date DEFAULT CURRENT_TIMESTAMP
-);
-
-/*
-DROP VIEW IF EXISTS stock_report;
-CREATE VIEW stock_report as
-    select k
-    */
-
-DROP TABLE IF EXISTS "retired_parts" ;
-CREATE TABLE "retired_parts" (
-    pid integer primary key,
-    kid integer not null,
-    vid integer,
-    sid integer,
-    did integer,
-    serial_no text not null default '',
-    asset_tag text not null default '',
-    user_id integer not null, 
-    modified date DEFAULT CURRENT_TIMESTAMP
-);
-
-DROP TRIGGER IF EXISTS retire_part;
-CREATE TRIGGER retire_part  BEFORE DELETE
-ON parts
-BEGIN
-   INSERT INTO retired_parts (pid,kid,vid,sid,did,serial_no,asset_tag,user_id) 
-   select pid,kid,vid,sid,did,serial_no,asset_tag,user_id from parts where pid=old.pid;
-END;
-
-DROP VIEW IF EXISTS pview;
-CREATE VIEW pview as 
-  select p.pid, p.vid, p.sid, p.did, l.kid, l.mid, p.rma_id, p.user_id, d.name as dc, p.serial_no, l.part_no, 
-         l.description, l.mfgr, p.location, u.login, p.modified
-  from  parts p
-  left outer join skuview l on p.kid = l.kid
-  left outer join users u on p.user_id = u.id
-  left outer join datacenters d on p.did = d.id
-  left outer join sview s on p.sid = s.id
-;
-
-DROP VIEW IF EXISTS parts_available;
-CREATE VIEW parts_available as
-    select * from pview 
-    where rma_id = 0 
-      and sid = 0
-    ;
-
-DROP VIEW IF EXISTS part_totals;
-CREATE VIEW part_totals as
-    select kid, did, dc, count(kid) as cnt, part_no, description from parts_available
-    group by did,kid
-    ;
-
-DROP VIEW IF EXISTS partuse;
-CREATE VIEW partuse as 
-  select d.name as dc, p.*, s.id, s.rack, s.ru, s.hostname,
-    CASE WHEN p.sid > 0
-       THEN 'used'
-       ELSE 'free'
-     END AS used
-  from  pview p
-  left outer join sview s on p.sid = s.id
-  left outer join datacenters d on p.did = d.id
-;
-
-DROP VIEW IF EXISTS part_summary;
-CREATE VIEW part_summary as 
-    select did,kid,mid,user_id,dc,part_no,description,mfgr,used,count(*) as cnt
-    from partuse
-    group by dc,kid,used
-    ;
-
-    --- PATCH SCHEMA
-drop table if exists oldservers;
-alter table servers rename to oldservers;
-
-CREATE TABLE "servers" (
-    id integer primary key AUTOINCREMENT,
-    rid int,
-    ru int,
-    height int default 1,
-    asset_tag text default '',
-    vendor_sku text default '',
-    sn text default '',
-    profile default '', 
-    hostname text not null COLLATE NOCASE,
-    ip_internal text default '',
-    ip_ipmi text default '',
-    port_eth0 text default '',
-    port_eth1 text default '',
-    port_ipmi text default '',
-    cable_eth0 text default '',
-    cable_eth1 text default '',
-    cable_ipmi text default '',
-    cpu text default '',
-    memory int default 0,  -- what unit should this be in?
-    mac_eth0 text  default '', 
-    mac_eth1 text default '',
-    mac_ipmi text default '',
-    pdu_a text default '',
-    pdu_b text default '',
-    outlet text default '',
-    note text default '', 
-    ip_public text default '', 
-    alias text default '', 
-    assigned text default '',
-    kernel text default '',
-    release text default '',
-    modified timestamp DEFAULT CURRENT_TIMESTAMP, 
-    uid int default 0, 
-    remote_addr text default '' /**,
-     unique(rid, ru) **/
-);
-
-insert into servers (
-    id,
-    rid,
-    ru,
-    height,
-    asset_tag,
-    vendor_sku,
-    sn,
-    profile,
-    hostname,
-    ip_internal,
-    ip_ipmi,
-    port_eth0,
-    port_eth1,
-    port_ipmi,
-    cable_eth0,
-    cable_eth1,
-    cable_ipmi,
-    cpu,
-    memory,
-    mac_eth0,
-    mac_eth1,
-    mac_ipmi,
-    pdu_a,
-    pdu_b,
-    note,
-    ip_public,
-    alias,
-    assigned,
-    kernel,
-    release,
-    modified,
-    uid,
-    remote_addr)
-select * from oldservers;
-drop table oldservers;
-
-drop table if exists oldaudits;
-alter table audit_servers rename to oldaudits;
-
-CREATE TABLE "audit_servers" (
-    id integer,
-    rid int,
-    ru int,
-    height int,
-    asset_tag text,
-    vendor_sku text,
-    sn text,
-    profile text,
-    hostname text COLLATE NOCASE,
-    ip_internal text,
-    ip_ipmi text,
-    port_eth0 text,
-    port_eth1 text,
-    port_ipmi text,
-    cable_eth0 text,
-    cable_eth1 text,
-    cable_ipmi text,
-    cpu text,
-    memory int,
-    mac_eth0 text,
-    mac_eth1 text,
-    mac_ipmi text,
-    pdu_a text,
-    pdu_b text,
-    outlet text,
-    note text,
-    ip_public text,
-    alias text,
-    assigned text,
-    kernel text,
-    release text,
-    modified timestamp DEFAULT CURRENT_TIMESTAMP, 
-    uid int,
-    remote_addr
-);
-
-insert into audit_servers (
-    id,
-    rid,
-    ru,
-    height,
-    asset_tag,
-    vendor_sku,
-    sn,
-    profile,
-    hostname,
-    ip_internal,
-    ip_ipmi,
-    port_eth0,
-    port_eth1,
-    port_ipmi,
-    cable_eth0,
-    cable_eth1,
-    cable_ipmi,
-    cpu,
-    memory,
-    mac_eth0,
-    mac_eth1,
-    mac_ipmi,
-    pdu_a,
-    pdu_b,
-    note,
-    ip_public,
-    alias,
-    assigned,
-    kernel,
-    release,
-    modified,
-    uid,
-    remote_addr)
-select * from oldaudits;
-drop table oldaudits;
-
-CREATE TRIGGER servers_audit BEFORE UPDATE
-ON servers
-BEGIN
-       INSERT INTO audit_servers select * from servers where id=old.id;
-END;
-
-
-DROP VIEW IF EXISTS rview;
-CREATE VIEW rview as
-	select d.name as dc, r.*
-	from racks r
-	left outer join datacenters d on r.did=d.id
-	;
-
-DROP TRIGGER IF EXISTS rview_insert;
-CREATE TRIGGER rview_insert INSTEAD OF INSERT ON rview 
-BEGIN
-  insert into racks (rack, did) values (NEW.rack, (select id from datacenters where name=NEW.dc));
-END;
-
-
-DROP TRIGGER IF EXISTS sview_insert;
-CREATE TRIGGER sview_insert INSTEAD OF INSERT ON sview 
-BEGIN
-  insert into servers (rid, ru, hostname, sn, asset_tag, ip_internal, ip_ipmi, mac_eth0,
-	cable_ipmi, port_ipmi, cable_eth0, port_eth0, cable_eth1, port_eth1, pdu_a, pdu_b
-	) 
-  values ((select id from rview where dc=NEW.dc and rack=NEW.rack),
-	NEW.ru, NEW.hostname, NEW.sn, NEW.asset_tag, NEW.ip_internal, NEW.ip_ipmi, NEW.mac_eth0,
-	NEW.cable_ipmi, NEW.port_ipmi, NEW.cable_eth0, NEW.port_eth0, NEW.cable_eth1, NEW.port_eth1, 
-	NEW.pdu_a, NEW.pdu_b
-	);
-END;
-
-insert into mfgr (name,aka,url,user_id) values ('Intel Corporation','intel','http://www.intel.com',1);
-insert into skus (mid,description,part_no,user_id) values (1, 'ssd drive', 'iSSD123x', 1);
-
-insert into parts (did,kid,vid,user_id,serial_no,location,asset_tag) values(1,1,1,1,'fakesn','somewhere','mystuff');
-insert into parts (did,kid,vid,user_id,serial_no,location,asset_tag) values(1,1,1,1,'faker_sn','nowhere','mystuff2');
-
+CREATE VIRTUAL TABLE notes USING fts4(id, kind, hostname, note);
 COMMIT;

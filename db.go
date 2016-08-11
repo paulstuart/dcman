@@ -21,7 +21,7 @@ import (
 )
 
 var (
-	datastore   dbutil.DBU
+	datastore   *dbutil.DBU
 	ErrNoDB     = fmt.Errorf("no database")
 	ErrReadOnly = fmt.Errorf("database is read only")
 )
@@ -108,7 +108,8 @@ func dbDelete(o dbutil.DBObject) error {
 }
 
 func dbDebug(enable bool) {
-	datastore.Debug = enable
+	//datastore.Debug(enable)
+	dbutil.Debug(enable)
 }
 
 func dbExec(query string, args ...interface{}) error {
@@ -119,6 +120,10 @@ func dbExec(query string, args ...interface{}) error {
 	return err
 }
 
+func dbFind(o dbutil.DBObject, keys dbutil.QueryKeys) error {
+	return datastore.Find(o, keys)
+}
+
 func dbFindByID(o dbutil.DBObject, id interface{}) error {
 	if err := readable(); err != nil {
 		return err
@@ -127,6 +132,13 @@ func dbFindByID(o dbutil.DBObject, id interface{}) error {
 }
 
 func dbFindSelf(o dbutil.DBObject) error {
+	if err := readable(); err != nil {
+		return err
+	}
+	return datastore.FindSelf(o)
+}
+
+func dbLoad(o dbutil.DBObject) error {
 	if err := readable(); err != nil {
 		return err
 	}
@@ -258,6 +270,10 @@ func dbUpdate(query string, args ...interface{}) (i int64, e error) {
 	return datastore.Update(query, args...)
 }
 
+func dbPragmas() (map[string]string, error) {
+	return datastore.Pragmas()
+}
+
 func dbVersion() {}
 
 func dbPrep() {
@@ -276,6 +292,9 @@ func dbPrep() {
 		if err != nil {
 			panic(err)
 		}
+	}
+	if err := dbExec("PRAGMA foreign_keys = ON"); err != nil {
+		panic(err)
 	}
 }
 

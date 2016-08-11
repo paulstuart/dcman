@@ -630,7 +630,9 @@ div.vms > fieldset {
 }
 
 .rackheight1 {
+    line-height: 1em;
     height: 1em;
+    background-color: pink;
 }
 
     /*
@@ -644,7 +646,12 @@ div.vms > fieldset {
     */
 
 .rackheight2 {
+    /*
+    height: 4.8em;
+    */
     height: 2.4em;
+    line-height: 1em;
+    background-color: yellow;
 }
 
 .rackheight3 {
@@ -712,4 +719,16 @@ vertical-align: bottom;
     z-index: 98;
     width: 220px;
 }
+
+
+table.devtbl {
+  background:#eee;
+  width: 100%;
+}
+
+table.devtbl th {
+    font-weight: bold;
+    text-align: left;
+}
+
 

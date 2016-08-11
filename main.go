@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strings"
+	//"sync"
 	"time"
 
 	"code.google.com/p/gcfg"
@@ -17,6 +18,7 @@ import (
 
 var (
 	version           = "0.1.8"
+	sessionMinutes    = time.Duration(time.Minute * 120)
 	masterMode        = true
 	Hostname, _       = os.Hostname()
 	Basedir, _        = os.Getwd() // get abs path now, as we will be changing dirs
@@ -25,12 +27,8 @@ var (
 	startTime         = time.Now()
 	sqlDir            = "sql" // dir containing sql schemas, etc
 	sqlSchema         = sqlDir + "/schema.sql"
-	dbFile            = execDir + "/inventory.db"
+	dbFile            = execDir + "/data.db"
 	documentDir       = execDir + "/documents"
-	dcLookup          = make(map[string]Datacenter)
-	dcIDs             = make(map[int64]Datacenter)
-	thisDC            Datacenter
-	Datacenters       []Datacenter
 	systemLocation, _ = time.LoadLocation("Local")
 	pathPrefix        string
 	bannerText        string
@@ -68,6 +66,7 @@ type SAMLConfig struct {
 	OKTACookie  string `gcfg:"OKTACookie"`
 	OKTAHash    string `gcfg:"OKTAHash"`
 	Disabled    bool   `gcfg:"disabled"`
+	Timeout     int    `gcfg:"timeout"`
 }
 
 type JiraConfig struct {
@@ -77,11 +76,10 @@ type JiraConfig struct {
 }
 
 const (
-	sessionMinutes = 120
-	configFile     = "config.gcfg"
-	logLayout      = "2006-01-02 15:04:05.999"
-	dateLayout     = "2006-01-02"
-	timeLayout     = "2006-01-02 15:04:05"
+	configFile = "config.gcfg"
+	logLayout  = "2006-01-02 15:04:05.999"
+	dateLayout = "2006-01-02"
+	timeLayout = "2006-01-02 15:04:05"
 )
 
 func init() {
@@ -129,6 +127,10 @@ func init() {
 	if err := os.MkdirAll(documentDir, 0755); err != nil {
 		log.Panic(err)
 	}
+
+	if cfg.SAML.Timeout > 0 {
+		sessionMinutes = time.Duration(cfg.SAML.Timeout) * time.Minute
+	}
 }
 
 func MyIP() string {
@@ -139,6 +141,125 @@ func MyIP() string {
 		}
 	}
 	return ""
+}
+
+type Hit struct {
+	ID   int64  `sql:"id"`
+	Kind string `sql:"kind"`
+	Name string `sql:"name"`
+}
+
+/*
+func doSearch(c chan Hit, q string, args ...string) {
+	err, found := datastore.LoadMany(q, Hit{}, args...)
+	if err != nil {
+		log.Printf("search error:", err)
+		return nil
+	}
+	for _, hit := range found.([]Hit) {
+		c <- hit
+	}
+}
+*/
+
+/*
+
+TODO: Fix this!!!
+
+// do parallel search for matches
+func searchDB(what string) []Hit {
+	hits := make([]Hit, 0, 16)
+	c := make(chan Hit, 64)
+	var wg, wg2 sync.WaitGroup
+
+	wg2.Add(1)
+	go func() {
+		for hit := range c {
+			log.Println("HIT:", hit)
+			hits = append(hits, hit)
+		}
+		wg.Done()
+	}()
+
+	search := func(q string, args ...interface{}) {
+		err, found := datastore.LoadMany(q, Hit{}, args...)
+		if err != nil {
+			log.Printf("search error:", err)
+		} else {
+			for _, hit := range found.([]Hit) {
+				c <- hit
+			}
+		}
+		wg.Done()
+	}
+
+	q := "select id, 'server' as kind, hostname from servers where hostname=? or sn=? or alias=? or asset_tag=?"
+	wg.Add(1)
+	go search(q, what, what, what, what)
+	if ip := net.ParseIP(what); ip != nil {
+		q = "select id, kind, hostname from ipmstr where ip=?"
+		wg.Add(1)
+		go search(q, what)
+	}
+	wg.Wait()
+	return hits
+}
+*/
+
+func dbHits(q string, args ...interface{}) []Hit {
+	err, found := datastore.LoadMany(q, Hit{}, args...)
+	if err != nil {
+		log.Println("search error:", err)
+		return nil
+	}
+	//log.Println("CNT:", len(found.([]Hit)))
+	return found.([]Hit)
+}
+
+func searchDB(what string) []Hit {
+	// TESTING ONLY!!!
+	dbDebug(true)
+	defer dbDebug(false)
+
+	q := "select did as id, 'server' as kind, hostname from devices where hostname=? or sn=? or alias=? or asset_tag=? or profile=?"
+	hits := dbHits(q, what, what, what, what, what)
+	if len(hits) > 0 {
+		return hits
+	}
+
+	q = "select vmi as id, 'vm' as kind, hostname from vms where hostname=?"
+	hits = dbHits(q, what)
+	if len(hits) > 0 {
+		return hits
+	}
+
+	q = "select did as id, devtype as kind, hostname from devices_network where mac=? or ipv4=?"
+	hits = dbHits(q, what, what)
+	if len(hits) > 0 {
+		return hits
+	}
+
+	q = "select did as id, 'server' as kind, hostname from devices where hostname like ?"
+	hits = dbHits(q, "%"+what+"%")
+	if len(hits) > 0 {
+		return hits
+	}
+
+	q = "select id, kind, hostname from notes where note MATCH ?"
+	hits = dbHits(q, what)
+	if len(hits) > 0 {
+		return hits
+	}
+
+	q = "select id, kind, hostname from notes where note MATCH ?"
+	hits = dbHits(q, what+"*")
+	if len(hits) > 0 {
+		return hits
+	}
+
+	q = "select id, kind, hostname from notes where note MATCH ?"
+	hits = dbHits(q, "*"+what)
+	return hits
 }
 
 func auditLog(uid int64, ip, action, msg string) {
@@ -175,24 +296,5 @@ func main() {
 		go Backups(cfg.Backups.Freq, cfg.Backups.Dir)
 	}
 
-	/*
-		for _, t := range tagList() {
-			log.Println("TAG:", t)
-		}
-		return
-	*/
-
-	getColumns()
-	LoadVLANs()
-
-	dc, _ := dbObjectList(Datacenter{})
-	Datacenters = dc.([]Datacenter)
-	for _, dc := range Datacenters {
-		dcLookup[dc.Name] = dc
-		dcIDs[dc.ID] = dc
-	}
-	if vlan, err := ipVLAN(MyIP()); err == nil {
-		thisDC = dcIDs[vlan.DID]
-	}
 	webServer(webHandlers)
 }

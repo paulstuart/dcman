@@ -2,9 +2,11 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"io"
+	"io/ioutil"
 	"log"
 	"mime/multipart"
 	"net"
@@ -20,7 +22,9 @@ import (
 	ttext "text/template"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	gorilla "github.com/gorilla/handlers"
+	sqlite3 "github.com/mattn/go-sqlite3"
 	"github.com/paulstuart/dbutil"
 )
 
@@ -45,6 +49,18 @@ var (
 type HFunc struct {
 	Path string
 	Func http.HandlerFunc
+}
+
+// for debugging, get a copy of the body text
+func bodyCopy(r *http.Request) string {
+	var bodyBytes []byte
+	if r.Body != nil {
+		bodyBytes, _ = ioutil.ReadAll(r.Body)
+	}
+	// Restore the io.ReadCloser to its original state
+	r.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
+	// Use the content
+	return string(bodyBytes)
 }
 
 func RemoteHost(r *http.Request) string {
@@ -106,6 +122,23 @@ func objFromForm(obj interface{}, values map[string][]string) {
 			}
 		}
 	}
+}
+
+func cors(w http.ResponseWriter) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	w.Header().Set("Access-Control-Allow-Methods", "GET,HEAD,OPTIONS,POST,PUT")
+	w.Header().Set("Access-Control-Allow-Headers", "Access-Control-Allow-Headers,Origin,Accept,X-Requested-With,Content-Type,Access-Control-Request-Method,Access-Control-Request-Headers")
+}
+
+func sendJSON(w http.ResponseWriter, obj interface{}) {
+	j, err := json.MarshalIndent(obj, " ", " ")
+	if err != nil {
+		log.Println("marshal error:", err)
+	}
+	cors(w)
+	w.Header().Set("Content-Type", "application/json")
+	fmt.Fprint(w, string(j))
 }
 
 type Validator func(string) error
@@ -366,6 +399,7 @@ func StaticPage(w http.ResponseWriter, r *http.Request) {
 	defer file.Close()
 	fi, _ := file.Stat()
 	w.Header().Set("Cache-control", "public, max-age=259200")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	http.ServeContent(w, r, name, fi.ModTime(), file)
 }
 
@@ -404,6 +438,7 @@ func authMiddleware(next http.Handler) http.Handler {
 				if len(r.URL.RawQuery) > 0 {
 					path += "?" + r.URL.RawQuery
 				}
+				fmt.Println("AUTH FOR PAGE:", r.URL.Path)
 				if len(path) > 0 {
 					c := http.Cookie{Name: "redirect", Value: path, Expires: expires, Path: "/"}
 					http.SetCookie(w, &c)
@@ -442,6 +477,7 @@ func notFound(w http.ResponseWriter, r *http.Request) {
 }
 
 func goHome(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("GO HOME:", r.URL.Path)
 	redirect(w, r, "/", http.StatusMovedPermanently)
 }
 
@@ -465,12 +501,14 @@ func webServer(handlers []HFunc) {
 		case strings.HasPrefix(h.Path, "/login"):
 			http.Handle(p, http.StripPrefix(p, h.Func))
 		default:
-			http.Handle(p, http.StripPrefix(p, authMiddleware(h.Func)))
+			//http.Handle(p, http.StripPrefix(p, authMiddleware(h.Func)))
+			http.Handle(p, http.StripPrefix(p, h.Func))
 		}
 	}
 	if len(pathPrefix) > 0 {
 		http.HandleFunc("/", goHome)
 	}
+	http.HandleFunc("/favicon.ico", FaviconPage)
 
 	logDir := cfg.Main.LogDir
 	if len(logDir) == 0 {
@@ -500,4 +538,216 @@ func webServer(handlers []HFunc) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+// convert url parameters to sql 'where' condition
+func whereParams(m map[string][]string) string {
+	cnt := 0
+	var buf bytes.Buffer
+	for k, v := range m {
+		if len(v) > 0 {
+			if cnt == 0 {
+				buf.WriteString(" where ")
+			} else {
+				buf.WriteString(" and ")
+			}
+			buf.WriteString(k)
+			buf.WriteString("=")
+			_, err := strconv.ParseFloat(v[0], 64)
+			if err == nil {
+				buf.WriteString(v[0])
+			} else {
+				buf.WriteString("'")
+				buf.WriteString(v[0])
+				buf.WriteString("'")
+			}
+			cnt++
+		}
+	}
+	return buf.String()
+}
+
+func MakeREST(gen dbutil.DBGen) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		newREST(gen.NewObj().(dbutil.DBObject), w, r)
+	}
+}
+
+func jsonError(w http.ResponseWriter, what interface{}, code int) {
+	msg := fmt.Sprintf(`{"Error": "%v"}`, what)
+	w.Header().Set("Content-Type", "application/json")
+	http.Error(w, msg, code)
+}
+
+func newREST(obj dbutil.DBObject, w http.ResponseWriter, r *http.Request) {
+	//fmt.Printf("REST OBJ: %p\n", obj)
+	db := datastore
+	query := r.URL.Query()
+	//log.Println("QUERY:", query)
+	debug := true
+	apiKey := r.Header.Get("X-API-KEY")
+	if len(apiKey) == 0 {
+		apiKey = query.Get("X-API-KEY")
+	}
+	delete(query, "X-API-KEY")
+	if dbq, ok := query["debug"]; ok {
+		debug, _ = strconv.ParseBool(dbq[0])
+		delete(query, "debug")
+	}
+	r.URL.RawQuery = query.Encode()
+	if debug {
+		dbDebug(debug)
+		defer dbDebug(false)
+	}
+	//var user User
+	/*
+		user, err := userFromAPIKey(apiKey)
+		if err != nil {
+			log.Println("AUTH ERROR:", err)
+				TODO: keep commented out for initial testing only!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+				jsonError(w, err, http.StatusUnauthorized)
+				return
+		}
+	*/
+	/*
+		if debug {
+			log.Println("USER LOGIN NAME:", user.Login)
+		}
+	*/
+	var id string
+	i := strings.LastIndex(r.URL.Path, "/")
+	if i < len(r.URL.Path)-1 {
+		id = r.URL.Path[i+1:]
+	}
+	body := bodyCopy(r)
+	log.Printf("(%s) PATH:%s ID:%s Q:%s BODY:%s", r.Method, r.URL.Path, id, r.URL.RawQuery, body)
+	method := strings.ToUpper(r.Method)
+	switch method {
+	case "PUT", "POST":
+		bodyString := bodyCopy(r)
+		content := r.Header.Get("Content-Type")
+		fmt.Println("CONTENT:", content)
+		if strings.Contains(content, "application/json") {
+			if err := json.NewDecoder(r.Body).Decode(obj); err != nil {
+				fmt.Println("***** BODY:", bodyString)
+				fmt.Println("***** ERR:", err)
+				jsonError(w, err, http.StatusInternalServerError)
+				return
+			}
+		} else {
+			objFromForm(obj, r.Form)
+		}
+	}
+
+	// Make the change
+	switch method {
+	case "GET":
+		//fmt.Println("*** GET ID:", id, "LEN:", len(id), "PATH:", r.URL.Path)
+		if len(id) == 0 {
+			//fmt.Println("GET LIST")
+			q, val, err := fullQuery(r)
+			if err != nil {
+				fmt.Println("query error:", err)
+				jsonError(w, err, http.StatusInternalServerError)
+				return
+			}
+			list, err := db.ListQuery(obj, q, val...)
+			if err != nil {
+				fmt.Println("query error:", err)
+				jsonError(w, err, http.StatusInternalServerError)
+				return
+			}
+			//log.Println("LIST LEN:", len(list.([]dbutil.DBObject)))
+			sendJSON(w, list)
+			return
+		}
+		// column name meta data
+		if strings.HasSuffix(r.URL.Path, "/columns") {
+			log.Println("GET PATH------->", r.URL.Path)
+			data := struct {
+				Columns []string
+			}{
+				Columns: obj.Names(),
+			}
+			sendJSON(w, data)
+			return
+		}
+
+		if err := db.FindByID(obj, id); err != nil {
+			jsonError(w, err, http.StatusInternalServerError)
+			return
+		}
+		sendJSON(w, obj)
+		return
+	case "DELETE":
+		if len(id) == 0 {
+			err := fmt.Errorf("delete requires object id")
+			jsonError(w, err, http.StatusBadRequest)
+			return
+		}
+		if err := db.DeleteByID(obj, id); err != nil {
+			sqle := err.(sqlite3.Error)
+			//	log.Printf("DELETE ERROR (%T) code:%d ext:%d %s\n", err, err.Code, err.ExtendedCode, err)
+			log.Printf("DELETE ERROR (%T) code:%d ext:%d %s\n", sqle, sqle.Code, sqle.ExtendedCode, sqle)
+			//if sqle.Code == sqlite3.ErrConstraintForeignKey {
+			if sqle.Code == sqlite3.ErrConstraint {
+				jsonError(w, err, http.StatusConflict)
+				return
+			}
+			jsonError(w, err, http.StatusInternalServerError)
+			return
+		}
+		msg := struct{ Msg string }{"deleted object id: " + id}
+		sendJSON(w, msg)
+		return
+	case "PATCH":
+		log.Println("PATCH ID:", id)
+		if len(id) == 0 {
+			jsonError(w, "no ID specified", http.StatusBadRequest)
+			return
+		}
+		// if we're patching the object, we first fetch the original copy
+		// then overwrite the new fields supplied by the patch object
+		if err := db.FindByID(obj, id); err != nil {
+			log.Println("PATCH ERR 1:", err)
+			jsonError(w, err, http.StatusInternalServerError)
+			return
+		}
+
+		if err := json.NewDecoder(r.Body).Decode(obj); err != nil {
+			log.Println("PATCH ERR 2:", err)
+			jsonError(w, err, http.StatusInternalServerError)
+			return
+		}
+		log.Println("SAVE OBJ:", obj)
+		if err := db.Save(obj); err != nil {
+			log.Println("PATCH ERR 3:", err)
+			jsonError(w, err, http.StatusInternalServerError)
+			return
+		}
+		/*
+			err := json.NewDecoder(r.Body).Decode(obj)
+			if err == nil {
+				err = db.Save(obj); err == nil {
+					return
+				}
+			}
+			w.WriteHeader(http.StatusInternalServerError)
+			jsonError(err)
+			return
+		*/
+	case "PUT":
+		if err := db.Save(obj); err != nil {
+			jsonError(w, err, http.StatusInternalServerError)
+		}
+	case "POST":
+		if err := db.Add(obj); err != nil {
+			log.Println("add error:", err)
+			jsonError(w, err, http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusCreated)
+		sendJSON(w, obj)
+	}
+	spew.Dump(obj)
 }

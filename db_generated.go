@@ -7,6 +7,14 @@ import (
 )
 
 //
+// Contract DBObject generator
+//
+func (o Contract) NewObj() interface{} {
+	ditto := o
+	return &ditto
+}
+
+//
 // Contract DBObject interface functions
 //
 func (o *Contract) InsertValues() []interface{} {
@@ -49,22 +57,92 @@ func (o *Contract) KeyName() string {
 	return "CID"
 }
 
+func (o *Contract) Names() []string {
+	return []string{"VID", "Policy", "Phone"}
+}
+
 func (o *Contract) ModifiedBy(user int64, t time.Time) {
+}
+
+//
+// DeviceType DBObject generator
+//
+func (o DeviceType) NewObj() interface{} {
+	ditto := o
+	return &ditto
+}
+
+//
+// DeviceType DBObject interface functions
+//
+func (o *DeviceType) InsertValues() []interface{} {
+	return []interface{}{o.Name}
+}
+
+func (o *DeviceType) UpdateValues() []interface{} {
+	return []interface{}{o.Name, o.DTI}
+}
+
+func (o *DeviceType) MemberPointers() []interface{} {
+	return []interface{}{&o.DTI, &o.Name}
+}
+
+func (o *DeviceType) Key() int64 {
+	return o.DTI
+}
+
+func (o *DeviceType) SetID(id int64) {
+	o.DTI = id
+}
+
+func (o *DeviceType) TableName() string {
+	return "device_types"
+}
+
+func (o *DeviceType) SelectFields() string {
+	return "dti,name"
+}
+
+func (o *DeviceType) InsertFields() string {
+	return "dti,name"
+}
+
+func (o *DeviceType) KeyField() string {
+	return "dti"
+}
+
+func (o *DeviceType) KeyName() string {
+	return "DTI"
+}
+
+func (o *DeviceType) Names() []string {
+	return []string{"Name"}
+}
+
+func (o *DeviceType) ModifiedBy(user int64, t time.Time) {
+}
+
+//
+// Device DBObject generator
+//
+func (o Device) NewObj() interface{} {
+	ditto := o
+	return &ditto
 }
 
 //
 // Device DBObject interface functions
 //
 func (o *Device) InsertValues() []interface{} {
-	return []interface{}{o.VID, o.RU, o.MgmtIP, o.AssetTag, o.Modified, o.UID, o.Height, o.Hostname, o.SerialNo, o.Note, o.RID, o.PrimaryMac, o.Model, o.Type, o.PrimaryIP, o.MgmtMac}
+	return []interface{}{o.TID, o.Assigned, o.Hostname, o.UID, o.Modified, o.RID, o.KID, o.DTI, o.Profile, o.SerialNo, o.Note, o.RU, o.Height, o.Alias, o.AssetTag}
 }
 
 func (o *Device) UpdateValues() []interface{} {
-	return []interface{}{o.VID, o.RU, o.MgmtIP, o.AssetTag, o.Modified, o.UID, o.Height, o.Hostname, o.SerialNo, o.Note, o.RID, o.PrimaryMac, o.Model, o.Type, o.PrimaryIP, o.MgmtMac, o.DID}
+	return []interface{}{o.TID, o.Assigned, o.Hostname, o.UID, o.Modified, o.RID, o.KID, o.DTI, o.Profile, o.SerialNo, o.Note, o.RU, o.Height, o.Alias, o.AssetTag, o.DID}
 }
 
 func (o *Device) MemberPointers() []interface{} {
-	return []interface{}{&o.DID, &o.VID, &o.RU, &o.MgmtIP, &o.AssetTag, &o.Modified, &o.UID, &o.Height, &o.Hostname, &o.SerialNo, &o.Note, &o.RID, &o.PrimaryMac, &o.Model, &o.Type, &o.PrimaryIP, &o.MgmtMac}
+	return []interface{}{&o.DID, &o.TID, &o.Assigned, &o.Hostname, &o.UID, &o.Modified, &o.RID, &o.KID, &o.DTI, &o.Profile, &o.SerialNo, &o.Note, &o.RU, &o.Height, &o.Alias, &o.AssetTag}
 }
 
 func (o *Device) Key() int64 {
@@ -80,11 +158,11 @@ func (o *Device) TableName() string {
 }
 
 func (o *Device) SelectFields() string {
-	return "did,vid,ru,mgmt_ip,asset_tag,modified,uid,height,hostname,sn,note,rid,primary_mac,model,device_type,primary_ip,mgmt_mac"
+	return "did,tid,assigned,hostname,user_id,modified,rid,kid,dti,profile,sn,note,ru,height,alias,asset_tag"
 }
 
 func (o *Device) InsertFields() string {
-	return "did,vid,ru,mgmt_ip,asset_tag,modified,uid,height,hostname,sn,note,rid,primary_mac,model,device_type,primary_ip,mgmt_mac"
+	return "did,tid,assigned,hostname,user_id,modified,rid,kid,dti,profile,sn,note,ru,height,alias,asset_tag"
 }
 
 func (o *Device) KeyField() string {
@@ -95,159 +173,554 @@ func (o *Device) KeyName() string {
 	return "DID"
 }
 
+func (o *Device) Names() []string {
+	return []string{"TID", "Assigned", "Hostname", "UID", "Modified", "RID", "KID", "DTI", "Profile", "SerialNo", "Note", "RU", "Height", "Alias", "AssetTag"}
+}
+
 func (o *Device) ModifiedBy(user int64, t time.Time) {
 }
 
 //
-// Port DBObject interface functions
+// DeviceView DBObject generator
 //
-func (o *Port) InsertValues() []interface{} {
-	return []interface{}{o.DID, o.PortType, o.MAC, o.CableTag, o.SwitchPort, o.Modified, o.UID}
-}
-
-func (o *Port) UpdateValues() []interface{} {
-	return []interface{}{o.DID, o.PortType, o.MAC, o.CableTag, o.SwitchPort, o.Modified, o.UID, o.PID}
-}
-
-func (o *Port) MemberPointers() []interface{} {
-	return []interface{}{&o.PID, &o.DID, &o.PortType, &o.MAC, &o.CableTag, &o.SwitchPort, &o.Modified, &o.UID}
-}
-
-func (o *Port) Key() int64 {
-	return o.PID
-}
-
-func (o *Port) SetID(id int64) {
-	o.PID = id
-}
-
-func (o *Port) TableName() string {
-	return "ports"
-}
-
-func (o *Port) SelectFields() string {
-	return "pid,did,port_type,mac,cable_tag,switch_port,modified,uid"
-}
-
-func (o *Port) InsertFields() string {
-	return "pid,did,port_type,mac,cable_tag,switch_port,modified,uid"
-}
-
-func (o *Port) KeyField() string {
-	return "pid"
-}
-
-func (o *Port) KeyName() string {
-	return "PID"
-}
-
-func (o *Port) ModifiedBy(user int64, t time.Time) {
+func (o DeviceView) NewObj() interface{} {
+	ditto := o
+	return &ditto
 }
 
 //
-// IP DBObject interface functions
+// DeviceView DBObject interface functions
 //
-func (o *IP) InsertValues() []interface{} {
-	return []interface{}{o.DID, o.Type, o.Int, o.Modified, o.UID}
+func (o *DeviceView) InsertValues() []interface{} {
+	return []interface{}{o.KID, o.Rack, o.Height, o.UID, o.STI, o.AssetTag, o.Assigned, o.Tag, o.TID, o.Profile, o.Note, o.DevType, o.Modified, o.RU, o.DTI, o.Hostname, o.Alias, o.SerialNo, o.Site, o.RID}
 }
 
-func (o *IP) UpdateValues() []interface{} {
-	return []interface{}{o.DID, o.Type, o.Int, o.Modified, o.UID, o.IID}
+func (o *DeviceView) UpdateValues() []interface{} {
+	return []interface{}{o.KID, o.Rack, o.Height, o.UID, o.STI, o.AssetTag, o.Assigned, o.Tag, o.TID, o.Profile, o.Note, o.DevType, o.Modified, o.RU, o.DTI, o.Hostname, o.Alias, o.SerialNo, o.Site, o.RID, o.DID}
 }
 
-func (o *IP) MemberPointers() []interface{} {
-	return []interface{}{&o.IID, &o.DID, &o.Type, &o.Int, &o.Modified, &o.UID}
+func (o *DeviceView) MemberPointers() []interface{} {
+	return []interface{}{&o.DID, &o.KID, &o.Rack, &o.Height, &o.UID, &o.STI, &o.AssetTag, &o.Assigned, &o.Tag, &o.TID, &o.Profile, &o.Note, &o.DevType, &o.Modified, &o.RU, &o.DTI, &o.Hostname, &o.Alias, &o.SerialNo, &o.Site, &o.RID}
 }
 
-func (o *IP) Key() int64 {
+func (o *DeviceView) Key() int64 {
+	return o.DID
+}
+
+func (o *DeviceView) SetID(id int64) {
+	o.DID = id
+}
+
+func (o *DeviceView) TableName() string {
+	return "devices_view"
+}
+
+func (o *DeviceView) SelectFields() string {
+	return "did,kid,rack,height,user_id,sti,asset_tag,assigned,tag,tid,profile,note,devtype,modified,ru,dti,hostname,alias,sn,site,rid"
+}
+
+func (o *DeviceView) InsertFields() string {
+	return "did,kid,rack,height,user_id,sti,asset_tag,assigned,tag,tid,profile,note,devtype,modified,ru,dti,hostname,alias,sn,site,rid"
+}
+
+func (o *DeviceView) KeyField() string {
+	return "did"
+}
+
+func (o *DeviceView) KeyName() string {
+	return "DID"
+}
+
+func (o *DeviceView) Names() []string {
+	return []string{"KID", "Rack", "Height", "UID", "STI", "AssetTag", "Assigned", "Tag", "TID", "Profile", "Note", "DevType", "Modified", "RU", "DTI", "Hostname", "Alias", "SerialNo", "Site", "RID"}
+}
+
+func (o *DeviceView) ModifiedBy(user int64, t time.Time) {
+}
+
+//
+// DeviceIPs DBObject generator
+//
+func (o DeviceIPs) NewObj() interface{} {
+	ditto := o
+	return &ditto
+}
+
+//
+// DeviceIPs DBObject interface functions
+//
+func (o *DeviceIPs) InsertValues() []interface{} {
+	return []interface{}{o.KID, o.Height, o.Hostname, o.Mgmt, o.SerialNo, o.RID, o.Profile, o.Note, o.DevType, o.UID, o.Modified, o.STI, o.Rack, o.RU, o.IPs, o.Alias, o.Tag, o.Site, o.DTI, o.AssetTag, o.Assigned, o.TID}
+}
+
+func (o *DeviceIPs) UpdateValues() []interface{} {
+	return []interface{}{o.KID, o.Height, o.Hostname, o.Mgmt, o.SerialNo, o.RID, o.Profile, o.Note, o.DevType, o.UID, o.Modified, o.STI, o.Rack, o.RU, o.IPs, o.Alias, o.Tag, o.Site, o.DTI, o.AssetTag, o.Assigned, o.TID, o.DID}
+}
+
+func (o *DeviceIPs) MemberPointers() []interface{} {
+	return []interface{}{&o.DID, &o.KID, &o.Height, &o.Hostname, &o.Mgmt, &o.SerialNo, &o.RID, &o.Profile, &o.Note, &o.DevType, &o.UID, &o.Modified, &o.STI, &o.Rack, &o.RU, &o.IPs, &o.Alias, &o.Tag, &o.Site, &o.DTI, &o.AssetTag, &o.Assigned, &o.TID}
+}
+
+func (o *DeviceIPs) Key() int64 {
+	return o.DID
+}
+
+func (o *DeviceIPs) SetID(id int64) {
+	o.DID = id
+}
+
+func (o *DeviceIPs) TableName() string {
+	return "devices_list"
+}
+
+func (o *DeviceIPs) SelectFields() string {
+	return "did,kid,height,hostname,mgmt,sn,rid,profile,note,devtype,user_id,modified,sti,rack,ru,ips,alias,tag,site,dti,asset_tag,assigned,tid"
+}
+
+func (o *DeviceIPs) InsertFields() string {
+	return "did,kid,height,hostname,mgmt,sn,rid,profile,note,devtype,user_id,modified,sti,rack,ru,ips,alias,tag,site,dti,asset_tag,assigned,tid"
+}
+
+func (o *DeviceIPs) KeyField() string {
+	return "did"
+}
+
+func (o *DeviceIPs) KeyName() string {
+	return "DID"
+}
+
+func (o *DeviceIPs) Names() []string {
+	return []string{"KID", "Height", "Hostname", "Mgmt", "SerialNo", "RID", "Profile", "Note", "DevType", "UID", "Modified", "STI", "Rack", "RU", "IPs", "Alias", "Tag", "Site", "DTI", "AssetTag", "Assigned", "TID"}
+}
+
+func (o *DeviceIPs) ModifiedBy(user int64, t time.Time) {
+}
+
+//
+// IPInfo DBObject generator
+//
+func (o IPInfo) NewObj() interface{} {
+	ditto := o
+	return &ditto
+}
+
+//
+// IPInfo DBObject interface functions
+//
+func (o *IPInfo) InsertValues() []interface{} {
+	return []interface{}{o.Port, o.Mac, o.CableTag, o.SwitchPort, o.IPv4, o.Mgmt}
+}
+
+func (o *IPInfo) UpdateValues() []interface{} {
+	return []interface{}{o.Port, o.Mac, o.CableTag, o.SwitchPort, o.IPv4, o.Mgmt, o.DID}
+}
+
+func (o *IPInfo) MemberPointers() []interface{} {
+	return []interface{}{&o.DID, &o.Port, &o.Mac, &o.CableTag, &o.SwitchPort, &o.IPv4, &o.Mgmt}
+}
+
+func (o *IPInfo) Key() int64 {
+	return o.DID
+}
+
+func (o *IPInfo) SetID(id int64) {
+	o.DID = id
+}
+
+func (o *IPInfo) TableName() string {
+	return "devnet"
+}
+
+func (o *IPInfo) SelectFields() string {
+	return "did,port,mac,cable_tag,switch_port,ipv4,mgmt"
+}
+
+func (o *IPInfo) InsertFields() string {
+	return "did,port,mac,cable_tag,switch_port,ipv4,mgmt"
+}
+
+func (o *IPInfo) KeyField() string {
+	return "did"
+}
+
+func (o *IPInfo) KeyName() string {
+	return "DID"
+}
+
+func (o *IPInfo) Names() []string {
+	return []string{"Port", "Mac", "CableTag", "SwitchPort", "IPv4", "Mgmt"}
+}
+
+func (o *IPInfo) ModifiedBy(user int64, t time.Time) {
+}
+
+//
+// IFace DBObject generator
+//
+func (o IFace) NewObj() interface{} {
+	ditto := o
+	return &ditto
+}
+
+//
+// IFace DBObject interface functions
+//
+func (o *IFace) InsertValues() []interface{} {
+	return []interface{}{o.SwitchPort, o.DID, o.Mgmt, o.Port, o.MAC, o.CableTag}
+}
+
+func (o *IFace) UpdateValues() []interface{} {
+	return []interface{}{o.SwitchPort, o.DID, o.Mgmt, o.Port, o.MAC, o.CableTag, o.IFD}
+}
+
+func (o *IFace) MemberPointers() []interface{} {
+	return []interface{}{&o.IFD, &o.SwitchPort, &o.DID, &o.Mgmt, &o.Port, &o.MAC, &o.CableTag}
+}
+
+func (o *IFace) Key() int64 {
+	return o.IFD
+}
+
+func (o *IFace) SetID(id int64) {
+	o.IFD = id
+}
+
+func (o *IFace) TableName() string {
+	return "interfaces"
+}
+
+func (o *IFace) SelectFields() string {
+	return "ifd,switch_port,did,mgmt,port,mac,cable_tag"
+}
+
+func (o *IFace) InsertFields() string {
+	return "ifd,switch_port,did,mgmt,port,mac,cable_tag"
+}
+
+func (o *IFace) KeyField() string {
+	return "ifd"
+}
+
+func (o *IFace) KeyName() string {
+	return "IFD"
+}
+
+func (o *IFace) Names() []string {
+	return []string{"SwitchPort", "DID", "Mgmt", "Port", "MAC", "CableTag"}
+}
+
+func (o *IFace) ModifiedBy(user int64, t time.Time) {
+}
+
+//
+// IFaceView DBObject generator
+//
+func (o IFaceView) NewObj() interface{} {
+	ditto := o
+	return &ditto
+}
+
+//
+// IFaceView DBObject interface functions
+//
+func (o *IFaceView) InsertValues() []interface{} {
+	return []interface{}{o.IP32, o.IID, o.IPT, o.Port, o.IP, o.IPType, o.MAC, o.CableTag, o.SwitchPort, o.DID, o.Mgmt}
+}
+
+func (o *IFaceView) UpdateValues() []interface{} {
+	return []interface{}{o.IP32, o.IID, o.IPT, o.Port, o.IP, o.IPType, o.MAC, o.CableTag, o.SwitchPort, o.DID, o.Mgmt, o.IFD}
+}
+
+func (o *IFaceView) MemberPointers() []interface{} {
+	return []interface{}{&o.IFD, &o.IP32, &o.IID, &o.IPT, &o.Port, &o.IP, &o.IPType, &o.MAC, &o.CableTag, &o.SwitchPort, &o.DID, &o.Mgmt}
+}
+
+func (o *IFaceView) Key() int64 {
+	return o.IFD
+}
+
+func (o *IFaceView) SetID(id int64) {
+	o.IFD = id
+}
+
+func (o *IFaceView) TableName() string {
+	return "interfaces_view"
+}
+
+func (o *IFaceView) SelectFields() string {
+	return "ifd,ip32,iid,ipt,port,ipv4,iptype,mac,cable_tag,switch_port,did,mgmt"
+}
+
+func (o *IFaceView) InsertFields() string {
+	return "ifd,ip32,iid,ipt,port,ipv4,iptype,mac,cable_tag,switch_port,did,mgmt"
+}
+
+func (o *IFaceView) KeyField() string {
+	return "ifd"
+}
+
+func (o *IFaceView) KeyName() string {
+	return "IFD"
+}
+
+func (o *IFaceView) Names() []string {
+	return []string{"IP32", "IID", "IPT", "Port", "IP", "IPType", "MAC", "CableTag", "SwitchPort", "DID", "Mgmt"}
+}
+
+func (o *IFaceView) ModifiedBy(user int64, t time.Time) {
+}
+
+//
+// IPAddr DBObject generator
+//
+func (o IPAddr) NewObj() interface{} {
+	ditto := o
+	return &ditto
+}
+
+//
+// IPAddr DBObject interface functions
+//
+func (o *IPAddr) InsertValues() []interface{} {
+	return []interface{}{o.VLI, o.IPT, o.IP32, o.IPv4, o.Note, o.IFD, o.VMI}
+}
+
+func (o *IPAddr) UpdateValues() []interface{} {
+	return []interface{}{o.VLI, o.IPT, o.IP32, o.IPv4, o.Note, o.IFD, o.VMI, o.IID}
+}
+
+func (o *IPAddr) MemberPointers() []interface{} {
+	return []interface{}{&o.IID, &o.VLI, &o.IPT, &o.IP32, &o.IPv4, &o.Note, &o.IFD, &o.VMI}
+}
+
+func (o *IPAddr) Key() int64 {
 	return o.IID
 }
 
-func (o *IP) SetID(id int64) {
+func (o *IPAddr) SetID(id int64) {
 	o.IID = id
 }
 
-func (o *IP) TableName() string {
+func (o *IPAddr) TableName() string {
 	return "ips"
 }
 
-func (o *IP) SelectFields() string {
-	return "iid,did,ip_type,ip_int,modified,uid"
+func (o *IPAddr) SelectFields() string {
+	return "iid,vli,ipt,ip32,ipv4,note,ifd,vmi"
 }
 
-func (o *IP) InsertFields() string {
-	return "iid,did,ip_type,ip_int,modified,uid"
+func (o *IPAddr) InsertFields() string {
+	return "iid,vli,ipt,ip32,ipv4,note,ifd,vmi"
 }
 
-func (o *IP) KeyField() string {
+func (o *IPAddr) KeyField() string {
 	return "iid"
 }
 
-func (o *IP) KeyName() string {
+func (o *IPAddr) KeyName() string {
 	return "IID"
 }
 
-func (o *IP) ModifiedBy(user int64, t time.Time) {
+func (o *IPAddr) Names() []string {
+	return []string{"VLI", "IPT", "IP32", "IPv4", "Note", "IFD", "VMI"}
+}
+
+func (o *IPAddr) ModifiedBy(user int64, t time.Time) {
 }
 
 //
-// Choice DBObject interface functions
+// IPsUsed DBObject generator
 //
-func (o *Choice) InsertValues() []interface{} {
-	return []interface{}{o.ID, o.Label}
+func (o IPsUsed) NewObj() interface{} {
+	ditto := o
+	return &ditto
 }
 
-func (o *Choice) UpdateValues() []interface{} {
-	return []interface{}{o.ID, o.Label}
+//
+// IPsUsed DBObject interface functions
+//
+func (o *IPsUsed) InsertValues() []interface{} {
+	return []interface{}{o.Site, o.Rack, o.IP, o.ID, o.IPT, o.Type, o.Host, o.Hostname, o.Note, o.STI, o.RID}
 }
 
-func (o *Choice) MemberPointers() []interface{} {
-	return []interface{}{&o.ID, &o.Label}
+func (o *IPsUsed) UpdateValues() []interface{} {
+	return []interface{}{o.Site, o.Rack, o.IP, o.ID, o.IPT, o.Type, o.Host, o.Hostname, o.Note, o.STI, o.RID}
 }
 
-func (o *Choice) Key() int64 {
+func (o *IPsUsed) MemberPointers() []interface{} {
+	return []interface{}{&o.Site, &o.Rack, &o.IP, &o.ID, &o.IPT, &o.Type, &o.Host, &o.Hostname, &o.Note, &o.STI, &o.RID}
+}
+
+func (o *IPsUsed) Key() int64 {
 	return 0
 }
 
-func (o *Choice) SetID(id int64) {
+func (o *IPsUsed) SetID(id int64) {
 }
 
-func (o *Choice) TableName() string {
-	return "part_choices"
+func (o *IPsUsed) TableName() string {
+	return "ips_list"
 }
 
-func (o *Choice) SelectFields() string {
-	return "pid,label"
+func (o *IPsUsed) SelectFields() string {
+	return "site,rack,ip,id,ipt,iptype,host,hostname,note,sti,rid"
 }
 
-func (o *Choice) InsertFields() string {
-	return "pid,label"
+func (o *IPsUsed) InsertFields() string {
+	return "site,rack,ip,id,ipt,iptype,host,hostname,note,sti,rid"
 }
 
-func (o *Choice) KeyField() string {
+func (o *IPsUsed) KeyField() string {
 	return ""
 }
 
-func (o *Choice) KeyName() string {
+func (o *IPsUsed) KeyName() string {
 	return ""
 }
 
-func (o *Choice) ModifiedBy(user int64, t time.Time) {
+func (o *IPsUsed) Names() []string {
+	return []string{"Site", "Rack", "IP", "ID", "IPT", "Type", "Host", "Hostname", "Note", "STI", "RID"}
+}
+
+func (o *IPsUsed) ModifiedBy(user int64, t time.Time) {
+}
+
+//
+// Hit DBObject generator
+//
+func (o Hit) NewObj() interface{} {
+	ditto := o
+	return &ditto
+}
+
+//
+// Hit DBObject interface functions
+//
+func (o *Hit) InsertValues() []interface{} {
+	return []interface{}{o.ID, o.Kind, o.Name}
+}
+
+func (o *Hit) UpdateValues() []interface{} {
+	return []interface{}{o.ID, o.Kind, o.Name}
+}
+
+func (o *Hit) MemberPointers() []interface{} {
+	return []interface{}{&o.ID, &o.Kind, &o.Name}
+}
+
+func (o *Hit) Key() int64 {
+	return 0
+}
+
+func (o *Hit) SetID(id int64) {
+}
+
+func (o *Hit) TableName() string {
+	return ""
+}
+
+func (o *Hit) SelectFields() string {
+	return "id,kind,name"
+}
+
+func (o *Hit) InsertFields() string {
+	return "id,kind,name"
+}
+
+func (o *Hit) KeyField() string {
+	return ""
+}
+
+func (o *Hit) KeyName() string {
+	return ""
+}
+
+func (o *Hit) Names() []string {
+	return []string{"ID", "Kind", "Name"}
+}
+
+func (o *Hit) ModifiedBy(user int64, t time.Time) {
+}
+
+//
+// Summary DBObject generator
+//
+func (o Summary) NewObj() interface{} {
+	ditto := o
+	return &ditto
+}
+
+//
+// Summary DBObject interface functions
+//
+func (o *Summary) InsertValues() []interface{} {
+	return []interface{}{o.VMs, o.Site, o.Servers}
+}
+
+func (o *Summary) UpdateValues() []interface{} {
+	return []interface{}{o.VMs, o.Site, o.Servers, o.ID}
+}
+
+func (o *Summary) MemberPointers() []interface{} {
+	return []interface{}{&o.ID, &o.VMs, &o.Site, &o.Servers}
+}
+
+func (o *Summary) Key() int64 {
+	return o.ID
+}
+
+func (o *Summary) SetID(id int64) {
+	o.ID = id
+}
+
+func (o *Summary) TableName() string {
+	return "summary"
+}
+
+func (o *Summary) SelectFields() string {
+	return "sti,vms,site,servers"
+}
+
+func (o *Summary) InsertFields() string {
+	return "sti,vms,site,servers"
+}
+
+func (o *Summary) KeyField() string {
+	return "sti"
+}
+
+func (o *Summary) KeyName() string {
+	return "ID"
+}
+
+func (o *Summary) Names() []string {
+	return []string{"VMs", "Site", "Servers"}
+}
+
+func (o *Summary) ModifiedBy(user int64, t time.Time) {
+}
+
+//
+// User DBObject generator
+//
+func (o User) NewObj() interface{} {
+	ditto := o
+	return &ditto
 }
 
 //
 // User DBObject interface functions
 //
 func (o *User) InsertValues() []interface{} {
-	return []interface{}{o.Email, o.Level, o.Login, o.First, o.Last}
+	return []interface{}{o.Email, o.APIKey, o.Level, o.Login, o.First, o.Last}
 }
 
 func (o *User) UpdateValues() []interface{} {
-	return []interface{}{o.Email, o.Level, o.Login, o.First, o.Last, o.ID}
+	return []interface{}{o.Email, o.APIKey, o.Level, o.Login, o.First, o.Last, o.ID}
 }
 
 func (o *User) MemberPointers() []interface{} {
-	return []interface{}{&o.ID, &o.Email, &o.Level, &o.Login, &o.First, &o.Last}
+	return []interface{}{&o.ID, &o.Email, &o.APIKey, &o.Level, &o.Login, &o.First, &o.Last}
 }
 
 func (o *User) Key() int64 {
@@ -263,11 +736,11 @@ func (o *User) TableName() string {
 }
 
 func (o *User) SelectFields() string {
-	return "id,email,admin,login,firstname,lastname"
+	return "id,email,apikey,admin,login,firstname,lastname"
 }
 
 func (o *User) InsertFields() string {
-	return "id,email,admin,login,firstname,lastname"
+	return "id,email,apikey,admin,login,firstname,lastname"
 }
 
 func (o *User) KeyField() string {
@@ -278,68 +751,92 @@ func (o *User) KeyName() string {
 	return "ID"
 }
 
+func (o *User) Names() []string {
+	return []string{"Email", "APIKey", "Level", "Login", "First", "Last"}
+}
+
 func (o *User) ModifiedBy(user int64, t time.Time) {
 }
 
 //
-// Document DBObject interface functions
+// FullUser DBObject generator
 //
-func (o *Document) InsertValues() []interface{} {
-	return []interface{}{o.DID, o.Filename, o.Title, o.RemoteAddr, o.UID, o.Modified}
+func (o FullUser) NewObj() interface{} {
+	ditto := o
+	return &ditto
 }
 
-func (o *Document) UpdateValues() []interface{} {
-	return []interface{}{o.DID, o.Filename, o.Title, o.RemoteAddr, o.UID, o.Modified, o.ID}
+//
+// FullUser DBObject interface functions
+//
+func (o *FullUser) InsertValues() []interface{} {
+	return []interface{}{o.First, o.Last, o.Email, o.APIKey, o.Password, o.Salt, o.Level, o.Login}
 }
 
-func (o *Document) MemberPointers() []interface{} {
-	return []interface{}{&o.ID, &o.DID, &o.Filename, &o.Title, &o.RemoteAddr, &o.UID, &o.Modified}
+func (o *FullUser) UpdateValues() []interface{} {
+	return []interface{}{o.First, o.Last, o.Email, o.APIKey, o.Password, o.Salt, o.Level, o.Login, o.ID}
 }
 
-func (o *Document) Key() int64 {
+func (o *FullUser) MemberPointers() []interface{} {
+	return []interface{}{&o.ID, &o.First, &o.Last, &o.Email, &o.APIKey, &o.Password, &o.Salt, &o.Level, &o.Login}
+}
+
+func (o *FullUser) Key() int64 {
 	return o.ID
 }
 
-func (o *Document) SetID(id int64) {
+func (o *FullUser) SetID(id int64) {
 	o.ID = id
 }
 
-func (o *Document) TableName() string {
-	return "documents"
+func (o *FullUser) TableName() string {
+	return "users"
 }
 
-func (o *Document) SelectFields() string {
-	return "id,did,filename,title,remote_addr,user_id,modified"
+func (o *FullUser) SelectFields() string {
+	return "id,firstname,lastname,email,apikey,pw_hash,pw_salt,admin,login"
 }
 
-func (o *Document) InsertFields() string {
-	return "id,did,filename,title,remote_addr,user_id,modified"
+func (o *FullUser) InsertFields() string {
+	return "id,firstname,lastname,email,apikey,pw_hash,pw_salt,admin,login"
 }
 
-func (o *Document) KeyField() string {
+func (o *FullUser) KeyField() string {
 	return "id"
 }
 
-func (o *Document) KeyName() string {
+func (o *FullUser) KeyName() string {
 	return "ID"
 }
 
-func (o *Document) ModifiedBy(user int64, t time.Time) {
+func (o *FullUser) Names() []string {
+	return []string{"First", "Last", "Email", "APIKey", "Password", "Salt", "Level", "Login"}
+}
+
+func (o *FullUser) ModifiedBy(user int64, t time.Time) {
+}
+
+//
+// Vendor DBObject generator
+//
+func (o Vendor) NewObj() interface{} {
+	ditto := o
+	return &ditto
 }
 
 //
 // Vendor DBObject interface functions
 //
 func (o *Vendor) InsertValues() []interface{} {
-	return []interface{}{o.City, o.Country, o.Note, o.RemoteAddr, o.UID, o.Modified, o.WWW, o.Phone, o.Address, o.State, o.Postal, o.Name}
+	return []interface{}{o.Name, o.Phone, o.City, o.State, o.Country, o.Modified, o.WWW, o.Address, o.Postal, o.Note, o.UID}
 }
 
 func (o *Vendor) UpdateValues() []interface{} {
-	return []interface{}{o.City, o.Country, o.Note, o.RemoteAddr, o.UID, o.Modified, o.WWW, o.Phone, o.Address, o.State, o.Postal, o.Name, o.VID}
+	return []interface{}{o.Name, o.Phone, o.City, o.State, o.Country, o.Modified, o.WWW, o.Address, o.Postal, o.Note, o.UID, o.VID}
 }
 
 func (o *Vendor) MemberPointers() []interface{} {
-	return []interface{}{&o.VID, &o.City, &o.Country, &o.Note, &o.RemoteAddr, &o.UID, &o.Modified, &o.WWW, &o.Phone, &o.Address, &o.State, &o.Postal, &o.Name}
+	return []interface{}{&o.VID, &o.Name, &o.Phone, &o.City, &o.State, &o.Country, &o.Modified, &o.WWW, &o.Address, &o.Postal, &o.Note, &o.UID}
 }
 
 func (o *Vendor) Key() int64 {
@@ -355,11 +852,11 @@ func (o *Vendor) TableName() string {
 }
 
 func (o *Vendor) SelectFields() string {
-	return "vid,city,country,note,remote_addr,user_id,modified,www,phone,address,state,postal,name"
+	return "vid,name,phone,city,state,country,modified,www,address,postal,note,user_id"
 }
 
 func (o *Vendor) InsertFields() string {
-	return "vid,city,country,note,remote_addr,user_id,modified,www,phone,address,state,postal,name"
+	return "vid,name,phone,city,state,country,modified,www,address,postal,note,user_id"
 }
 
 func (o *Vendor) KeyField() string {
@@ -370,32 +867,102 @@ func (o *Vendor) KeyName() string {
 	return "VID"
 }
 
+func (o *Vendor) Names() []string {
+	return []string{"Name", "Phone", "City", "State", "Country", "Modified", "WWW", "Address", "Postal", "Note", "UID"}
+}
+
 func (o *Vendor) ModifiedBy(user int64, t time.Time) {
 	o.UID = user
 	o.Modified = t
 }
 
 //
+// IPType DBObject generator
+//
+func (o IPType) NewObj() interface{} {
+	ditto := o
+	return &ditto
+}
+
+//
+// IPType DBObject interface functions
+//
+func (o *IPType) InsertValues() []interface{} {
+	return []interface{}{o.Name}
+}
+
+func (o *IPType) UpdateValues() []interface{} {
+	return []interface{}{o.Name, o.IPT}
+}
+
+func (o *IPType) MemberPointers() []interface{} {
+	return []interface{}{&o.IPT, &o.Name}
+}
+
+func (o *IPType) Key() int64 {
+	return o.IPT
+}
+
+func (o *IPType) SetID(id int64) {
+	o.IPT = id
+}
+
+func (o *IPType) TableName() string {
+	return "ip_types"
+}
+
+func (o *IPType) SelectFields() string {
+	return "ipt,name"
+}
+
+func (o *IPType) InsertFields() string {
+	return "ipt,name"
+}
+
+func (o *IPType) KeyField() string {
+	return "ipt"
+}
+
+func (o *IPType) KeyName() string {
+	return "IPT"
+}
+
+func (o *IPType) Names() []string {
+	return []string{"Name"}
+}
+
+func (o *IPType) ModifiedBy(user int64, t time.Time) {
+}
+
+//
+// RMA DBObject generator
+//
+func (o RMA) NewObj() interface{} {
+	ditto := o
+	return &ditto
+}
+
+//
 // RMA DBObject interface functions
 //
 func (o *RMA) InsertValues() []interface{} {
-	return []interface{}{o.Opened, o.Closed, o.DID, o.VID, o.UID, o.Note, o.Number, o.Jira, o.DCTicket, o.Receiving}
+	return []interface{}{o.VID, o.Receiving, o.Closed, o.UID, o.NewPID, o.OldPID, o.RecvTrack, o.Note, o.Received, o.Created, o.DCTicket, o.Shipped, o.STI, o.DID, o.VendorRMA, o.Jira, o.ShipTrack}
 }
 
 func (o *RMA) UpdateValues() []interface{} {
-	return []interface{}{o.Opened, o.Closed, o.DID, o.VID, o.UID, o.Note, o.Number, o.Jira, o.DCTicket, o.Receiving, o.ID}
+	return []interface{}{o.VID, o.Receiving, o.Closed, o.UID, o.NewPID, o.OldPID, o.RecvTrack, o.Note, o.Received, o.Created, o.DCTicket, o.Shipped, o.STI, o.DID, o.VendorRMA, o.Jira, o.ShipTrack, o.RMAID}
 }
 
 func (o *RMA) MemberPointers() []interface{} {
-	return []interface{}{&o.ID, &o.Opened, &o.Closed, &o.DID, &o.VID, &o.UID, &o.Note, &o.Number, &o.Jira, &o.DCTicket, &o.Receiving}
+	return []interface{}{&o.RMAID, &o.VID, &o.Receiving, &o.Closed, &o.UID, &o.NewPID, &o.OldPID, &o.RecvTrack, &o.Note, &o.Received, &o.Created, &o.DCTicket, &o.Shipped, &o.STI, &o.DID, &o.VendorRMA, &o.Jira, &o.ShipTrack}
 }
 
 func (o *RMA) Key() int64 {
-	return o.ID
+	return o.RMAID
 }
 
 func (o *RMA) SetID(id int64) {
-	o.ID = id
+	o.RMAID = id
 }
 
 func (o *RMA) TableName() string {
@@ -403,11 +970,11 @@ func (o *RMA) TableName() string {
 }
 
 func (o *RMA) SelectFields() string {
-	return "rma_id,date_opened,date_closed,did,vid,user_id,note,rma_no,jira,dc_ticket,dc_receiving"
+	return "rma_id,vid,dc_receiving,date_closed,user_id,new_pid,old_pid,recv_tracking,note,date_received,date_created,dc_ticket,date_shipped,sti,did,vendor_rma,jira,ship_tracking"
 }
 
 func (o *RMA) InsertFields() string {
-	return "rma_id,date_opened,date_closed,did,vid,user_id,note,rma_no,jira,dc_ticket,dc_receiving"
+	return "rma_id,vid,dc_receiving,date_closed,user_id,new_pid,old_pid,recv_tracking,note,date_received,date_created,dc_ticket,date_shipped,sti,did,vendor_rma,jira,ship_tracking"
 }
 
 func (o *RMA) KeyField() string {
@@ -415,10 +982,80 @@ func (o *RMA) KeyField() string {
 }
 
 func (o *RMA) KeyName() string {
-	return "ID"
+	return "RMAID"
+}
+
+func (o *RMA) Names() []string {
+	return []string{"VID", "Receiving", "Closed", "UID", "NewPID", "OldPID", "RecvTrack", "Note", "Received", "Created", "DCTicket", "Shipped", "STI", "DID", "VendorRMA", "Jira", "ShipTrack"}
 }
 
 func (o *RMA) ModifiedBy(user int64, t time.Time) {
+}
+
+//
+// RMAView DBObject generator
+//
+func (o RMAView) NewObj() interface{} {
+	ditto := o
+	return &ditto
+}
+
+//
+// RMAView DBObject interface functions
+//
+func (o *RMAView) InsertValues() []interface{} {
+	return []interface{}{o.PartNumber, o.Note, o.Created, o.UID, o.DID, o.NewPID, o.OldPID, o.Jira, o.RecvTrack, o.Shipped, o.Received, o.STI, o.VID, o.DCTicket, o.Site, o.ShipTrack, o.Description, o.PartSN, o.VendorRMA, o.Receiving, o.Closed, o.Hostname, o.ServerSN}
+}
+
+func (o *RMAView) UpdateValues() []interface{} {
+	return []interface{}{o.PartNumber, o.Note, o.Created, o.UID, o.DID, o.NewPID, o.OldPID, o.Jira, o.RecvTrack, o.Shipped, o.Received, o.STI, o.VID, o.DCTicket, o.Site, o.ShipTrack, o.Description, o.PartSN, o.VendorRMA, o.Receiving, o.Closed, o.Hostname, o.ServerSN, o.RMAID}
+}
+
+func (o *RMAView) MemberPointers() []interface{} {
+	return []interface{}{&o.RMAID, &o.PartNumber, &o.Note, &o.Created, &o.UID, &o.DID, &o.NewPID, &o.OldPID, &o.Jira, &o.RecvTrack, &o.Shipped, &o.Received, &o.STI, &o.VID, &o.DCTicket, &o.Site, &o.ShipTrack, &o.Description, &o.PartSN, &o.VendorRMA, &o.Receiving, &o.Closed, &o.Hostname, &o.ServerSN}
+}
+
+func (o *RMAView) Key() int64 {
+	return o.RMAID
+}
+
+func (o *RMAView) SetID(id int64) {
+	o.RMAID = id
+}
+
+func (o *RMAView) TableName() string {
+	return "rmaview"
+}
+
+func (o *RMAView) SelectFields() string {
+	return "rma_id,part_no,note,date_created,user_id,did,new_pid,old_pid,jira,recv_tracking,date_shipped,date_received,sti,vid,dc_ticket,site,ship_tracking,description,part_sn,vendor_rma,dc_receiving,date_closed,hostname,server_sn"
+}
+
+func (o *RMAView) InsertFields() string {
+	return "rma_id,part_no,note,date_created,user_id,did,new_pid,old_pid,jira,recv_tracking,date_shipped,date_received,sti,vid,dc_ticket,site,ship_tracking,description,part_sn,vendor_rma,dc_receiving,date_closed,hostname,server_sn"
+}
+
+func (o *RMAView) KeyField() string {
+	return "rma_id"
+}
+
+func (o *RMAView) KeyName() string {
+	return "RMAID"
+}
+
+func (o *RMAView) Names() []string {
+	return []string{"PartNumber", "Note", "Created", "UID", "DID", "NewPID", "OldPID", "Jira", "RecvTrack", "Shipped", "Received", "STI", "VID", "DCTicket", "Site", "ShipTrack", "Description", "PartSN", "VendorRMA", "Receiving", "Closed", "Hostname", "ServerSN"}
+}
+
+func (o *RMAView) ModifiedBy(user int64, t time.Time) {
+}
+
+//
+// Carrier DBObject generator
+//
+func (o Carrier) NewObj() interface{} {
+	ditto := o
+	return &ditto
 }
 
 //
@@ -464,22 +1101,34 @@ func (o *Carrier) KeyName() string {
 	return "CarrierID"
 }
 
+func (o *Carrier) Names() []string {
+	return []string{"Name", "URL", "UID", "Modified"}
+}
+
 func (o *Carrier) ModifiedBy(user int64, t time.Time) {
+}
+
+//
+// Return DBObject generator
+//
+func (o Return) NewObj() interface{} {
+	ditto := o
+	return &ditto
 }
 
 //
 // Return DBObject interface functions
 //
 func (o *Return) InsertValues() []interface{} {
-	return []interface{}{o.Tracking, o.UID, o.Sent, o.RMAID, o.CarrierID}
+	return []interface{}{o.RMAID, o.CarrierID, o.Tracking, o.UID, o.Sent}
 }
 
 func (o *Return) UpdateValues() []interface{} {
-	return []interface{}{o.Tracking, o.UID, o.Sent, o.RMAID, o.CarrierID, o.ReturnID}
+	return []interface{}{o.RMAID, o.CarrierID, o.Tracking, o.UID, o.Sent, o.ReturnID}
 }
 
 func (o *Return) MemberPointers() []interface{} {
-	return []interface{}{&o.ReturnID, &o.Tracking, &o.UID, &o.Sent, &o.RMAID, &o.CarrierID}
+	return []interface{}{&o.ReturnID, &o.RMAID, &o.CarrierID, &o.Tracking, &o.UID, &o.Sent}
 }
 
 func (o *Return) Key() int64 {
@@ -495,11 +1144,11 @@ func (o *Return) TableName() string {
 }
 
 func (o *Return) SelectFields() string {
-	return "return_id,tracking_no,user_id,date_sent,rma_id,cr_id"
+	return "return_id,rma_id,cr_id,tracking_no,user_id,date_sent"
 }
 
 func (o *Return) InsertFields() string {
-	return "return_id,tracking_no,user_id,date_sent,rma_id,cr_id"
+	return "return_id,rma_id,cr_id,tracking_no,user_id,date_sent"
 }
 
 func (o *Return) KeyField() string {
@@ -510,7 +1159,19 @@ func (o *Return) KeyName() string {
 	return "ReturnID"
 }
 
+func (o *Return) Names() []string {
+	return []string{"RMAID", "CarrierID", "Tracking", "UID", "Sent"}
+}
+
 func (o *Return) ModifiedBy(user int64, t time.Time) {
+}
+
+//
+// Sent DBObject generator
+//
+func (o Sent) NewObj() interface{} {
+	ditto := o
+	return &ditto
 }
 
 //
@@ -555,22 +1216,34 @@ func (o *Sent) KeyName() string {
 	return ""
 }
 
+func (o *Sent) Names() []string {
+	return []string{"ReturnID", "PID"}
+}
+
 func (o *Sent) ModifiedBy(user int64, t time.Time) {
+}
+
+//
+// Received DBObject generator
+//
+func (o Received) NewObj() interface{} {
+	ditto := o
+	return &ditto
 }
 
 //
 // Received DBObject interface functions
 //
 func (o *Received) InsertValues() []interface{} {
-	return []interface{}{o.PID, o.UID, o.TS, o.RMAID}
+	return []interface{}{o.RMAID, o.PID, o.UID, o.TS}
 }
 
 func (o *Received) UpdateValues() []interface{} {
-	return []interface{}{o.PID, o.UID, o.TS, o.RMAID}
+	return []interface{}{o.RMAID, o.PID, o.UID, o.TS}
 }
 
 func (o *Received) MemberPointers() []interface{} {
-	return []interface{}{&o.PID, &o.UID, &o.TS, &o.RMAID}
+	return []interface{}{&o.RMAID, &o.PID, &o.UID, &o.TS}
 }
 
 func (o *Received) Key() int64 {
@@ -585,11 +1258,11 @@ func (o *Received) TableName() string {
 }
 
 func (o *Received) SelectFields() string {
-	return "pid,user_id,date_received,rma_id"
+	return "rma_id,pid,user_id,date_received"
 }
 
 func (o *Received) InsertFields() string {
-	return "pid,user_id,date_received,rma_id"
+	return "rma_id,pid,user_id,date_received"
 }
 
 func (o *Received) KeyField() string {
@@ -600,22 +1273,34 @@ func (o *Received) KeyName() string {
 	return ""
 }
 
+func (o *Received) Names() []string {
+	return []string{"RMAID", "PID", "UID", "TS"}
+}
+
 func (o *Received) ModifiedBy(user int64, t time.Time) {
+}
+
+//
+// Manufacturer DBObject generator
+//
+func (o Manufacturer) NewObj() interface{} {
+	ditto := o
+	return &ditto
 }
 
 //
 // Manufacturer DBObject interface functions
 //
 func (o *Manufacturer) InsertValues() []interface{} {
-	return []interface{}{o.Name, o.AKA, o.URL, o.UID, o.Modified}
+	return []interface{}{o.UID, o.Modified, o.Name, o.AKA, o.URL}
 }
 
 func (o *Manufacturer) UpdateValues() []interface{} {
-	return []interface{}{o.Name, o.AKA, o.URL, o.UID, o.Modified, o.MID}
+	return []interface{}{o.UID, o.Modified, o.Name, o.AKA, o.URL, o.MID}
 }
 
 func (o *Manufacturer) MemberPointers() []interface{} {
-	return []interface{}{&o.MID, &o.Name, &o.AKA, &o.URL, &o.UID, &o.Modified}
+	return []interface{}{&o.MID, &o.UID, &o.Modified, &o.Name, &o.AKA, &o.URL}
 }
 
 func (o *Manufacturer) Key() int64 {
@@ -631,11 +1316,11 @@ func (o *Manufacturer) TableName() string {
 }
 
 func (o *Manufacturer) SelectFields() string {
-	return "mid,name,aka,url,user_id,modified"
+	return "mid,user_id,modified,name,aka,url"
 }
 
 func (o *Manufacturer) InsertFields() string {
-	return "mid,name,aka,url,user_id,modified"
+	return "mid,user_id,modified,name,aka,url"
 }
 
 func (o *Manufacturer) KeyField() string {
@@ -646,32 +1331,44 @@ func (o *Manufacturer) KeyName() string {
 	return "MID"
 }
 
+func (o *Manufacturer) Names() []string {
+	return []string{"UID", "Modified", "Name", "AKA", "URL"}
+}
+
 func (o *Manufacturer) ModifiedBy(user int64, t time.Time) {
 	o.UID = user
 	o.Modified = t
 }
 
 //
+// PartType DBObject generator
+//
+func (o PartType) NewObj() interface{} {
+	ditto := o
+	return &ditto
+}
+
+//
 // PartType DBObject interface functions
 //
 func (o *PartType) InsertValues() []interface{} {
-	return []interface{}{o.Modified, o.Name, o.UID}
+	return []interface{}{o.UID, o.Modified, o.Name}
 }
 
 func (o *PartType) UpdateValues() []interface{} {
-	return []interface{}{o.Modified, o.Name, o.UID, o.TID}
+	return []interface{}{o.UID, o.Modified, o.Name, o.PTI}
 }
 
 func (o *PartType) MemberPointers() []interface{} {
-	return []interface{}{&o.TID, &o.Modified, &o.Name, &o.UID}
+	return []interface{}{&o.PTI, &o.UID, &o.Modified, &o.Name}
 }
 
 func (o *PartType) Key() int64 {
-	return o.TID
+	return o.PTI
 }
 
 func (o *PartType) SetID(id int64) {
-	o.TID = id
+	o.PTI = id
 }
 
 func (o *PartType) TableName() string {
@@ -679,19 +1376,23 @@ func (o *PartType) TableName() string {
 }
 
 func (o *PartType) SelectFields() string {
-	return "tid,modified,name,user_id"
+	return "pti,user_id,modified,name"
 }
 
 func (o *PartType) InsertFields() string {
-	return "tid,modified,name,user_id"
+	return "pti,user_id,modified,name"
 }
 
 func (o *PartType) KeyField() string {
-	return "tid"
+	return "pti"
 }
 
 func (o *PartType) KeyName() string {
-	return "TID"
+	return "PTI"
+}
+
+func (o *PartType) Names() []string {
+	return []string{"UID", "Modified", "Name"}
 }
 
 func (o *PartType) ModifiedBy(user int64, t time.Time) {
@@ -700,18 +1401,26 @@ func (o *PartType) ModifiedBy(user int64, t time.Time) {
 }
 
 //
+// SKU DBObject generator
+//
+func (o SKU) NewObj() interface{} {
+	ditto := o
+	return &ditto
+}
+
+//
 // SKU DBObject interface functions
 //
 func (o *SKU) InsertValues() []interface{} {
-	return []interface{}{o.Description, o.UID, o.Modified, o.MID, o.TID, o.PartNumber}
+	return []interface{}{o.PartNumber, o.Description, o.UID, o.Modified, o.MID, o.PTI}
 }
 
 func (o *SKU) UpdateValues() []interface{} {
-	return []interface{}{o.Description, o.UID, o.Modified, o.MID, o.TID, o.PartNumber, o.KID}
+	return []interface{}{o.PartNumber, o.Description, o.UID, o.Modified, o.MID, o.PTI, o.KID}
 }
 
 func (o *SKU) MemberPointers() []interface{} {
-	return []interface{}{&o.KID, &o.Description, &o.UID, &o.Modified, &o.MID, &o.TID, &o.PartNumber}
+	return []interface{}{&o.KID, &o.PartNumber, &o.Description, &o.UID, &o.Modified, &o.MID, &o.PTI}
 }
 
 func (o *SKU) Key() int64 {
@@ -727,11 +1436,11 @@ func (o *SKU) TableName() string {
 }
 
 func (o *SKU) SelectFields() string {
-	return "kid,description,user_id,modified,mid,tid,part_no"
+	return "kid,part_no,description,user_id,modified,mid,pti"
 }
 
 func (o *SKU) InsertFields() string {
-	return "kid,description,user_id,modified,mid,tid,part_no"
+	return "kid,part_no,description,user_id,modified,mid,pti"
 }
 
 func (o *SKU) KeyField() string {
@@ -742,24 +1451,36 @@ func (o *SKU) KeyName() string {
 	return "KID"
 }
 
+func (o *SKU) Names() []string {
+	return []string{"PartNumber", "Description", "UID", "Modified", "MID", "PTI"}
+}
+
 func (o *SKU) ModifiedBy(user int64, t time.Time) {
 	o.UID = user
 	o.Modified = t
 }
 
 //
+// Part DBObject generator
+//
+func (o Part) NewObj() interface{} {
+	ditto := o
+	return &ditto
+}
+
+//
 // Part DBObject interface functions
 //
 func (o *Part) InsertValues() []interface{} {
-	return []interface{}{o.Serial, o.AssetTag, o.Modified, o.KID, o.SID, o.DID, o.RMAID, o.Location, o.UID}
+	return []interface{}{o.STI, o.Serial, o.AssetTag, o.Bad, o.VID, o.DID, o.Unused, o.UID, o.Modified, o.KID, o.Location}
 }
 
 func (o *Part) UpdateValues() []interface{} {
-	return []interface{}{o.Serial, o.AssetTag, o.Modified, o.KID, o.SID, o.DID, o.RMAID, o.Location, o.UID, o.PID}
+	return []interface{}{o.STI, o.Serial, o.AssetTag, o.Bad, o.VID, o.DID, o.Unused, o.UID, o.Modified, o.KID, o.Location, o.PID}
 }
 
 func (o *Part) MemberPointers() []interface{} {
-	return []interface{}{&o.PID, &o.Serial, &o.AssetTag, &o.Modified, &o.KID, &o.SID, &o.DID, &o.RMAID, &o.Location, &o.UID}
+	return []interface{}{&o.PID, &o.STI, &o.Serial, &o.AssetTag, &o.Bad, &o.VID, &o.DID, &o.Unused, &o.UID, &o.Modified, &o.KID, &o.Location}
 }
 
 func (o *Part) Key() int64 {
@@ -775,11 +1496,11 @@ func (o *Part) TableName() string {
 }
 
 func (o *Part) SelectFields() string {
-	return "pid,serial_no,asset_tag,modified,kid,sid,did,rma_id,location,user_id"
+	return "pid,sti,serial_no,asset_tag,bad,vid,did,unused,user_id,modified,kid,location"
 }
 
 func (o *Part) InsertFields() string {
-	return "pid,serial_no,asset_tag,modified,kid,sid,did,rma_id,location,user_id"
+	return "pid,sti,serial_no,asset_tag,bad,vid,did,unused,user_id,modified,kid,location"
 }
 
 func (o *Part) KeyField() string {
@@ -790,194 +1511,139 @@ func (o *Part) KeyName() string {
 	return "PID"
 }
 
+func (o *Part) Names() []string {
+	return []string{"STI", "Serial", "AssetTag", "Bad", "VID", "DID", "Unused", "UID", "Modified", "KID", "Location"}
+}
+
 func (o *Part) ModifiedBy(user int64, t time.Time) {
 	o.UID = user
 	o.Modified = t
 }
 
 //
-// Datacenter DBObject interface functions
+// PartView DBObject generator
 //
-func (o *Datacenter) InsertValues() []interface{} {
-	return []interface{}{o.Address, o.State, o.Web, o.UID, o.Name, o.Phone, o.PXEHost, o.Modified, o.City, o.DCMan, o.PXEUser, o.RemoteAddr, o.PXEPass, o.PXEKey}
+func (o PartView) NewObj() interface{} {
+	ditto := o
+	return &ditto
 }
 
-func (o *Datacenter) UpdateValues() []interface{} {
-	return []interface{}{o.Address, o.State, o.Web, o.UID, o.Name, o.Phone, o.PXEHost, o.Modified, o.City, o.DCMan, o.PXEUser, o.RemoteAddr, o.PXEPass, o.PXEKey, o.ID}
+//
+// PartView DBObject interface functions
+//
+func (o *PartView) InsertValues() []interface{} {
+	return []interface{}{o.DID, o.Site, o.Unused, o.KID, o.Hostname, o.Bad, o.RMAID, o.AssetTag, o.PartType, o.PartNumber, o.VID, o.Location, o.Serial, o.Description, o.Mfgr, o.STI}
 }
 
-func (o *Datacenter) MemberPointers() []interface{} {
-	return []interface{}{&o.ID, &o.Address, &o.State, &o.Web, &o.UID, &o.Name, &o.Phone, &o.PXEHost, &o.Modified, &o.City, &o.DCMan, &o.PXEUser, &o.RemoteAddr, &o.PXEPass, &o.PXEKey}
+func (o *PartView) UpdateValues() []interface{} {
+	return []interface{}{o.DID, o.Site, o.Unused, o.KID, o.Hostname, o.Bad, o.RMAID, o.AssetTag, o.PartType, o.PartNumber, o.VID, o.Location, o.Serial, o.Description, o.Mfgr, o.STI, o.PID}
 }
 
-func (o *Datacenter) Key() int64 {
-	return o.ID
+func (o *PartView) MemberPointers() []interface{} {
+	return []interface{}{&o.PID, &o.DID, &o.Site, &o.Unused, &o.KID, &o.Hostname, &o.Bad, &o.RMAID, &o.AssetTag, &o.PartType, &o.PartNumber, &o.VID, &o.Location, &o.Serial, &o.Description, &o.Mfgr, &o.STI}
 }
 
-func (o *Datacenter) SetID(id int64) {
-	o.ID = id
+func (o *PartView) Key() int64 {
+	return o.PID
 }
 
-func (o *Datacenter) TableName() string {
-	return "datacenters"
+func (o *PartView) SetID(id int64) {
+	o.PID = id
 }
 
-func (o *Datacenter) SelectFields() string {
-	return "id,address,state,web,user_id,name,phone,pxehost,modified,city,dcman,pxeuser,remote_addr,pxepass,pxekey"
+func (o *PartView) TableName() string {
+	return "parts_view"
 }
 
-func (o *Datacenter) InsertFields() string {
-	return "id,address,state,web,user_id,name,phone,pxehost,modified,city,dcman,pxeuser,remote_addr,pxepass,pxekey"
+func (o *PartView) SelectFields() string {
+	return "pid,did,site,unused,kid,hostname,bad,rma_id,asset_tag,part_type,part_no,vid,location,serial_no,description,mfgr,sti"
 }
 
-func (o *Datacenter) KeyField() string {
-	return "id"
+func (o *PartView) InsertFields() string {
+	return "pid,did,site,unused,kid,hostname,bad,rma_id,asset_tag,part_type,part_no,vid,location,serial_no,description,mfgr,sti"
 }
 
-func (o *Datacenter) KeyName() string {
-	return "ID"
+func (o *PartView) KeyField() string {
+	return "pid"
 }
 
-func (o *Datacenter) ModifiedBy(user int64, t time.Time) {
+func (o *PartView) KeyName() string {
+	return "PID"
+}
+
+func (o *PartView) Names() []string {
+	return []string{"DID", "Site", "Unused", "KID", "Hostname", "Bad", "RMAID", "AssetTag", "PartType", "PartNumber", "VID", "Location", "Serial", "Description", "Mfgr", "STI"}
+}
+
+func (o *PartView) ModifiedBy(user int64, t time.Time) {
+}
+
+//
+// Site DBObject generator
+//
+func (o Site) NewObj() interface{} {
+	ditto := o
+	return &ditto
+}
+
+//
+// Site DBObject interface functions
+//
+func (o *Site) InsertValues() []interface{} {
+	return []interface{}{o.Address, o.City, o.State, o.Phone, o.UID, o.Name, o.Web, o.DCMan, o.Modified}
+}
+
+func (o *Site) UpdateValues() []interface{} {
+	return []interface{}{o.Address, o.City, o.State, o.Phone, o.UID, o.Name, o.Web, o.DCMan, o.Modified, o.STI}
+}
+
+func (o *Site) MemberPointers() []interface{} {
+	return []interface{}{&o.STI, &o.Address, &o.City, &o.State, &o.Phone, &o.UID, &o.Name, &o.Web, &o.DCMan, &o.Modified}
+}
+
+func (o *Site) Key() int64 {
+	return o.STI
+}
+
+func (o *Site) SetID(id int64) {
+	o.STI = id
+}
+
+func (o *Site) TableName() string {
+	return "sites"
+}
+
+func (o *Site) SelectFields() string {
+	return "sti,address,city,state,phone,user_id,name,web,dcman,modified"
+}
+
+func (o *Site) InsertFields() string {
+	return "sti,address,city,state,phone,user_id,name,web,dcman,modified"
+}
+
+func (o *Site) KeyField() string {
+	return "sti"
+}
+
+func (o *Site) KeyName() string {
+	return "STI"
+}
+
+func (o *Site) Names() []string {
+	return []string{"Address", "City", "State", "Phone", "UID", "Name", "Web", "DCMan", "Modified"}
+}
+
+func (o *Site) ModifiedBy(user int64, t time.Time) {
 	o.UID = user
 	o.Modified = t
 }
 
 //
-// DCView DBObject interface functions
+// Tag DBObject generator
 //
-func (o *DCView) InsertValues() []interface{} {
-	return []interface{}{o.AssetNumber, o.CPU, o.CPUSpeed, o.MemoryMB, o.Created, o.DID, o.Hostname}
-}
-
-func (o *DCView) UpdateValues() []interface{} {
-	return []interface{}{o.AssetNumber, o.CPU, o.CPUSpeed, o.MemoryMB, o.Created, o.DID, o.Hostname, o.ID}
-}
-
-func (o *DCView) MemberPointers() []interface{} {
-	return []interface{}{&o.ID, &o.AssetNumber, &o.CPU, &o.CPUSpeed, &o.MemoryMB, &o.Created, &o.DID, &o.Hostname}
-}
-
-func (o *DCView) Key() int64 {
-	return o.ID
-}
-
-func (o *DCView) SetID(id int64) {
-	o.ID = id
-}
-
-func (o *DCView) TableName() string {
-	return "dcview"
-}
-
-func (o *DCView) SelectFields() string {
-	return "id,asset_number,cpu_id,cpu_speed,memory,created,datacenter,hostname"
-}
-
-func (o *DCView) InsertFields() string {
-	return "id,asset_number,cpu_id,cpu_speed,memory,created,datacenter,hostname"
-}
-
-func (o *DCView) KeyField() string {
-	return "id"
-}
-
-func (o *DCView) KeyName() string {
-	return "ID"
-}
-
-func (o *DCView) ModifiedBy(user int64, t time.Time) {
-}
-
-//
-// ServerVMs DBObject interface functions
-//
-func (o *ServerVMs) InsertValues() []interface{} {
-	return []interface{}{o.DC, o.Hostname, o.VMList, o.IDList}
-}
-
-func (o *ServerVMs) UpdateValues() []interface{} {
-	return []interface{}{o.DC, o.Hostname, o.VMList, o.IDList, o.ID}
-}
-
-func (o *ServerVMs) MemberPointers() []interface{} {
-	return []interface{}{&o.ID, &o.DC, &o.Hostname, &o.VMList, &o.IDList}
-}
-
-func (o *ServerVMs) Key() int64 {
-	return o.ID
-}
-
-func (o *ServerVMs) SetID(id int64) {
-	o.ID = id
-}
-
-func (o *ServerVMs) TableName() string {
-	return "servervms"
-}
-
-func (o *ServerVMs) SelectFields() string {
-	return "id,dc,hostname,vms,ids"
-}
-
-func (o *ServerVMs) InsertFields() string {
-	return "id,dc,hostname,vms,ids"
-}
-
-func (o *ServerVMs) KeyField() string {
-	return "id"
-}
-
-func (o *ServerVMs) KeyName() string {
-	return "ID"
-}
-
-func (o *ServerVMs) ModifiedBy(user int64, t time.Time) {
-}
-
-//
-// RackUnit DBObject interface functions
-//
-func (o *RackUnit) InsertValues() []interface{} {
-	return []interface{}{o.Alias, o.SerialNo, o.NID, o.Hostname, o.Note, o.Rack, o.IPMI, o.Height, o.Internal, o.SID, o.RID, o.AssetTag, o.DC, o.RU}
-}
-
-func (o *RackUnit) UpdateValues() []interface{} {
-	return []interface{}{o.Alias, o.SerialNo, o.NID, o.Hostname, o.Note, o.Rack, o.IPMI, o.Height, o.Internal, o.SID, o.RID, o.AssetTag, o.DC, o.RU}
-}
-
-func (o *RackUnit) MemberPointers() []interface{} {
-	return []interface{}{&o.Alias, &o.SerialNo, &o.NID, &o.Hostname, &o.Note, &o.Rack, &o.IPMI, &o.Height, &o.Internal, &o.SID, &o.RID, &o.AssetTag, &o.DC, &o.RU}
-}
-
-func (o *RackUnit) Key() int64 {
-	return 0
-}
-
-func (o *RackUnit) SetID(id int64) {
-}
-
-func (o *RackUnit) TableName() string {
-	return "rackunits"
-}
-
-func (o *RackUnit) SelectFields() string {
-	return "alias,sn,nid,hostname,note,rack,ipmi,height,internal,sid,rid,asset_tag,dc,ru"
-}
-
-func (o *RackUnit) InsertFields() string {
-	return "alias,sn,nid,hostname,note,rack,ipmi,height,internal,sid,rid,asset_tag,dc,ru"
-}
-
-func (o *RackUnit) KeyField() string {
-	return ""
-}
-
-func (o *RackUnit) KeyName() string {
-	return ""
-}
-
-func (o *RackUnit) ModifiedBy(user int64, t time.Time) {
+func (o Tag) NewObj() interface{} {
+	ditto := o
+	return &ditto
 }
 
 //
@@ -1023,124 +1689,42 @@ func (o *Tag) KeyName() string {
 	return "TID"
 }
 
+func (o *Tag) Names() []string {
+	return []string{"Name"}
+}
+
 func (o *Tag) ModifiedBy(user int64, t time.Time) {
 }
 
 //
-// Server DBObject interface functions
+// Rack DBObject generator
 //
-func (o *Server) InsertValues() []interface{} {
-	return []interface{}{o.RU, o.Alias, o.PartNo, o.MacPort1, o.CPU, o.RemoteAddr, o.Modified, o.TID, o.CableIpmi, o.PortEth0, o.PortIpmi, o.MacPort0, o.Profile, o.Assigned, o.AssetTag, o.IPIpmi, o.PortEth1, o.CableEth1, o.UID, o.Hostname, o.SerialNo, o.IPInternal, o.MacIPMI, o.RID, o.Height, o.IPPublic, o.CableEth0, o.Note}
-}
-
-func (o *Server) UpdateValues() []interface{} {
-	return []interface{}{o.RU, o.Alias, o.PartNo, o.MacPort1, o.CPU, o.RemoteAddr, o.Modified, o.TID, o.CableIpmi, o.PortEth0, o.PortIpmi, o.MacPort0, o.Profile, o.Assigned, o.AssetTag, o.IPIpmi, o.PortEth1, o.CableEth1, o.UID, o.Hostname, o.SerialNo, o.IPInternal, o.MacIPMI, o.RID, o.Height, o.IPPublic, o.CableEth0, o.Note, o.ID}
-}
-
-func (o *Server) MemberPointers() []interface{} {
-	return []interface{}{&o.ID, &o.RU, &o.Alias, &o.PartNo, &o.MacPort1, &o.CPU, &o.RemoteAddr, &o.Modified, &o.TID, &o.CableIpmi, &o.PortEth0, &o.PortIpmi, &o.MacPort0, &o.Profile, &o.Assigned, &o.AssetTag, &o.IPIpmi, &o.PortEth1, &o.CableEth1, &o.UID, &o.Hostname, &o.SerialNo, &o.IPInternal, &o.MacIPMI, &o.RID, &o.Height, &o.IPPublic, &o.CableEth0, &o.Note}
-}
-
-func (o *Server) Key() int64 {
-	return o.ID
-}
-
-func (o *Server) SetID(id int64) {
-	o.ID = id
-}
-
-func (o *Server) TableName() string {
-	return "servers"
-}
-
-func (o *Server) SelectFields() string {
-	return "id,ru,alias,vendor_sku,mac_eth1,cpu,remote_addr,modified,tid,cable_ipmi,port_eth0,port_ipmi,mac_eth0,profile,assigned,asset_tag,ip_ipmi,port_eth1,cable_eth1,uid,hostname,sn,ip_internal,mac_ipmi,rid,height,ip_public,cable_eth0,note"
-}
-
-func (o *Server) InsertFields() string {
-	return "id,ru,alias,vendor_sku,mac_eth1,cpu,remote_addr,modified,tid,cable_ipmi,port_eth0,port_ipmi,mac_eth0,profile,assigned,asset_tag,ip_ipmi,port_eth1,cable_eth1,uid,hostname,sn,ip_internal,mac_ipmi,rid,height,ip_public,cable_eth0,note"
-}
-
-func (o *Server) KeyField() string {
-	return "id"
-}
-
-func (o *Server) KeyName() string {
-	return "ID"
-}
-
-func (o *Server) ModifiedBy(user int64, t time.Time) {
-	o.UID = user
-	o.Modified = t
-}
-
-//
-// Router DBObject interface functions
-//
-func (o *Router) InsertValues() []interface{} {
-	return []interface{}{o.RU, o.SerialNo, o.RemoteAddr, o.Hostname, o.Make, o.Model, o.UID, o.RID, o.Note, o.AssetTag, o.PartNo, o.Modified, o.Height, o.MgmtIP}
-}
-
-func (o *Router) UpdateValues() []interface{} {
-	return []interface{}{o.RU, o.SerialNo, o.RemoteAddr, o.Hostname, o.Make, o.Model, o.UID, o.RID, o.Note, o.AssetTag, o.PartNo, o.Modified, o.Height, o.MgmtIP, o.ID}
-}
-
-func (o *Router) MemberPointers() []interface{} {
-	return []interface{}{&o.ID, &o.RU, &o.SerialNo, &o.RemoteAddr, &o.Hostname, &o.Make, &o.Model, &o.UID, &o.RID, &o.Note, &o.AssetTag, &o.PartNo, &o.Modified, &o.Height, &o.MgmtIP}
-}
-
-func (o *Router) Key() int64 {
-	return o.ID
-}
-
-func (o *Router) SetID(id int64) {
-	o.ID = id
-}
-
-func (o *Router) TableName() string {
-	return "routers"
-}
-
-func (o *Router) SelectFields() string {
-	return "id,ru,sn,remote_addr,hostname,make,model,uid,rid,note,asset_tag,sku,modified,height,ip_mgmt"
-}
-
-func (o *Router) InsertFields() string {
-	return "id,ru,sn,remote_addr,hostname,make,model,uid,rid,note,asset_tag,sku,modified,height,ip_mgmt"
-}
-
-func (o *Router) KeyField() string {
-	return "id"
-}
-
-func (o *Router) KeyName() string {
-	return "ID"
-}
-
-func (o *Router) ModifiedBy(user int64, t time.Time) {
+func (o Rack) NewObj() interface{} {
+	ditto := o
+	return &ditto
 }
 
 //
 // Rack DBObject interface functions
 //
 func (o *Rack) InsertValues() []interface{} {
-	return []interface{}{o.DID, o.RUs, o.Label, o.VendorID, o.XPos, o.YPos, o.UID, o.TS}
+	return []interface{}{o.RUs, o.Label, o.VendorID, o.XPos, o.YPos, o.UID, o.TS, o.STI}
 }
 
 func (o *Rack) UpdateValues() []interface{} {
-	return []interface{}{o.DID, o.RUs, o.Label, o.VendorID, o.XPos, o.YPos, o.UID, o.TS, o.ID}
+	return []interface{}{o.RUs, o.Label, o.VendorID, o.XPos, o.YPos, o.UID, o.TS, o.STI, o.RID}
 }
 
 func (o *Rack) MemberPointers() []interface{} {
-	return []interface{}{&o.ID, &o.DID, &o.RUs, &o.Label, &o.VendorID, &o.XPos, &o.YPos, &o.UID, &o.TS}
+	return []interface{}{&o.RID, &o.RUs, &o.Label, &o.VendorID, &o.XPos, &o.YPos, &o.UID, &o.TS, &o.STI}
 }
 
 func (o *Rack) Key() int64 {
-	return o.ID
+	return o.RID
 }
 
 func (o *Rack) SetID(id int64) {
-	o.ID = id
+	o.RID = id
 }
 
 func (o *Rack) TableName() string {
@@ -1148,37 +1732,107 @@ func (o *Rack) TableName() string {
 }
 
 func (o *Rack) SelectFields() string {
-	return "id,did,rackunits,rack,vendor_id,x_pos,y_pos,uid,ts"
+	return "rid,rackunits,rack,vendor_id,x_pos,y_pos,uid,ts,sti"
 }
 
 func (o *Rack) InsertFields() string {
-	return "id,did,rackunits,rack,vendor_id,x_pos,y_pos,uid,ts"
+	return "rid,rackunits,rack,vendor_id,x_pos,y_pos,uid,ts,sti"
 }
 
 func (o *Rack) KeyField() string {
-	return "id"
+	return "rid"
 }
 
 func (o *Rack) KeyName() string {
-	return "ID"
+	return "RID"
+}
+
+func (o *Rack) Names() []string {
+	return []string{"RUs", "Label", "VendorID", "XPos", "YPos", "UID", "TS", "STI"}
 }
 
 func (o *Rack) ModifiedBy(user int64, t time.Time) {
 }
 
 //
+// RackView DBObject generator
+//
+func (o RackView) NewObj() interface{} {
+	ditto := o
+	return &ditto
+}
+
+//
+// RackView DBObject interface functions
+//
+func (o *RackView) InsertValues() []interface{} {
+	return []interface{}{o.Label, o.Site, o.VendorID, o.XPos, o.YPos, o.STI, o.UID, o.TS, o.RUs}
+}
+
+func (o *RackView) UpdateValues() []interface{} {
+	return []interface{}{o.Label, o.Site, o.VendorID, o.XPos, o.YPos, o.STI, o.UID, o.TS, o.RUs, o.RID}
+}
+
+func (o *RackView) MemberPointers() []interface{} {
+	return []interface{}{&o.RID, &o.Label, &o.Site, &o.VendorID, &o.XPos, &o.YPos, &o.STI, &o.UID, &o.TS, &o.RUs}
+}
+
+func (o *RackView) Key() int64 {
+	return o.RID
+}
+
+func (o *RackView) SetID(id int64) {
+	o.RID = id
+}
+
+func (o *RackView) TableName() string {
+	return "racks_view"
+}
+
+func (o *RackView) SelectFields() string {
+	return "rid,rack,site,vendor_id,x_pos,y_pos,sti,uid,ts,rackunits"
+}
+
+func (o *RackView) InsertFields() string {
+	return "rid,rack,site,vendor_id,x_pos,y_pos,sti,uid,ts,rackunits"
+}
+
+func (o *RackView) KeyField() string {
+	return "rid"
+}
+
+func (o *RackView) KeyName() string {
+	return "RID"
+}
+
+func (o *RackView) Names() []string {
+	return []string{"Label", "Site", "VendorID", "XPos", "YPos", "STI", "UID", "TS", "RUs"}
+}
+
+func (o *RackView) ModifiedBy(user int64, t time.Time) {
+}
+
+//
+// RackNet DBObject generator
+//
+func (o RackNet) NewObj() interface{} {
+	ditto := o
+	return &ditto
+}
+
+//
 // RackNet DBObject interface functions
 //
 func (o *RackNet) InsertValues() []interface{} {
-	return []interface{}{o.RID, o.VID, o.Actual, o.MinIP, o.MaxIP, o.CIDR, o.Subnet, o.FirstIP, o.LastIP}
+	return []interface{}{o.Actual, o.MinIP, o.FirstIP, o.LastIP, o.RID, o.VID, o.CIDR, o.Subnet, o.MaxIP}
 }
 
 func (o *RackNet) UpdateValues() []interface{} {
-	return []interface{}{o.RID, o.VID, o.Actual, o.MinIP, o.MaxIP, o.CIDR, o.Subnet, o.FirstIP, o.LastIP}
+	return []interface{}{o.Actual, o.MinIP, o.FirstIP, o.LastIP, o.RID, o.VID, o.CIDR, o.Subnet, o.MaxIP}
 }
 
 func (o *RackNet) MemberPointers() []interface{} {
-	return []interface{}{&o.RID, &o.VID, &o.Actual, &o.MinIP, &o.MaxIP, &o.CIDR, &o.Subnet, &o.FirstIP, &o.LastIP}
+	return []interface{}{&o.Actual, &o.MinIP, &o.FirstIP, &o.LastIP, &o.RID, &o.VID, &o.CIDR, &o.Subnet, &o.MaxIP}
 }
 
 func (o *RackNet) Key() int64 {
@@ -1193,11 +1847,11 @@ func (o *RackNet) TableName() string {
 }
 
 func (o *RackNet) SelectFields() string {
-	return "rid,vid,actual,min_ip,max_ip,cidr,subnet,first_ip,last_ip"
+	return "actual,min_ip,first_ip,last_ip,rid,vid,cidr,subnet,max_ip"
 }
 
 func (o *RackNet) InsertFields() string {
-	return "rid,vid,actual,min_ip,max_ip,cidr,subnet,first_ip,last_ip"
+	return "actual,min_ip,first_ip,last_ip,rid,vid,cidr,subnet,max_ip"
 }
 
 func (o *RackNet) KeyField() string {
@@ -1208,30 +1862,42 @@ func (o *RackNet) KeyName() string {
 	return ""
 }
 
+func (o *RackNet) Names() []string {
+	return []string{"Actual", "MinIP", "FirstIP", "LastIP", "RID", "VID", "CIDR", "Subnet", "MaxIP"}
+}
+
 func (o *RackNet) ModifiedBy(user int64, t time.Time) {
+}
+
+//
+// VM DBObject generator
+//
+func (o VM) NewObj() interface{} {
+	ditto := o
+	return &ditto
 }
 
 //
 // VM DBObject interface functions
 //
 func (o *VM) InsertValues() []interface{} {
-	return []interface{}{o.SID, o.Hostname, o.Private, o.Profile, o.Note, o.Modified, o.UID, o.Public, o.VIP, o.RemoteAddr}
+	return []interface{}{o.Hostname, o.Profile, o.Note, o.Modified, o.UID, o.DID}
 }
 
 func (o *VM) UpdateValues() []interface{} {
-	return []interface{}{o.SID, o.Hostname, o.Private, o.Profile, o.Note, o.Modified, o.UID, o.Public, o.VIP, o.RemoteAddr, o.ID}
+	return []interface{}{o.Hostname, o.Profile, o.Note, o.Modified, o.UID, o.DID, o.VMI}
 }
 
 func (o *VM) MemberPointers() []interface{} {
-	return []interface{}{&o.ID, &o.SID, &o.Hostname, &o.Private, &o.Profile, &o.Note, &o.Modified, &o.UID, &o.Public, &o.VIP, &o.RemoteAddr}
+	return []interface{}{&o.VMI, &o.Hostname, &o.Profile, &o.Note, &o.Modified, &o.UID, &o.DID}
 }
 
 func (o *VM) Key() int64 {
-	return o.ID
+	return o.VMI
 }
 
 func (o *VM) SetID(id int64) {
-	o.ID = id
+	o.VMI = id
 }
 
 func (o *VM) TableName() string {
@@ -1239,83 +1905,107 @@ func (o *VM) TableName() string {
 }
 
 func (o *VM) SelectFields() string {
-	return "id,sid,hostname,private,profile,note,modified,uid,public,vip,remote_addr"
+	return "vmi,hostname,profile,note,modified,user_id,did"
 }
 
 func (o *VM) InsertFields() string {
-	return "id,sid,hostname,private,profile,note,modified,uid,public,vip,remote_addr"
+	return "vmi,hostname,profile,note,modified,user_id,did"
 }
 
 func (o *VM) KeyField() string {
-	return "id"
+	return "vmi"
 }
 
 func (o *VM) KeyName() string {
-	return "ID"
+	return "VMI"
+}
+
+func (o *VM) Names() []string {
+	return []string{"Hostname", "Profile", "Note", "Modified", "UID", "DID"}
 }
 
 func (o *VM) ModifiedBy(user int64, t time.Time) {
 }
 
 //
-// Orphan DBObject interface functions
+// VMView DBObject generator
 //
-func (o *Orphan) InsertValues() []interface{} {
-	return []interface{}{o.VIP, o.Note, o.DC, o.Hostname, o.Private, o.Public}
+func (o VMView) NewObj() interface{} {
+	ditto := o
+	return &ditto
 }
 
-func (o *Orphan) UpdateValues() []interface{} {
-	return []interface{}{o.VIP, o.Note, o.DC, o.Hostname, o.Private, o.Public, o.ID}
+//
+// VMView DBObject interface functions
+//
+func (o *VMView) InsertValues() []interface{} {
+	return []interface{}{o.STI, o.Rack, o.Site, o.Server, o.Profile, o.Note, o.RID, o.Hostname, o.Modified, o.UID, o.DID}
 }
 
-func (o *Orphan) MemberPointers() []interface{} {
-	return []interface{}{&o.ID, &o.VIP, &o.Note, &o.DC, &o.Hostname, &o.Private, &o.Public}
+func (o *VMView) UpdateValues() []interface{} {
+	return []interface{}{o.STI, o.Rack, o.Site, o.Server, o.Profile, o.Note, o.RID, o.Hostname, o.Modified, o.UID, o.DID, o.VMI}
 }
 
-func (o *Orphan) Key() int64 {
-	return o.ID
+func (o *VMView) MemberPointers() []interface{} {
+	return []interface{}{&o.VMI, &o.STI, &o.Rack, &o.Site, &o.Server, &o.Profile, &o.Note, &o.RID, &o.Hostname, &o.Modified, &o.UID, &o.DID}
 }
 
-func (o *Orphan) SetID(id int64) {
-	o.ID = id
+func (o *VMView) Key() int64 {
+	return o.VMI
 }
 
-func (o *Orphan) TableName() string {
-	return "vmbad"
+func (o *VMView) SetID(id int64) {
+	o.VMI = id
 }
 
-func (o *Orphan) SelectFields() string {
-	return "rowid,vip,note,dc,hostname,private,public"
+func (o *VMView) TableName() string {
+	return "vms_view"
 }
 
-func (o *Orphan) InsertFields() string {
-	return "rowid,vip,note,dc,hostname,private,public"
+func (o *VMView) SelectFields() string {
+	return "vmi,sti,rack,site,server,profile,note,rid,hostname,modified,user_id,did"
 }
 
-func (o *Orphan) KeyField() string {
-	return "rowid"
+func (o *VMView) InsertFields() string {
+	return "vmi,sti,rack,site,server,profile,note,rid,hostname,modified,user_id,did"
 }
 
-func (o *Orphan) KeyName() string {
-	return "ID"
+func (o *VMView) KeyField() string {
+	return "vmi"
 }
 
-func (o *Orphan) ModifiedBy(user int64, t time.Time) {
+func (o *VMView) KeyName() string {
+	return "VMI"
+}
+
+func (o *VMView) Names() []string {
+	return []string{"STI", "Rack", "Site", "Server", "Profile", "Note", "RID", "Hostname", "Modified", "UID", "DID"}
+}
+
+func (o *VMView) ModifiedBy(user int64, t time.Time) {
+}
+
+//
+// Audit DBObject generator
+//
+func (o Audit) NewObj() interface{} {
+	ditto := o
+	return &ditto
 }
 
 //
 // Audit DBObject interface functions
 //
 func (o *Audit) InsertValues() []interface{} {
-	return []interface{}{o.Release, o.FQDN, o.Eth1, o.Asset, o.Mem, o.VMs, o.IpmiMac, o.CPU, o.Eth0, o.SN, o.IpmiIP, o.Kernel, o.Hostname, o.IP, o.IPs}
+	return []interface{}{o.IPs, o.VMs, o.IP, o.Eth0, o.IpmiIP, o.IpmiMac, o.CPU, o.Hostname, o.Asset, o.Mem, o.Release, o.Eth1, o.SN, o.Kernel, o.FQDN}
 }
 
 func (o *Audit) UpdateValues() []interface{} {
-	return []interface{}{o.Release, o.FQDN, o.Eth1, o.Asset, o.Mem, o.VMs, o.IpmiMac, o.CPU, o.Eth0, o.SN, o.IpmiIP, o.Kernel, o.Hostname, o.IP, o.IPs}
+	return []interface{}{o.IPs, o.VMs, o.IP, o.Eth0, o.IpmiIP, o.IpmiMac, o.CPU, o.Hostname, o.Asset, o.Mem, o.Release, o.Eth1, o.SN, o.Kernel, o.FQDN}
 }
 
 func (o *Audit) MemberPointers() []interface{} {
-	return []interface{}{&o.Release, &o.FQDN, &o.Eth1, &o.Asset, &o.Mem, &o.VMs, &o.IpmiMac, &o.CPU, &o.Eth0, &o.SN, &o.IpmiIP, &o.Kernel, &o.Hostname, &o.IP, &o.IPs}
+	return []interface{}{&o.IPs, &o.VMs, &o.IP, &o.Eth0, &o.IpmiIP, &o.IpmiMac, &o.CPU, &o.Hostname, &o.Asset, &o.Mem, &o.Release, &o.Eth1, &o.SN, &o.Kernel, &o.FQDN}
 }
 
 func (o *Audit) Key() int64 {
@@ -1330,11 +2020,11 @@ func (o *Audit) TableName() string {
 }
 
 func (o *Audit) SelectFields() string {
-	return "release,fqdn,eth1,asset,mem,vms,ipmi_mac,cpu,eth0,sn,ipmi_ip,kernel,hostname,remote_addr,ips"
+	return "ips,vms,remote_addr,eth0,ipmi_ip,ipmi_mac,cpu,hostname,asset,mem,release,eth1,sn,kernel,fqdn"
 }
 
 func (o *Audit) InsertFields() string {
-	return "release,fqdn,eth1,asset,mem,vms,ipmi_mac,cpu,eth0,sn,ipmi_ip,kernel,hostname,remote_addr,ips"
+	return "ips,vms,remote_addr,eth0,ipmi_ip,ipmi_mac,cpu,hostname,asset,mem,release,eth1,sn,kernel,fqdn"
 }
 
 func (o *Audit) KeyField() string {
@@ -1345,22 +2035,34 @@ func (o *Audit) KeyName() string {
 	return ""
 }
 
+func (o *Audit) Names() []string {
+	return []string{"IPs", "VMs", "IP", "Eth0", "IpmiIP", "IpmiMac", "CPU", "Hostname", "Asset", "Mem", "Release", "Eth1", "SN", "Kernel", "FQDN"}
+}
+
 func (o *Audit) ModifiedBy(user int64, t time.Time) {
+}
+
+//
+// PDU DBObject generator
+//
+func (o PDU) NewObj() interface{} {
+	ditto := o
+	return &ditto
 }
 
 //
 // PDU DBObject interface functions
 //
 func (o *PDU) InsertValues() []interface{} {
-	return []interface{}{o.AssetTag, o.RID, o.Hostname, o.IP, o.Netmask, o.Gateway, o.DNS}
+	return []interface{}{o.RID, o.Hostname, o.IP, o.Netmask, o.Gateway, o.DNS, o.AssetTag}
 }
 
 func (o *PDU) UpdateValues() []interface{} {
-	return []interface{}{o.AssetTag, o.RID, o.Hostname, o.IP, o.Netmask, o.Gateway, o.DNS, o.ID}
+	return []interface{}{o.RID, o.Hostname, o.IP, o.Netmask, o.Gateway, o.DNS, o.AssetTag, o.ID}
 }
 
 func (o *PDU) MemberPointers() []interface{} {
-	return []interface{}{&o.ID, &o.AssetTag, &o.RID, &o.Hostname, &o.IP, &o.Netmask, &o.Gateway, &o.DNS}
+	return []interface{}{&o.ID, &o.RID, &o.Hostname, &o.IP, &o.Netmask, &o.Gateway, &o.DNS, &o.AssetTag}
 }
 
 func (o *PDU) Key() int64 {
@@ -1376,11 +2078,11 @@ func (o *PDU) TableName() string {
 }
 
 func (o *PDU) SelectFields() string {
-	return "id,asset_tag,rid,hostname,ip_address,netmask,gateway,dns"
+	return "id,rid,hostname,ip_address,netmask,gateway,dns,asset_tag"
 }
 
 func (o *PDU) InsertFields() string {
-	return "id,asset_tag,rid,hostname,ip_address,netmask,gateway,dns"
+	return "id,rid,hostname,ip_address,netmask,gateway,dns,asset_tag"
 }
 
 func (o *PDU) KeyField() string {
@@ -1391,7 +2093,76 @@ func (o *PDU) KeyName() string {
 	return "ID"
 }
 
+func (o *PDU) Names() []string {
+	return []string{"RID", "Hostname", "IP", "Netmask", "Gateway", "DNS", "AssetTag"}
+}
+
 func (o *PDU) ModifiedBy(user int64, t time.Time) {
+}
+
+//
+// Inventory DBObject generator
+//
+func (o Inventory) NewObj() interface{} {
+	ditto := o
+	return &ditto
+}
+
+//
+// Inventory DBObject interface functions
+//
+func (o *Inventory) InsertValues() []interface{} {
+	return []interface{}{o.STI, o.KID, o.Qty, o.Mfgr, o.PartType, o.PTI, o.Site, o.PartNumber, o.Description}
+}
+
+func (o *Inventory) UpdateValues() []interface{} {
+	return []interface{}{o.STI, o.KID, o.Qty, o.Mfgr, o.PartType, o.PTI, o.Site, o.PartNumber, o.Description}
+}
+
+func (o *Inventory) MemberPointers() []interface{} {
+	return []interface{}{&o.STI, &o.KID, &o.Qty, &o.Mfgr, &o.PartType, &o.PTI, &o.Site, &o.PartNumber, &o.Description}
+}
+
+func (o *Inventory) Key() int64 {
+	return 0
+}
+
+func (o *Inventory) SetID(id int64) {
+}
+
+func (o *Inventory) TableName() string {
+	return "inventory"
+}
+
+func (o *Inventory) SelectFields() string {
+	return "sti,kid,qty,mfgr,part_type,pti,site,part_no,description"
+}
+
+func (o *Inventory) InsertFields() string {
+	return "sti,kid,qty,mfgr,part_type,pti,site,part_no,description"
+}
+
+func (o *Inventory) KeyField() string {
+	return ""
+}
+
+func (o *Inventory) KeyName() string {
+	return ""
+}
+
+func (o *Inventory) Names() []string {
+	return []string{"STI", "KID", "Qty", "Mfgr", "PartType", "PTI", "Site", "PartNumber", "Description"}
+}
+
+func (o *Inventory) ModifiedBy(user int64, t time.Time) {
+}
+
+//
+// VProfile DBObject generator
+//
+func (o VProfile) NewObj() interface{} {
+	ditto := o
+	return &ditto
 }
 
 //
@@ -1437,30 +2208,42 @@ func (o *VProfile) KeyName() string {
 	return "VPID"
 }
 
+func (o *VProfile) Names() []string {
+	return []string{"Name"}
+}
+
 func (o *VProfile) ModifiedBy(user int64, t time.Time) {
+}
+
+//
+// VLAN DBObject generator
+//
+func (o VLAN) NewObj() interface{} {
+	ditto := o
+	return &ditto
 }
 
 //
 // VLAN DBObject interface functions
 //
 func (o *VLAN) InsertValues() []interface{} {
-	return []interface{}{o.Route, o.Netmask, o.Modified, o.UID, o.DID, o.Name, o.Profile, o.Gateway}
+	return []interface{}{o.Name, o.Profile, o.Route, o.Netmask, o.Modified, o.STI, o.Gateway, o.Note, o.UID}
 }
 
 func (o *VLAN) UpdateValues() []interface{} {
-	return []interface{}{o.Route, o.Netmask, o.Modified, o.UID, o.DID, o.Name, o.Profile, o.Gateway, o.ID}
+	return []interface{}{o.Name, o.Profile, o.Route, o.Netmask, o.Modified, o.STI, o.Gateway, o.Note, o.UID, o.VLI}
 }
 
 func (o *VLAN) MemberPointers() []interface{} {
-	return []interface{}{&o.ID, &o.Route, &o.Netmask, &o.Modified, &o.UID, &o.DID, &o.Name, &o.Profile, &o.Gateway}
+	return []interface{}{&o.VLI, &o.Name, &o.Profile, &o.Route, &o.Netmask, &o.Modified, &o.STI, &o.Gateway, &o.Note, &o.UID}
 }
 
 func (o *VLAN) Key() int64 {
-	return o.ID
+	return o.VLI
 }
 
 func (o *VLAN) SetID(id int64) {
-	o.ID = id
+	o.VLI = id
 }
 
 func (o *VLAN) TableName() string {
@@ -1468,22 +2251,86 @@ func (o *VLAN) TableName() string {
 }
 
 func (o *VLAN) SelectFields() string {
-	return "id,route,netmask,modified,user_id,did,name,profile,gateway"
+	return "vli,name,profile,route,netmask,modified,sti,gateway,note,user_id"
 }
 
 func (o *VLAN) InsertFields() string {
-	return "id,route,netmask,modified,user_id,did,name,profile,gateway"
+	return "vli,name,profile,route,netmask,modified,sti,gateway,note,user_id"
 }
 
 func (o *VLAN) KeyField() string {
-	return "id"
+	return "vli"
 }
 
 func (o *VLAN) KeyName() string {
-	return "ID"
+	return "VLI"
+}
+
+func (o *VLAN) Names() []string {
+	return []string{"Name", "Profile", "Route", "Netmask", "Modified", "STI", "Gateway", "Note", "UID"}
 }
 
 func (o *VLAN) ModifiedBy(user int64, t time.Time) {
+	o.UID = user
+	o.Modified = t
+}
+
+//
+// VLANView DBObject generator
+//
+func (o VLANView) NewObj() interface{} {
+	ditto := o
+	return &ditto
+}
+
+//
+// VLANView DBObject interface functions
+//
+func (o *VLANView) InsertValues() []interface{} {
+	return []interface{}{o.Profile, o.Gateway, o.Route, o.Modified, o.STI, o.Name, o.Site, o.Netmask, o.Note, o.UID}
+}
+
+func (o *VLANView) UpdateValues() []interface{} {
+	return []interface{}{o.Profile, o.Gateway, o.Route, o.Modified, o.STI, o.Name, o.Site, o.Netmask, o.Note, o.UID, o.VLI}
+}
+
+func (o *VLANView) MemberPointers() []interface{} {
+	return []interface{}{&o.VLI, &o.Profile, &o.Gateway, &o.Route, &o.Modified, &o.STI, &o.Name, &o.Site, &o.Netmask, &o.Note, &o.UID}
+}
+
+func (o *VLANView) Key() int64 {
+	return o.VLI
+}
+
+func (o *VLANView) SetID(id int64) {
+	o.VLI = id
+}
+
+func (o *VLANView) TableName() string {
+	return "vlans_view"
+}
+
+func (o *VLANView) SelectFields() string {
+	return "vli,profile,gateway,route,modified,sti,name,site,netmask,note,user_id"
+}
+
+func (o *VLANView) InsertFields() string {
+	return "vli,profile,gateway,route,modified,sti,name,site,netmask,note,user_id"
+}
+
+func (o *VLANView) KeyField() string {
+	return "vli"
+}
+
+func (o *VLANView) KeyName() string {
+	return "VLI"
+}
+
+func (o *VLANView) Names() []string {
+	return []string{"Profile", "Gateway", "Route", "Modified", "STI", "Name", "Site", "Netmask", "Note", "UID"}
+}
+
+func (o *VLANView) ModifiedBy(user int64, t time.Time) {
 	o.UID = user
 	o.Modified = t
 }

@@ -2,53 +2,65 @@
 <html>
 <head>
     <title>AssMan Test</title>
-<!--
-    <link rel="stylesheet" type="text/css" href="/dcman/static/css/bootstrap.min.css">
--->
     <link rel="stylesheet" type="text/css" href="/dcman/static/css/bootstrap.css">
-<!--
--->
+    <!--
     <link rel="stylesheet" type="text/css" href="/dcman/static/css/base.css">
     <link rel="stylesheet" type="text/css" href="/dcman/static/css/style.css">
+    -->
     <link rel="stylesheet" type="text/css" href="/dcman/static/css/new.css">
+    <script>
+// all changeable actions require this key
+    window.user_apikey = ''; 
+    </script>
+
     <script src="/dcman/static/js/jquery-2.0.3.js"></script>
     <script src="/dcman/static/js/bootstrap.js"></script>
     <script src="/dcman/static/js/vue.js"></script>
     <script src="/dcman/static/js/vue-router.js"></script>
     <script src="/dcman/static/js/util.js"></script>
+
+    <!--
+  <script src="https://ok1static.oktacdn.com/assets/js/sdk/okta-signin-widget/1.4.0/js/okta-sign-in.min.js" type="text/javascript"></script>
+  <link href="https://ok1static.oktacdn.com/assets/js/sdk/okta-signin-widget/1.4.0/css/okta-sign-in.min.css" type="text/css" rel="stylesheet">
+  <link href="https://ok1static.oktacdn.com/assets/js/sdk/okta-signin-widget/1.4.0/css/okta-theme.css" type="text/css" rel="stylesheet">
+  -->
+
 </head>
 <body>
-<!--
-    <table>
-    <tr><td>My ROW!!!</td></tr>
-    </table>
--->
+
     <div id="app">
         <my-nav :app="myapp"></my-nav>
-<!--
-        <router-view keep-alive>Loading...</router-view>
--->
         <div class="bodybox">
         <router-view>Loading...</router-view>
         </div>
     </div>
+
+    <div id="log"/>
+<!--
+    <button id="btn">Make a promise!</button>
+-->
     
 </body>
 </html>
 
-         <!--
-         -->
+<script type="text/x-template" id="tmpl-main-menu-BARE">
+    <div>
+    <hr class=menubar"/>
+    </div>
+</script>
+
 <script type="text/x-template" id="tmpl-main-menu">
     <div>
     <ul class="nav navbar-nav navbar-right">
-        <li v-show="!app.auth.loggedIn"><a href="/auth/login">Log in</a></li>
+        <li v-show="!app.auth.loggedIn"><a v-link="{ path: '/auth/login' }">Log in</a></li>
         <li class="dropdown" v-show="app.auth.loggedIn && app.auth.user">
-            <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">{{ app.auth.user.name }} <span class="caret"></span></a>
+            <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+                {{ app.auth.user.name }} <span class="caret"></span></a>
             <ul class="dropdown-menu">
                 <li><a href="#">Profile</a></li>
                 <li><a href="#">Account settings</a></li>
                 <li role="separator" class="divider"></li>
-                <li><a href="#">Log out</a></li>
+                <li><a v-link="{ path: '/auth/logout' }">Logout</a></li>
             </ul>
         </li>
     </ul>
@@ -58,25 +70,32 @@
         <li class="dropdown">
           <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Servers<span class="caret"></span></a>
           <ul class="dropdown-menu">
-            <li><a v-link="{ path: '/server/list' }">Server List</a></li>
+            <li><a v-link="{ path: '/device/list' }">Device List</a></li>
             <li><a v-link="{ path: '/vm/list' }">VM List</a></li>
             <li role="separator" class="divider"></li>
-            <li><a v-link="{ path: '/rack/list' }">Rack List</a></li>
             <li><a v-link="{ path: '/rack/layout' }">Rack Layout</a></li>
+            <li><a v-link="{ path: '/rack/list' }">Rack List</a></li>
+            <li role="separator" class="divider"></li>
+            <li><a v-link="{ path: '/device/types' }">Device Types</a></li>
           </ul>
         <li class="dropdown">
           <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Parts<span class="caret"></span></a>
           <ul class="dropdown-menu">
             <li><a v-link="{ path: '/part/inventory' }">Parts Inventory</a></li>
-            <li><a v-link="{ path: '/part/list' }">All Parts </a></li>
+            <li><a v-link="{ path: '/part/list' }">All Parts</a></li>
+            <li><a v-link="{ path: '/part/add' }">Add Part</a></li>
             <li role="separator" class="divider"></li>
             <li><a v-link="{ path: '/rma/list' }">RMA List</a></li>
+            <li role="separator" class="divider"></li>
+            <li><a v-link="{ path: '/vendor/list' }">Vendor List</a></li>
           </ul>
         <li class="dropdown">
           <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Network<span class="caret"></span></a>
           <ul class="dropdown-menu">
             <li><a v-link="{ path: '/ip/list' }">Network IPs</a></li>
             <li><a v-link="{ path: '/vlan/list' }">VLANs</a></li>
+            <li role="separator" class="divider"></li>
+            <li><a v-link="{ path: '/ip/reserve' }">Reserve IPs</a></li>
           </ul>
         </li>
       </ul>
@@ -84,7 +103,7 @@
         <div class="form-group">
           <input type="text" class="form-control" placeholder="Search" v-model="searchText">
         </div>
-        <button class="btn btn-default" v-on:click="doSearch">Submit</button>
+        <button class="btn btn-default" v-on:click="doSearch">Search</button>
       </form>
       <ul class="nav navbar-nav navbar-right">
         <li class="dropdown">
@@ -108,17 +127,25 @@
 <script type="text/x-template" id="tmpl-rma-list">
     <div id="rma-list">
         <h1 class="mytitle">All RMAs</h1>
-        <label for="DCD">Datacenter</label>
-        <select id="DCD" v-model="DCD">
-        <option v-for="dc in dcs" v-bind:value="dc.DCD">
-            {{ dc.Name }}
-        </option>
+        <label for="STI">Site</label>
+        <select id="STI" v-model="STI">
+            <option v-for="dc in sites" v-bind:value="dc.STI">
+                {{ dc.Name }}
+            </option>
+        </select>
+
+        <label for="pfilter">Filter</label>
+        <select id="pfilter" name="pfilter" v-model="ktype">
+            <option v-for="kind in kinds" v-bind:value="kind.id">
+                {{ kind.name }}
+            </option>
         </select>
 
         <label for="query">Search</label>
         <input id="query" name="query" v-model="searchQuery">
 
         <rma-grid
+            v-bind:kfilter="ktype"
             :rows="rmas"
             :columns="gridColumns"
             :filter-key="searchQuery">
@@ -129,10 +156,6 @@
 
 <!-- common table template -->
 <script type="text/x-template" id="tmpl-base-table">
-<!--
-  <table>
-  <table class="table">
--->
   <table class="table table-striped">
     <thead>
       <tr>
@@ -151,13 +174,17 @@
         entry in rows
         | filterBy filterKey
         | filterBy subFilter
-        | orderBy sortKey sortOrders[sortKey]" id="rowid(entry)">
+        | orderBy sortKey sortOrders[sortKey]" id="rowid(entry)"
+        >
         <td v-for="key in columns">
            <template v-if="linkable(key)">
               <a v-link="{ path: linkpath(entry, key)}">{{ entry[key] }}</a>
            </template>
            <template v-else>
-              {{ entry[key] }}
+               <template v-if="linkable(key)">
+                  <a v-link="{ path: linkpath(entry, key)}">{{ entry[key] }}</a>
+               </template>
+              {{* entry[key] }}
            </template>
         </td>
       </tr>
@@ -165,55 +192,22 @@
   </table>
 </script>
 
-<!--
-<script type="text/x-template" id="tmpl-parts-table">
-  <table>
-    <thead>
-      <tr>
-        <th v-for="key in columns"
-          @click="sortBy(key)"
-          :class="{active: sortKey == key}">
-          {{key | capitalize}}
-          <span class="arrow"
-            :class="sortOrders[key] > 0 ? 'asc' : 'dsc'">
-          </span>
-        </th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr v-for="
-        entry in rows
-        | filterBy filterKey
-        | filterBy noGood
-        | orderBy sortKey sortOrders[sortKey]">
-        <td v-for="key in columns">
-           <template v-if="linkable(key)">
-              <a v-link="{ path: linkpath(entry, key)}">{{ entry[key] }}</a>
-           </template>
-           <template v-else>
-              {{ entry[key] }}
-           </template>
-      </tr>
-    </tbody>
-  </table>
-</script>
--->
 
 <script type="text/x-template" id="tmpl-part-list">
     <div id="parts-div">
-        <h1 class="mytitle">All Spare Parts</h1>
-        <label for="DCD">Datacenter</label>
-        <select id="DCD" name="DCD" v-model="DCD">
-        <option v-for="dc in dcs" v-bind:value="dc.DCD">
-            {{ dc.Name }}
-        </option>
+        <h1 class="mytitle">{{sitename}} Spare Parts</h1>
+        <label for="STI">Site</label>
+        <select id="STI" name="STI" v-model="STI">
+            <option v-for="site in sites" v-bind:value="site.STI">
+                {{ site.Name }}
+            </option>
         </select>
 
         <label for="pfilter">Filter</label>
         <select id="pfilter" name="pfilter" v-model="ktype">
-        <option v-for="kind in kinds" v-bind:value="kind.id">
-            {{ kind.name }}
-        </option>
+            <option v-for="kind in kinds" v-bind:value="kind.id">
+                {{ kind.name }}
+            </option>
         </select>
 
         <label for="query">Search</label>
@@ -227,83 +221,254 @@
     </div>
 </script>
 
+<script type="text/x-template" id="tmpl-network-grid">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>IP</th>
+        <th>Type</th>
+        <th>Port</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr v-for="entry in rows" id="ip-row-{{$index}}">
+        <td>
+            <input id="ip-{{$index}}" type="text" v-model="rows[$index].IP"/>
+        </td>
+        <td>
+            <select id="ip-{{$index}}" v-model="rows[$index].IPT" number>
+                <option v-for="type in iptypes" v-bind:value="type.IPT">
+                    {{ type.Name }}
+                </option>
+            </select>
+        </td>
+        <td>
+        <select v-model="rows[$index].IFD" number>
+            <option v-for="port in ports" v-bind:value="port.IFD">
+                {{ port.Port }}
+            </option>
+        </select>
+        </td>
+        <td>
+            <button class="btn" v-on:click.prevent="updateIP($index)">Update</button>
+            <button class="btn" v-on:click.prevent="deleteIP($index)">Delete</button>
+        </td>
+      </tr>
+       
+      <tr>
+        <td>
+            <input type="text" v-model="newIP"/>
+        </td>
+        <td>
+            <select id="ip-{{$index}}" v-model="newIPT">
+                <option v-for="type in iptypes" v-bind:value="type.IPT">
+                    {{ type.Name }}
+                </option>
+            </select>
+        </td>
+        <td>
+        <select v-model="newIFD" number>
+            <option v-for="port in ports" v-bind:value="port.IFD">
+                {{ port.Port }}
+            </option>
+        </select>
+        </td>
+        <td>
+            <button class="btn" v-on:click.prevent="addIP" :disabled="ipAddDisabled">Add</button>
+        </td>
+      </tr>
 
-<script type="text/x-template" id="ip-table">
+    </tbody>
+  </table>
+</script>
+
+<script type="text/x-template" id="tmpl-interface-grid">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Port</th>
+        <th>Mgmt</th>
+        <th>MAC</th>
+        <th>Switch Port</th>
+        <th>Cable Tag</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr v-for="entry in rows" id="face-row-{{$index}}">
+        <td>
+            <input type="text" v-model="rows[$index].Port"/>
+        </td>
+        <td>
+            <input type="checkbox" v-model="rows[$index].Mgmt"/>
+        </td>
+        <td>
+            <input type="text" v-model="rows[$index].MAC"/>
+        </td>
+        <td>
+            <input type="text" v-model="rows[$index].SwitchPort"/>
+        </td>
+        <td>
+            <input type="text" v-model="rows[$index].CableTag"/>
+        </td>
+        <td>
+            <button class="btn" v-on:click.prevent="updateInterface($index)">Update</button>
+            <button class="btn" v-on:click.prevent="deleteInterface($index)">Delete</button>
+        </td>
+      </tr>
+
+      <tr>
+        <td>
+            <input type="text" v-model="newPort"/>
+        </td>
+        <td>
+            <input type="checkbox" v-model="newMgmt"/>
+        </td>
+        <td>
+            <input type="text" v-model="newMAC"/>
+        </td>
+        <td>
+            <input type="text" v-model="newSwitchPort"/>
+        </td>
+        <td>
+            <input type="text" v-model="newCableTag"/>
+        </td>
+        <td>
+            <button class="btn" v-on:click.prevent="addInterface" :disabled="interfaceAddDisabled">Add</button>
+        </td>
+      </tr>
+
+    </tbody>
+  </table>
+</script>
+
+
+<script type="text/x-template" id="tmpl-ip-list">
 <div>
-    <h1 class="mytitle">All MY Network IP Addresses</h1>
-    <label for="DCD">Site</label>
-    <select id="DCD" v-model="DCD">
-    <option v-for="dc in dcs" v-bind:value="dc.DCD">
-        {{ dc.Name }}
-    </option>
+    <h1 class="mytitle">{{sitename}} Network IP Addresses</h1>
+    <label for="STI">Site</label>
+    <select id="STI" v-model="STI">
+        <option v-for="dc in sites" v-bind:value="dc.STI">
+            {{ dc.Name }}
+        </option>
     </select>
 
-    <label for="What">Type</label>
-    <select id="What" v-model="What">
-    <option v-for="w in whatlist" v-bind:value="w">
-        {{ w }}
-    </option>
+    <label for="Type">Type</label>
+    <select id="Type" v-model="Type">
+        <option v-for="t in typelist" v-bind:value="t">
+            {{ t }}
+        </option>
     </select>
 
-    <label for="Kind">Kind</label>
-    <select id="Kind" v-model="Kind">
-    <option v-for="k in kindlist" v-bind:value="k">
-        {{ k }}
-    </option>
+    <label for="Host">Kind</label>
+    <select id="Host" v-model="Host">
+        <option v-for="h in hostlist" v-bind:value="h">
+            {{ h }}
+        </option>
     </select>
 
     <label for="query">Search</label>
     <input id="query" name="query" v-model="searchQuery">
-    <ipgrid
+    <ip-grid
         :rows="rows"
         :columns="columns"
-        v-bind:DCD="DCD"
-        v-bind:What="What"
-        v-bind:Kind="Kind"
-        :filter-key="searchQuery">
-        >
-     ></ipgrid>
+        :iptypes="ipTypes"
+        :Host="Host"
+        :Type="Type"
+    >
+     ></ip-grid>
 </div>
 </script>
 
-<script type="text/x-template" id="tmpl-server-page">
-    <div id="server-list">
-        <h1 class="mytitle">All MY Servers</h1>
+<script type="text/x-template" id="tmpl-device-list">
+    <div class="view">
+        <div v-if="$loadingRouteData">Loading ...</div>
+        <div v-if="!$loadingRouteData">
+            <h1 class="mytitle">{{sitename}} Servers</h1>
+            <label for="STI">Site</label>
+            <select id="STI" v-model="STI">
+                <option v-for="dc in sites" v-bind:value="dc.STI">
+                    {{ dc.Name }}
+                </option>
+            </select>
 
-        <label for="DCD">Datacenter</label>
-        <select id="DCD" v-model="DCD">
-        <option v-for="dc in dcs" v-bind:value="dc.DCD">
-            {{ dc.Name }}
-        </option>
-        </select>
+            <label for="RID">Rack</label>
+            <select id="Rack" v-model="RID">
+                <option v-for="rack in racks" v-bind:value="rack.RID">
+                    {{ rack.Label }}
+                </option>
+            </select>
 
-        <label for="RID">Rack</label>
-        <select id="Rack" v-model="RID">
-        <option v-for="rack in racks" v-bind:value="rack.RID">
-            {{ rack.Label }}
-        </option>
-        </select>
-
-        <label for="query">Search</label>
-        <input id="query" name="query" v-model="searchQuery">
-        <server-grid
-            v-bind:RID="RID"
-            :rows="gridData"
-            :columns="gridColumns"
-            :filter-key="searchQuery">
-        </server-grid>
+            <label for="query">Search</label>
+            <input id="query" name="query" v-model="searchQuery">
+            <device-grid
+                v-bind:RID="RID"
+                :rows="gridData"
+                :columns="gridColumns"
+                :filter-key="searchQuery">
+            </device-grid>
+        </div>
     </div>
 </script>
 
-<script type="text/x-template" id="tmpl-vm-page">
-    <div id="server-list">
-        <h1 class="mytitle">All The VMs</h1>
+<script type="text/x-template" id="tmpl-vm-ips">
+  <div>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>IP</th>
+        <th>Type</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr v-for="entry in rows" id="ip-row-{{$index}}">
+        <td>
+            <input id="ip-{{$index}}" type="text" v-model="rows[$index].IPv4"/>
+        </td>
+        <td>
+            <select id="ip-{{$index}}" v-model="rows[$index].IPT" number>
+                <option v-for="type in types" v-bind:value="type.IPT">
+                    {{ type.Name }}
+                </option>
+            </select>
+        </td>
+        <td>
+            <button class="btn" v-on:click="updateIP($index)">Update</button>
+            <button class="btn" v-on:click="deleteIP($index)">Delete</button>
+        </td>
+      </tr>
+       
+      <tr>
+        <td>
+            <input type="text" v-model="newIP"/>
+        </td>
+        <td>
+            <select id="ip-{{$index}}" v-model="newIPT">
+                <option v-for="type in types" v-bind:value="type.IPT">
+                    {{ type.Name }}
+                </option>
+            </select>
+        </td>
+        <td>
+            <button class="btn" v-on:click="addIP" :disabled="ipAddDisabled">Add</button>
+        </td>
+      </tr>
 
-        <label for="DCD">Datacenter</label>
-        <select id="DCD" v-model="DCD">
-        <option v-for="dc in dcs" v-bind:value="dc.DCD">
-            {{ dc.Name }}
-        </option>
+    </tbody>
+  </table>
+  </div>
+</script>
+
+<script type="text/x-template" id="tmpl-vm-list">
+    <div id="vm-page">
+        <h1 class="mytitle">{{sitename}} VMs</h1>
+        <label for="STI">Site</label>
+        <select id="STI" v-model="STI">
+            <option v-for="dc in sites" v-bind:value="dc.STI">
+                {{ dc.Name }}
+            </option>
         </select>
 
         <label for="query">Search</label>
@@ -318,117 +483,97 @@
 </script>
 
 
-<!--
-<script type="text/x-template" id="tmpl-found-table">
+<script type="text/x-template" id="tmpl-search-for">
 <div>
-  <h1 class="mytitle">Multiple matches found for: {{ looky }}</h1>
-  <table>
-    <thead>
-      <tr>
-        <th v-for="key in columns"
-          @click="sortBy(key)"
-          :class="{active: sortKey == key}">
-          {{key | capitalize}}
-          <span class="arrow"
-            :class="sortOrders[key] > 0 ? 'asc' : 'dsc'">
-          </span>
-        </th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr v-for="
-        entry in rows
-        | orderBy sortKey sortOrders[sortKey]">
-        <td>
-            {{ entry.Kind }}
-       </td>
-       <td>
-           <template v-if="entry.Kind == 'server'">
-              <a v-link="{ path: '/server/edit/' + entry.ID }">{{ entry.Name }}</a>
-           </template>
-           <template v-else>
-              <a v-link="{ path: '/vm/edit/' + entry.ID }">{{ entry.Name }}</a>
-           </template>
-       </td>
-      </tr>
-    </tbody>
-  </table>
+    <div v-if="found.length">
+        <h1 class="mytitle">Multiple matches found for: {{ searchText }}</h1>
+        <found-list
+            :columns="columns"
+            :rows="found">
+        </found-list>
 </div>
 </script>
--->
 
-<script type="text/x-template" id="server-edit-template">
-    <div id="server-edit" class="col-xs-12">
+
+<script type="text/x-template" id="tmpl-device-edit">
+    <div id="device-edit" class="col-xs-12">
     
-<!--
-        <form role="form" class="form-horizontal" method="POST" action="/dcman/api/server/view/">
--->
-        <form role="form" class="form-horizontal" method="POST">
+        <form role="form" class="form-horizontal">
             <fieldset class="col-xs-12">
                 <legend>General</legend>
 
                 <div class="form-group">
+                    <label for="DTI" class="control-label col-xs-2">Type</label>
+                    <div class="col-xs-2">
+                        <select id="DTI" v-model="Device.DTI" number>
+                            <option v-for="type in device_types" v-bind:value="type.DTI">
+                                {{ type.Name }}
+                            </option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
                     <label for="Hostname" class="control-label col-xs-2">Hostname</label>
                     <div class="col-xs-2">
-                        <input type="text" id="Hostname" v-model="Server.Hostname" pattern=".+" required/>
+                        <input type="text" id="Hostname" v-model="Device.Hostname" pattern=".+" required/>
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label for="Alias" class="control-label col-xs-2">Alias</label>
                     <div class="col-xs-2">
-                        <input type="text" v-model="Server.Alias"/>
+                        <input type="text" v-model="Device.Alias"/>
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label for="DCD" class="control-label col-xs-2">Datacenter</label>
+                    <label for="STI" class="control-label col-xs-2">Site</label>
                     <div class="col-xs-2">
-                            <select id="DCD" v-model="Server.DCD">
-                            <option v-for="dc in dcs" v-bind:value="dc.DCD">
+                        <select id="STI" v-model="Device.STI" number>
+                            <option v-for="dc in sites" v-bind:value="dc.STI">
                                 {{ dc.Name }}
                             </option>
-                            </select>
+                        </select>
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label for="RID" class="control-label col-xs-2"><a href="rack/view/{{Server.DC}}/{{Server.Rack}}">Rack Number</a></label>
+                    <label for="RID" class="control-label col-xs-2"><a href="rack/view/{{Device.DC}}/{{Device.Rack}}">Rack Number</a></label>
                     <div class="col-xs-2">
-                            <select id="RID" name="RID" v-model="Server.RID">
+                        <select id="RID" name="RID" v-model="Device.RID" number>
                             <option v-for="rack in racks" v-bind:value="rack.RID">
                                 {{ rack.Label }}
                             </option>
-                            </select>
-                    </select>
+                        </select>
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label for="RU" class="control-label col-xs-2">Rack Unit</label>
                     <div class="col-xs-2">
-                        <input type="text" id="RU" v-model="Server.RU"/>
+                        <input type="text" id="RU" v-model="Device.RU" number/>
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label for="Height" class="control-label col-xs-2">Unit Height</label>
                     <div class="col-xs-2">
-                        <input type="text" id="Height" v-model="Server.Height"/>
+                        <input type="text" id="Height" v-model="Device.Height" number/>
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label for="Profile" class="control-label col-xs-2">Profile</label>
                     <div class="col-xs-2">
-                        <input type="text" id="Profile" v-model="Server.Profile"/>
+                        <input type="text" id="Profile" v-model="Device.Profile"/>
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label for="TID" class="control-label col-xs-2">Tag</label>
                     <div class="col-xs-2">
-                            <select id="TID" v-model="Server.TID">
+                            <select id="TID" v-model="Device.TID" number>
                                 <option value="0"></option>
                                 <option v-for="tag in tags" v-bind:value="tag.TID">
                                     {{ tag.Name }}
@@ -440,189 +585,137 @@
                 <div class="form-group">
                     <label for="AssetTag" class="control-label col-xs-2">Asset Tag</label>
                     <div class="col-xs-2">
-                        <input type="text" id="AssetTag" v-model="Server.AssetTag"/>
+                        <input type="text" id="AssetTag" v-model="Device.AssetTag"/>
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label for="Serial" class="control-label col-xs-2">Serial Number</label>
                     <div class="col-xs-2">
-                        <input type="text" id="Serial" v-model="Server.Serial"/>
+                        <input type="text" id="Serial" v-model="Device.SerialNo"/>
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label for="Assigned" class="control-label col-xs-2">Assigned</label>
                     <div class="col-xs-2">
-                        <input type="text" id="Assigned" v-model="Server.Assigned"/>
+                        <input type="text" id="Assigned" v-model="Device.Assigned"/>
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label for="Note" class="control-label col-xs-2">Note</label>
                     <div class="col-xs-2">
-                        <textarea cols="35" rows="3" id="Note" v-model="Server.Note"></textarea>
-                    </div>
-                </div>
-                </fieldset>
-
-                <fieldset class="col-xs-12">
-                    <legend>IPMI</legend>
-
-                <div class="form-group">
-                    <label for="IPIpmi" class="control-label col-xs-2">IP</label>
-                    <div class="col-xs-2">
-                        <input type="text" id="IPIpmi" v-model="Server.IPIpmi"/>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="MacIPMI" class="control-label col-xs-2">MAC</label>
-                    <div class="col-xs-2">
-                        <input type="text" id="MacIPMI" v-model="Server.MacIPMI"/>
+                        <textarea cols="35" rows="3" id="Note" v-model="Device.Note"></textarea>
                     </div>
                 </div>
             </fieldset>
 
             <fieldset class="col-xs-12">
-                <legend>Network IP</legend>
-
-                <div class="form-group">
-                    <label for="ipselector" class="control-label col-xs-2">VLAN</label>
-                    <div class="col-xs-2">
-                        <!--
-                        <select id="ipselector">
-                            {{ range $k,$v := .IPs }}
-                            <option value="{{$v}}">{{$k}}</option>
-                            {{ end }}
-                        </select>
-                        -->
-                    </div>
-                    {{ end }}
-                </div>
-
-                <div class="form-group">
-                    <label for="IPInternal" class="control-label col-xs-2"> Internal IP</label>
-                    <div class="col-xs-2">
-                    <!--
-                    <label for="vlanip" title="{{Server.InternalVLAN}}">Internal IP</label>
-                    <input type="text" id="vlanip" name="IPInternal" value="{{Server.IPInternal}}"/>
-                    -->
-                    <input type="text" id="IPInternal" v-model="Server.IPInternal"/>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="MacPort0" class="control-label col-xs-2">Eth0 MAC</label>
-                    <div class="col-xs-2">
-                        <input type="text" id="MacPort0" v-model="Server.MacPort0"/>
-                        <button class="btn" v-show="Server.MacPort0.length == 0" v-on:click="getMacAddr">Discover</button>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="MacPort1" class="control-label col-xs-2">Eth1 MAC</label>
-                    <div class="col-xs-2">
-                        <input type="text" id="MacPort1" v-model="Server.MacPort1"/>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="IPPublic" class="control-label col-xs-2">Public IP</label>
-                    <div class="col-xs-2">
-                        <input type="text" id="IPPublic" v-model="Server.IPPublic"/>
-                    </div>
-                </div>
-            </fieldset>
-
-            <fieldset class="col-xs-12">
-                <legend>Switch Ports</legend>
-
-                <div class="form-group">
-                    <label for="PortIpmi" class="control-label col-xs-2">IPMI</label>
-                    <div class="col-xs-2">
-                        <input type="text" name="PortIpmi" id="PortIpmi" v-model="Server.PortIpmi"/>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="PortEth0" class="control-label col-xs-2">Eth0</label>
-                    <div class="col-xs-2">
-                        <input type="text" name="PortEth0" id="PortEth0" v-model="Server.PortEth0"/>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="PortEth1" class="control-label col-xs-2">Eth1</label>
-                    <div class="col-xs-2">
-                        <input type="text" name="PortEth1" id="PortEth1" v-model="Server.PortEth1"/>
-                    </div>
-                </div>
-
-            </fieldset>
-
-            <fieldset class="col-xs-12">
-                <legend>Cables</legend>
-
-                <div class="form-group">
-                    <label for="CableIpmi" class="control-label col-xs-2">IPMI</label>
-                    <div class="col-xs-2">
-                        <input type="text" name="CableIpmi" id="CableIpmi" v-model="Server.CableIpmi"/>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="CableEth0" class="control-label col-xs-2">Eth0</label>
-                    <div class="col-xs-2">
-                        <input type="text" name="CableEth0" id="CableEth0" v-model="Server.CableEth0"/>
-                    </div>
-
-                </div>
-
-                <div class="form-group">
-                    <label for="CableEth1" class="control-label col-xs-2">Eth1</label>
-                    <div class="col-xs-2">
-                        <input type="text" name="CableEth1" id="CableEth1" v-model="Server.CableEth1"/>
-                    </div>
-                </div>
-
-                <!--
-                <fieldset class="col-xs-12">
-                -->
                 <div class="form-group">
                     <div class="col-xs-offset-1 col-xs-1">
                         <button class="btn" onclick="javascript:window.history.go(-1)">Cancel</button>
                     </div>
                     <div class="col-xs-1">
-                        <button class="btn" v-on:click="Updated">Update</button>
+                        <button class="btn" v-on:click.prevent="saveSelf">
+                        <template v-if="Device.DID">Update</template>
+                        <template v-else>Add</template>
+                        </button>
                     </div>
-                    <div class="col-xs-1">
-                        <button class="btn" v-on:click="Deleted">Delete</button>
+                    <div class="col-xs-1" v-if="Device.DID">
+                        <button class="btn" v-on:click.prevent="deleteSelf">Delete</button>
                     </div>
-                    <!--
-                    <button class="btn" v-on:click="Parts">Parts</button>
-                    -->
                 </div>
             </fieldset>
 
-            <input type="hidden" name="SID" value="{{Server.SID}}">
-            <input type="hidden" name="OriginalRack" value="{{Server.Rack}}"/>
-            <input type="hidden" name="OriginalDCD" value="{{Server.Rack}}"/>
+            <fieldset class="col-xs-12">
+                <legend>IP Networking</legend>
+                <network-grid
+                    :ports="Device.interfaces"
+                    :iptypes="ipTypes"
+                    :rows="Device.ips"
+                    :columns="netColumns"
+                    >
+                </network-grid>
+            </fieldset>
+
+            <fieldset class="col-xs-12">
+                <legend>Network Interfaces</legend>
+                <interface-grid
+                    :DID="Device.DID"
+                    :rows="Device.interfaces"
+                    :columns="ifaceColumns">
+                </interface-grid>
+            </fieldset>
         </form>
     </div>
 </script>
 
-<script type="text/x-template" id="tmpl-rack-edit">
-    <form role="form" class="form-horizontal" method="POST">
+<script type="text/x-template" id="tmpl-vendor-edit">
+    <form role="form" class="form-horizontal">
         <fieldset class="col-xs-12">
-            <legend>VM</legend>
+            <legend>Vendor</legend>
+            <div class="form-group">
+                <label for="name" class="control-label col-xs-2">Name</label>
+                <div class="col-xs-2">
+                    <input type="text" name="name" v-model="Vendor.Name"/>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="phone" class="control-label col-xs-2">Phone Number</label>
+                <div class="col-xs-2">
+                    <input type="text" name="phone" v-model="Vendor.Phone"/>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="Note" class="control-label col-xs-2">Note</label>
+                <div class="col-xs-2">
+                    <textarea cols="25" rows="2" name="Note" v-model="Vendor.Note"></textarea>
+                </div>
+            </div>
+        </fieldset>
+
+        <fieldset class="col-xs-12">
+            <div class="form-group">
+                <div class="col-xs-offset-1 col-xs-1">
+                    <button class="btn" onclick="javascript:window.history.go(-1)">Cancel</button>
+                </div>
+                <div class="col-xs-1">
+                    <button class="btn" v-on:click="saveSelf">Update</button>
+                </div>
+                <div class="col-xs-1">
+                    <button class="btn" v-on:click="deleteSelf">Delete</button>
+                </div>
+            </div>
+        </fieldset>
+    </form>
+    </div>
+</script>
+
+<script type="text/x-template" id="tmpl-rack-edit">
+    <form role="form" class="form-horizontal">
+        <fieldset class="col-xs-12">
+            <legend>Rack</legend>
+            <!--
             <div class="form-group">
                 <label for="Site" class="control-label col-xs-2">Site</label>
                 <div class="col-xs-2">
                     <input type="text" name="Site" v-model="Rack.DC"/>
                 </div>
             </div>
-
+-->
+            <div class="form-group">
+                    <label for="STI" class="control-label col-xs-2">Site</label>
+                    <div class="col-xs-2">
+                        <select id="STI" v-model="Rack.STI" number>
+                            <option v-for="site in sites" v-bind:value="site.STI">
+                                {{ site.Name }}
+                            </option>
+                        </select>
+                    </div>
+            </div>
             <div class="form-group">
                 <label for="Label" class="control-label col-xs-2">Rack Number</label>
                 <div class="col-xs-2">
@@ -640,7 +733,7 @@
             <div class="form-group">
                 <label for="RUs" class="control-label col-xs-2">Height (RUs)</label>
                 <div class="col-xs-2">
-                    <input type="text" name="RUs" v-model="Rack.RUs"/>
+                    <input type="text" name="RUs" v-model="Rack.RUs" number/>
                 </div>
             </div>
         </fieldset>
@@ -671,12 +764,13 @@
 
 <script type="text/x-template" id="tmpl-rack-list">
     <div>
-        <h1 class="mytitle">Rack Inventory</h1>
-        <label for="DCD">Site</label>
-        <select id="DCD" name="DCD" v-model="DCD">
-        <option v-for="dc in dcs" v-bind:value="dc.DCD">
-            {{ dc.Name }}
-        </option>
+        <h1 class="mytitle">{{site}} Rack Inventory</h1>
+        <h3 class="mytitle">({{rows.length}} racks)</h3>
+        <label for="STI">Site</label>
+        <select id="STI" name="STI" v-model="STI">
+            <option v-for="dc in sites" v-bind:value="dc.STI">
+                {{ dc.Name }}
+            </option>
         </select>
 
         <label for="query">Search</label>
@@ -689,69 +783,99 @@
     </div>
 </script>
 
-<script type="text/x-template" id="tmpl-rack-view">
+<script type="text/x-template" id="tmpl-vendor-list">
     <div>
-<!--
-        <h1 class="mytitle">Rack {{ rack.Label }}</h1>
-        <p>DC: {{ rack.DC }} </p>
-        <p>RACK: {{ rack | json }}</p>
-        <p>LAYOUT: {{ layout | json }}</p>
+        <h1 class="mytitle">Vendors</h1>
+        <label for="query">Search</label>
+        <input id="query" v-model="searchQuery">
+        <vendor-grid
+            :rows="rows"
+            :columns="columns"
+            :filter-key="searchQuery">
+        </vendor-grid>
+    </div>
+</script>
 
-"DC": "AMS", "Rack": 101, "DCD": 1, "NID": 0, "SID": 1524, "RID": 42, "RU": 42, "Height": 1, "Hostname": "hyp22024", "Alias": "xcp22024", "AssetTag": "", "Serial": "", "IPMI": "10.200.0.36", "Internal": "10.200.4.46", "Note": ""
-        HEY: {{ layouts | json }}
-                <td>{{ lay.Rack }}</td>
-        <table class="table">
--->
+
+<script type="text/x-template" id="tmpl-rack-view">
+    <div class="rackwrap">
+    <div class="rackview">
+         <h2 class="racktitle">
+         <a v-link="{ path: '/rack/edit/' + layouts.rack.RID}">Rack: {{ layouts.rack.Label }}</a>
+         </h2>
+         <h4 class="racktitle">
+         <span v-if="layouts.rack.VendorID">(Vendor ID: {{layouts.rack.VendorID}})</span>
+         <span v-else>&nbsp;</span>
+         </h4>
         <table class="racked">
-            <tr v-for="lay in layouts" class="rackrow rackheight{{lay.Height}}">
-                <td>{{ lay.RU }}</td>
-                <td>{{ lay.Height }}</td>
-                <td>{{ lay.Hostname }}</td>
-                <td>{{ lay.IPMI }}</td>
-                <td id="ip-{{ lay.IPMI }}"></td>
-                <td>{{ lay.Internal }}</td>
-                <td id="ip-{{ lay.Internal }}"></td>
+            <tr>
+                <th class="rcell th-ru">RU</th>
+                <th class="rcell">Hostname</th>
+                <th class="rcell">IPMI</th>
+                <th class="rcell cellok">ok</th>
+                <th class="rcell">Internal</th>
+                <th class="rcell cellok">ok</th>
+            </tr>
+            <tr v-for="lay in layouts.units" class="rackrow rackheight{{lay.Height}}" v-if="lay.Height">
+                <td class="rcell">
+                    <template v-if="lay.Hostname">
+                    {{ lay.RU }}
+                    </template>
+                    <template v-else>
+                    <a v-link="{ name: 'device-add', params: {STI: layouts.rack.STI, RID:layouts.rack.RID, RU:lay.RU}}">{{ lay.RU }}</a>
+                    </template>
+                </td>
+                <td class="rcell"><a v-if="lay.Hostname" v-link="{ path: '/device/edit/' + lay.DID}">{{ lay.Hostname }}</a></td>
+                <td class="rcell">{{ lay.Mgmt }}</td>
+                <td class="rcell" id="ip-{{ lay.Mgmt }}"></td>
+                <td class="rcell">{{ lay.IPs }}</td>
+                <td class="rcell" id="ip-{{ lay.IPs }}"></td>
             </tr>
         </table>
     </div>
-</script>
-
-<script type="text/x-template" id="tmpl-rack-layout">
-    <div>
-        <h1 class="mytitle">Rack View</h1>
-        <label for="DCD">Site</label>
-        <select id="DCD" name="DCD" v-model="DCD">
-        <option v-for="dc in dcs" v-bind:value="dc.DCD">
-            {{ dc.Name }}
-        </option>
-        </select>
-
-        <label for="RID">Rack</label>
-        <select id="Rack" v-model="RID">
-        <option v-for="rack in racks" v-bind:value="rack.RID">
-            {{ rack.Label }}
-        </option>
-        </select>
-        <button class="btn" v-on:click="ping">Ping</button>
-<!--
-        LEN: {{ layouts.length }}
-        <rack-view v-for="layout in layouts" :layout="layout">
-        </rack-grid>
--->
-        <rack-view :layouts="layouts">
-        </rack-grid>
     </div>
 </script>
 
+
+<script type="text/x-template" id="tmpl-rack-layout">
+    <div>
+        <h1 class="mytitle">Rack View
+        <button class="btn" v-on:click="ping">Ping</button>
+        </h1>
+        <label for="STI">Site</label>
+        <select id="STI" name="STI" v-model="STI" number>
+            <option v-for="dc in sites" v-bind:value="dc.STI">
+                {{ dc.Name }}
+            </option>
+        </select>
+
+        <label for="RID">Rack</label>
+        <select id="Rack" v-model="RID" number>
+            <option v-for="rack in racks" v-bind:value="rack.RID">
+                {{ rack.Label }}
+            </option>
+        </select>
+
+        <div class="allracks">
+            <rack-view 
+                v-for="lump in lumpy | filterBy rfilter"
+                v-bind:RID="RID"
+                :layouts="lump">
+            </rack-view>
+        </div>
+    </div>
+</script>
+
+
 <script type="text/x-template" id="tmpl-vm-edit">
     <div class="vm">
-    <form role="form" class="form-horizontal" method="POST">
+    <form role="form" class="form-horizontal">
         <fieldset class="col-xs-12">
             <legend>VM</legend>
             <div class="form-group">
                 <label for="Server" class="control-label col-xs-2">Server</label>
                 <div class="col-xs-2">
-                     <a v-link="{ path: '/server/edit/' + VM.SID}">{{ VM.Server }}</a>
+                     <a v-link="{ path: '/device/edit/' + VM.DID}">{{ VM.Server }}</a>
                 </div>
             </div>
 
@@ -766,27 +890,6 @@
                 <label for="Profile" class="control-label col-xs-2">Profile</label>
                 <div class="col-xs-2">
                     <input type="text" name="Profile" v-model="VM.Profile"/>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label for="Private" class="control-label col-xs-2">Private IP</label>
-                <div class="col-xs-2">
-                    <input type="text" name="Private" v-model="VM.Private" pattern=".+" required/>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label for="Public" class="control-label col-xs-2">Public IP</label>
-                <div class="col-xs-2">
-                    <input type="text" name="Public" v-model="VM.Public"/>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label for="VIP" class="control-label col-xs-2">VIP</label>
-                <div class="col-xs-2">
-                    <input type="text" name="VIP" v-model="VM.VIP"/>
                 </div>
             </div>
 
@@ -811,43 +914,40 @@
                     <button class="btn" onclick="javascript:window.history.go(-1)">Cancel</button>
                 </div>
                 <div class="col-xs-1">
-                    <button class="btn" v-on:click="saveSelf">Update</button>
+                    <button class="btn" v-on:click.prevent="saveSelf">Update</button>
                 </div>
                 <div class="col-xs-1">
                     <button class="btn" v-on:click="deleteSelf">Delete</button>
                 </div>
             </div>
         </fieldset>
+
+            <fieldset class="col-xs-12">
+                <legend>IP Networking</legend>
+                <vm-ips :VMI="VMI">
+                </vm-ips>
+            </fieldset>
     </form>
     </div>
 </script>
 
 
-<script type="text/x-template" id="tmpl-inventory-list">
+<script type="text/x-template" id="tmpl-part-inventory">
     <div>
-        <h1 class="mytitle">Available Inventory</h1>
-        <label for="DCD">Site</label>
-        <select id="DCD" name="DCD" v-model="DCD">
-        <option v-for="dc in dcs" v-bind:value="dc.DCD">
-            {{ dc.Name }}
+        <h1 class="mytitle">{{sitename}} Available Inventory</h1>
+        <label for="STI">Site</label>
+        <select id="STI" name="STI" v-model="STI">
+        <option v-for="site in sites" v-bind:value="site.STI">
+            {{ site.Name }}
         </option>
         </select>
 
         <label for="query">Search</label>
         <input id="query" v-model="searchQuery">
-        <!--
-        <button id="newpart" class='btn using-button' v-on:click="newPart">New Part</button>
-        -->
         <inventory-grid
             :rows="partData"
             :columns="gridColumns"
             :filter-key="searchQuery">
-            <!--
-            <div slot="buddy">
-                <button class='btn using-button' v-on:click="useThisPart">Use Part</button>
-                <button class='btn addng-button' v-on:click="addThisPart">Add Part</button>
-            </div>
-                -->
         </inventory-grid>
     </div>
 </script>
@@ -877,16 +977,19 @@
 
 
 <script type="text/x-template" id="tmpl-vlan-edit">
-    <div id="server-edit" class="col-xs-12">
+    <div id="vlan-edit" class="col-xs-12">
     
-        <form role="form" class="form-horizontal" method="POST" action="/dcman/api/server/view/">
+        <form role="form" class="form-horizontal">
             <fieldset class="col-xs-12">
                 <legend>VLAN</legend>
-
                 <div class="form-group">
-                    <label for="DC" class="control-label col-xs-2">Site</label>
+                    <label for="STI" class="control-label col-xs-2">Site</label>
                     <div class="col-xs-2">
-                        <input type="text" id="DC" v-model="VLAN.DC" readonly/>
+                        <select id="STI" name="STI" v-model="VLAN.STI" number>
+                        <option v-for="site in sites" v-bind:value="site.STI">
+                            {{ site.Name }}
+                        </option>
+                        </select>
                     </div>
                 </div>
 
@@ -943,19 +1046,114 @@
     </div>
 </script>
 
+<script type="text/x-template" id="tmpl-ip-reserve">
+    <div id="vlan-edit" class="col-xs-12">
+    
+        <form role="form" class="form-horizontal">
+            <fieldset class="col-xs-12">
+                <legend>Reserve IPs</legend>
+                <div class="form-group">
+                    <label for="STI" class="control-label col-xs-2">Site</label>
+                    <div class="col-xs-2">
+                        <select id="STI" name="STI" v-model="STI" number>
+                        <option v-for="site in sites" v-bind:value="site.STI">
+                            {{ site.Name }}
+                        </option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="Name" class="control-label col-xs-2">VLAN</label>
+                    <div class="col-xs-2">
+                        <select id="VLI" name="VLI" v-model="VLI" number>
+                        <option v-for="vlan in vlans" v-bind:value="vlan.VLI">
+                            {{ vlan.Name }}
+                        </option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="Network" class="control-label col-xs-2">Network Range</label>
+                    <div class="col-xs-2">
+                        <input class="form-control col-xs-2" type="text" id="Network" v-model="Network" readonly/>
+                    </div>
+                </div>
+<!--
+                <div class="form-group">
+                    <label for="Network" class="control-label col-xs-2">Network</label>
+                    <div class="col-xs-2">
+                        <input type="text" id="Network" v-model="Network" readonly/>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="Max" class="control-label col-xs-2">Max</label>
+                    <div class="col-xs-2">
+                        <input type="text" id="Max" v-model="Max" readonly/>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="Netmask" class="control-label col-xs-2">Netmask</label>
+                    <div class="col-xs-2">
+                        <input type="text" id="Netmask" v-model="Netmask" readonly/>
+                    </div>
+                </div>
+-->
+                <div class="form-group">
+                    <label for="From" class="control-label col-xs-2">From</label>
+                    <div class="col-xs-2">
+                        <input type="text" id="From" v-model="From" @change="checkFrom"/>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="To" class="control-label col-xs-2">To</label>
+                    <div class="col-xs-2">
+                        <input type="text" id="To" v-model="To" @change="checkTo"/>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="Note" class="control-label col-xs-2">Note</label>
+                    <div class="col-xs-2">
+                        <input type="text" id="Note" v-model="Note"/>
+                    </div>
+                </div>
+
+            </fieldset>
+
+            <fieldset class="col-xs-12">
+                <div class="form-group">
+                    <div class="col-xs-offset-1 col-xs-1">
+                        <button class="btn" onclick="javascript:window.history.go(-1)">Cancel</button>
+                    </div>
+                    <div class="col-xs-1">
+                        <button class="btn btn-primary" v-on:click.prevent="reserveIPs" :disabled="disableReserve">Reserve</button>
+                    </div>
+                </div>
+            </fieldset>
+        </form>
+    </div>
+</script>
+
 <script type="text/x-template" id="tmpl-part-edit">
     <div id="part-edit">
-        <h1 class="mytitle">Edit Part</h1>
-        <form id="part-edit" class="form-horizontal" method="POST">
+
+        <h1 class="mytitle" v-if="Part.PID">Edit Part</h1>
+        <h1 class="mytitle" v-else>Add Part</h1>
+
+        <form id="part-edit" class="form-horizontal">
         <div class="form-group">
-            <label for="DCD" class="control-label col-xs-2">Site</label>
+            <label for="STI" class="control-label col-xs-2">Site</label>
             <div class="col-xs-2">
-                    <select id="DCD" name="DCD" v-model="Part.DCD">
-                    <option v-for="dc in dcs" v-bind:value="dc.DCD">
-                        {{ dc.Name }}
-                    </option>
-                    </select>
-            </select>
+                <select id="STI" name="STI" v-model="Part.STI" number>
+                <option v-for="site in sites" v-bind:value="site.STI">
+                    {{ site.Name }}
+                </option>
+                </select>
             </div>
         </div>
         <div class="form-group">
@@ -965,12 +1163,13 @@
             </div>
         </div>
         <div class="form-group">
-            <label for="hostname" class="control-label col-xs-2">Server Hostname</label>
+            <label for="PTI" class="control-label col-xs-2">Part Type</label>
             <div class="col-xs-2">
-                <!--
-                <input type="text" class="form-control" id="hostname" v-model="RMA.Hostname">
-                -->
-                <input type="text" class="form-control" id="hostname" placeholder="optional"  v-model="Part.Hostname" @change="findhost">
+                <select id="PTI" name="PTI" v-model="Part.PTI" number>
+                <option v-for="type in types" v-bind:value="types.PTI">
+                    {{ type.Name }}
+                </option>
+                </select>
             </div>
         </div>
         <div class="form-group">
@@ -1004,6 +1203,12 @@
             </div>
         </div>
         <div class="form-group">
+            <label for="hostname" class="control-label col-xs-2">Server Hostname</label>
+            <div class="col-xs-2">
+                <input type="text" class="form-control" id="hostname" placeholder="optional"  v-model="Part.Hostname" @change="findhost">
+            </div>
+        </div>
+        <div class="form-group">
             <div class="col-xs-offset-1 col-xs-1">
                 <button class="btn" type="cancel" v-on:click="showList">Cancel</button>
             </div>
@@ -1011,8 +1216,14 @@
                 <button class="btn" v-on:click="doRMA">RMA</button>
             </div>
             <div class="col-xs-1">
-                <button class="btn btn-primary" v-on:click="saveSelf" v-if="Part.PID">Update</button>
-                <button class="btn btn-primary" v-on:click="addSelf" v-else>Add</button>
+                <button class="btn btn-primary" v-on:click="saveSelf" :disabled="disableSave">
+                <template v-if="Part.PID">
+                Update
+                </template>
+                <template v-else>
+                Add
+                </template>
+                </button>
             </div>
         </div>
         </form>
@@ -1021,7 +1232,7 @@
 
 
 <script type="text/x-template" id="tmpl-user-edit">
-    <div id="rma-edit">
+    <div id="user-edit">
 
         <h1 class="mytitle">Edit User</h1>
         <form class="form-horizontal">
@@ -1044,6 +1255,16 @@
                 </div>
             </div>
             <div class="form-group">
+                <label for="level" class="control-label col-xs-2">Admin Level</label>
+                <div class="col-xs-2">
+                    <select id="level" name="level" v-model="User.Level">
+                    <option v-for="level in levels" v-bind:value="level.Level">
+                        {{ level.Label }}
+                    </option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
                 <div class="col-xs-offset-1 col-xs-1">
                     <button class="btn" type="cancel" v-on:click="showList">Cancel</button>
                 </div>
@@ -1063,14 +1284,16 @@
 <script type="text/x-template" id="tmpl-rma-edit">
     <div id="rma-edit">
 
-        <h1 class="mytitle">RMA {{RMA.RMAID}}</h1>
+        <h1 class="mytitle">RMA #{{RMA.RMAID}}</h1>
         <form class="form-horizontal">
+        <!--
             <div class="form-group">
                 <label for="sid" class="control-label col-xs-2">SID</label>
                 <div class="col-xs-2">
                     <input type="text" class="form-control" id="sid" v-model="RMA.SID">
                 </div>
             </div>
+            -->
             <div class="form-group">
                 <label for="description" class="control-label col-xs-2">Description</label>
                 <div class="col-xs-2">
@@ -1144,14 +1367,23 @@
                 </div>
             </div>
             <div class="form-group">
+                <label for="date-created" class="control-label col-xs-2">Date Created</label>
+                <div class="col-xs-2">
+                    <input type="text" class="form-control" id="date-created" v-model="RMA.Created">
+                </div>
+            </div>
+            <div class="form-group">
                 <div class="col-xs-offset-1 col-xs-1">
                     <button class="btn" type="cancel" v-on:click="showList">Cancel</button>
                 </div>
                 <div class="col-xs-1" v-if="RMA.RMAID">
                     <button class="btn" v-on:click="Updated">Update</button>
                 </div>
+                <div class="col-xs-1" v-if="RMA.RMAID">
+                    <button v-if="RMA.RMAID" class="btn" v-on:click="deleteSelf">Delete</button>
+                </div>
                 <div class="col-xs-1" v-else>
-                    <button type="submit" class="btn btn-primary">Create</button>
+                    <button v-else class="btn btn-primary">Create</button>
                 </div>
             </div>
         </form>
@@ -1160,47 +1392,37 @@
 
 <script type="text/x-template" id="tmpl-use-part">
     <div id="use-part">
-        <form method="POST">
-            <table>
-                <tr>
-                    <td>
-                    <label for="add-sn">SN</label>
-                    </td>
-                    <td>
-                    <select id="PID" name="PID" v-model="PID">
+        <form class="form-horizontal">
+            <div class="form-group">
+                <label for="PID" class="control-label col-xs-2">Serial Number</label>
+                <div class="col-xs-2">
+                    <select id="PID" name="PID" v-model="PID" number>
                     <option v-for="part in available" v-bind:value="part.PID">
                         {{ part.Serial }}
                     </option>
                     </select>
-                    </td>
-                </tr>
-                <tr>
-                    <td>
-                    <label for="new-hostname">Hostname</label>
-                    </td>
-                    <td>
-                    <input id="new-hostname" placeholder="required"  v-model="hostname" @change="findhost">
-                    </td>
-                </tr>
-                <tr>
-                    <td>
-                    <label for="new-other">Other</label>
-                    </td>
-                    <td>
-                        <input id="new-other" placeholder="if hostname is not applicable"  v-model="other">
-                    </td>
-                </tr>
-                <tr>
-                    <td>
-                    <button id="use-btn" class="btn disabled"v-on:click="thisPart" disabled>Use Part</button>
-                    </td>
-                    <td>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="new-hostname" class="control-label col-xs-2">Hostname</label>
+                <div class="col-xs-2">
+                    <input type="text" class="form-control" id="new-hostname" placeholder="required"  v-model="hostname" @change="findhost">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="new-other" class="control-label col-xs-2">Other</label>
+                <div class="col-xs-2">
+                    <input type="text" class="form-control" id="new-other" placeholder="if hostname is not applicable"  v-model="other">
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="col-xs-offset-2 col-xs-1">
                     <button class="btn" v-on:click="showList">Cancel</button>
-                    </td>
-                    </tr>
-                </tr>
-            </table>
-            <input id="new-kid" type="hidden">
+                </div>
+                <div class="col-xs-1">
+                    <button id="use-btn" class="btn disabled"v-on:click="thisPart" disabled>Use Part</button>
+                </div>
+            </div>
         </form>
     </div>
 </script>
@@ -1208,12 +1430,13 @@
 
 <script type="text/x-template" id="tmpl-tag-edit">
     <div id="tagform">
+        SITES: {{sites.length}}
         <form class="form-horizontal">
             <fieldset class="col-xs-12">
                 <div class="form-group">
                     <label for="TID" class="control-label col-xs-2">Tag</label>
                     <div class="col-xs-2">
-                            <select id="TID" v-model="tag.TID">
+                            <select id="TID" v-model="tag.TID" number>
                                 <option value="0"></option>
                                 <option v-for="t in tags" v-bind:value="t.TID">
                                     {{ t.Name }}
@@ -1250,9 +1473,80 @@
                         <button :disabled="tag.TID==0" class="btn" v-on:click="deleteSelf">Delete</button>
                     </div>
                 </div>
+            </fieldset>
         </form>
     </div>
 </script>
 
+<script type="text/x-template" id="tmpl-user-login">
+    <div id="login" class="layout">
+        <div class="header">
+            <h3>Enter your Okta Login Credentials</h3>
+        </div>
+        <div class="invalid_login" v-if="errorMsg">{{errorMsg}}</div>
+
+        <div class="contents">
+    
+            <form class="form-horizontal">
+                <fieldset class="col-xs-12">
+                    <div class="form-group">
+                        <label for="username" class="control-label col-xs-2">Username</label>
+                        <div class="col-xs-3">
+                            <input type="text" class="form-control" id="username" v-model="username" placeholder="{{placeholder}}" required autofocus/>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="password" class="control-label col-xs-2">Password</label>
+                        <div class="col-xs-2">
+                            <input type="password" class="form-control" id="password" v-model="password"/>
+                        </div>
+                    </div>
+                </fieldset>
+                <div class="form-group">
+                    <div class="col-xs-offset-2 col-xs-1">
+                        <button class="btn" v-on:click="cancel">Cancel</button>
+                    </div>
+                    <div class="col-xs-1">
+                        <button id="use-btn" class="btn btn-primary" v-on:click="login">Login</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</script>
+
+<script type="text/x-template" id="tmpl-user-logout">
+    <div id="logout">
+        <h3>Really log out?</h3>
+        <div class="form-group">
+            <div class="col-xs-offset-2 col-xs-1">
+                <button class="btn" v-on:click="cancel">Cancel</button>
+            </div>
+            <div class="col-xs-1">
+                <button id="use-btn" class="btn btn-primary" v-on:click="logout">Logout</button>
+            </div>
+        </div>
+    </div>
+</script>
+
+
+<script type="text/x-template" id="tmpl-okta-login">
+<div id="login">
+    OKTA LOGIN
+  <!-- Render the login widget here -->
+  <div id="okta-login-container"></div>
+
+</div>
+</script>
+
+<script type="text/x-template" id="tmpl-home-page">
+<div id="homepage">
+    <h1 class="mytitle" v-if="title.length">{{title}}</h1>
+    <tally-table
+        :rows="rows"
+        :columns="columns">
+    </tally-table>
+</div>
+</script>
 <!-- instantiate our components -->
 <script src="/dcman/static/js/spa.js"></script>

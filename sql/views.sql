@@ -1,331 +1,118 @@
 
-DROP VIEW IF EXISTS skuview;
-CREATE VIEW skuview as 
-  select k.kid, k.pti, k.mid, t.name as parttype, k.part_no, k.description, m.name as mfgr
+DROP VIEW IF EXISTS racks_view;
+CREATE VIEW racks_view as
+	select s.name as site, r.*
+	from racks r
+	left outer join sites s on r.sti=s.sti
+    order by site, r.rack
+    ;
+
+DROP VIEW IF EXISTS ips_view;
+CREATE VIEW ips_view as
+    select i.*, t.name as iptype
+    from ips i 
+    left outer join ip_types t on i.ipt = t.ipt
+    ;
+
+drop view if exists devices_view;
+create view devices_view as
+    select r.sti, r.site, r.rack, d.*, dt.name as devtype, t.tag
+    from devices d
+    left outer join racks_view r on d.rid = r.rid
+    left outer join device_types dt on d.dti = dt.dti
+    left outer join tags t on d.tid = t.tid
+    ;
+
+drop view if exists interfaces_view;
+create view interfaces_view as 
+    select i.*, p.iid, p.ipt, p.ip32, p.ipv4, t.name as iptype
+    from interfaces i
+    left outer join ips p on p.ifd = i.ifd
+    left outer join ip_types t on p.ipt = t.ipt
+    ;
+
+DROP VIEW IF EXISTS skus_view;
+CREATE VIEW skus_view as 
+  select k.kid, k.vid, k.pti, k.mid, t.name as part_type, k.part_no, k.description, v.name as vendor, m.name as mfgr
   from  skus k
   left outer join mfgrs m on k.mid = m.mid
   left outer join part_types t on k.pti = t.pti
+  left outer join vendors v on k.vid = v.vid
   ;
 
-CREATE TRIGGER sku_in INSTEAD OF INSERT ON skuview 
-BEGIN
-    insert or ignore into part_types (name) values(NEW.parttype);
-    insert or ignore into mfgrs (name) values(NEW.mfgr);
-    --insert into logger values(NEW.mfgr);
-    insert or ignore into skus (description, mid, pti)
-        select NEW.description, m.mid, p.pti
-          from mfgrs m, part_types p  
-           where m.name = NEW.mfgr
-               and p.name = NEW.parttype
-            ;
-END;
 
-CREATE TRIGGER sku_up INSTEAD OF UPDATE ON skuview 
-BEGIN
-    insert or ignore into part_types (name) values(ifnull(NEW.parttype,OLD.parttype));
-    insert or ignore into mfgrs (name) values(ifnull(NEW.mfgr,OLD.mfgr));
-    /*
-    insert into logger values( 'KID: '  || OLD.KID);
-    insert into logger values( 'MFGR: ' || ifnull(NEW.mfgr, OLD.mfgr));
-    insert into logger values( 'DESC: ' || ifnull(NEW.description, OLD.description));
-    */
-    update skus set
-        description = ifnull(new.description,old.description),
-        part_no = ifnull(new.part_no,old.part_no),
-        mid = (select mid from mfgrs where name = ifnull(NEW.mfgr,OLD.mfgr)),
-        pti = (select pti from part_types where name = ifnull(NEW.parttype,OLD.parttype))
-        where kid = old.kid
-        ;
-    /*
-        */
-        select * from logger;
-END;
-
-DROP VIEW IF EXISTS partview;
-CREATE VIEW partview as 
-   select p.pid, p.sid, p.dcd, ifnull(r.rma_id, 0) as rma_id, s.*, d.name as dc, h.hostname, p.serial_no, p.asset_tag, p.unused, p.bad, p.location
+DROP VIEW IF EXISTS parts_view;
+CREATE VIEW parts_view as 
+   select p.pid, p.did, p.sti, ifnull(r.rma_id, 0) as rma_id, k.*, s.name as site, d.hostname, p.serial_no, p.asset_tag, p.unused, p.bad, p.location
    from parts p
-   left outer join skuview s on p.kid = s.kid
+   left outer join skus_view k on p.kid = k.kid
    left outer join rmas r on p.pid = r.old_pid
-   left outer join servers h on p.sid = h.id
-   left outer join datacenters d on p.dcd = d.dcd
+   left outer join devices d on p.did = d.did
+   left outer join sites s on p.sti = s.sti
 ;
 
-CREATE TRIGGER partin INSTEAD OF INSERT ON partview 
-WHEN NEW.kid > 0
-BEGIN
-    insert into parts (
-        dcd,
-        kid,
-        serial_no,
-        asset_tag,
-        location,
-        unused,
-        bad
-    ) values (
-        new.dcd,
-        new.kid,
-        new.serial_no,
-        new.asset_tag, 
-        new.location, 
-        new.unused,
-        new.bad
-    ); 
-END;
-
-CREATE TRIGGER partin_new INSTEAD OF INSERT ON partview 
-WHEN NEW.kid == 0
-BEGIN
-    insert into skuview (
-        description,
-        part_no,
-        parttype,
-        mfgr
-    ) values (
-        new.description,
-        new.part_no,
-        new.parttype,
-        new.mfgr
-    );
-
-    insert into parts (
-        serial_no,
-        asset_tag,
-        unused,
-        bad,
-        location,
-        dcd,
-        kid
-        )
-        select 
-            new.serial_no,
-            new.asset_tag, 
-            new.unused,
-            new.bad,
-            new.location, 
-            new.dcd, 
-            kid from skuview 
-              where description=new.description
-                 and part_no=new.part_no 
-                 and parttype=new.parttype 
-                 and mfgr=new.mfgr
-        ;
-END;
-
-CREATE TRIGGER partup INSTEAD OF UPDATE ON partview 
-BEGIN
-    update parts set
-        sid = coalesce(NEW.sid, OLD.sid, (select sid from servers where hostname=NEW.hostname)),
-        serial_no = ifnull(new.serial_no, old.serial_no),
-        asset_tag = ifnull(new.asset_tag, old.asset_tag),
-        unused = ifnull(new.unused, old.unused),
-        bad = ifnull(new.bad, old.bad),
-        location = ifnull(new.location, old.location)
-        where pid = old.pid
-        ;
-    update skuview set 
-        description=ifnull(new.description,old.description),
-        part_no=ifnull(new.part_no,old.part_no),
-        parttype=ifnull(new.parttype,old.parttype),
-        mfgr=ifnull(new.mfgr,old.mfgr)
-        where kid=old.kid
-        ;
-END;
-DROP VIEW IF EXISTS rview;
-CREATE VIEW rview as
-	select d.name as dc, r.*
-	from racks r
-	left outer join datacenters d on r.dcd=d.dcd
-    order by dc, r.rack
+drop view if exists inventory;
+create view inventory as
+    select sti, kid, pti, site, count(kid) as qty, mfgr, part_no, part_type, description 
+    from parts_view
+    where unused = 1
+    and  bad = 0
+    group by site, kid, bad
     ;
 
-CREATE TRIGGER rview_insert INSTEAD OF INSERT ON rview 
-BEGIN
-  insert into racks (rack, dcd) values (NEW.rack, (select dcd from datacenters where name=NEW.dc));
-END;
-
-
-drop view if exists sview;
-
-CREATE VIEW sview as
-  select d.name as dc, r.rack as rack, r.dcd, s.*, t.tag
-  from servers s
-  left outer join racks r on s.rid = r.rid
-  left outer join datacenters d on r.dcd = d.dcd
-  left outer join tags t on s.tid = t.tid
-  order by dc, rack, ru desc
-;
-
-CREATE TRIGGER sview_insert INSTEAD OF INSERT ON sview 
-BEGIN
-  insert into servers (rid, ru, hostname, alias, sn, asset_tag, ip_internal, ip_ipmi, mac_eth0,
-	cable_ipmi, port_ipmi, cable_eth0, port_eth0, cable_eth1, port_eth1, pdu_a, pdu_b, note
-	) 
-  values ((select id from rview where dc=NEW.dc and rack=NEW.rack),
-	NEW.ru, NEW.hostname, NEW.alias, NEW.sn, NEW.asset_tag, NEW.ip_internal, NEW.ip_ipmi, NEW.mac_eth0,
-	NEW.cable_ipmi, NEW.port_ipmi, NEW.cable_eth0, NEW.port_eth0, NEW.cable_eth1, NEW.port_eth1, 
-	NEW.pdu_a, NEW.pdu_b, NEW.note
-	);
-END;
-
-DROP VIEW IF EXISTS "rmaview" ;
-CREATE VIEW rmaview as 
-    select r.*, p.description, p.serial_no as part_sn, p.part_no, s.hostname, s.sn as server_sn
+DROP VIEW IF EXISTS "rmas_view" ;
+CREATE VIEW rmas_view as 
+    select r.*, p.description, p.serial_no as part_sn, p.part_no, s.hostname, s.sn as device_sn
     from rmas r
-    left join servers s on r.sid = s.id
-    left join partview p on p.pid = r.old_pid
+    left join devices s on r.did = s.did
+    left join parts_view p on p.pid = r.old_pid
     ;
 
-DROP TRIGGER IF EXISTS rmaview_insert;
-CREATE TRIGGER rmaview_insert INSTEAD OF INSERT ON rmaview 
-BEGIN
-    insert into rmas (
-    dcd,
-    sid,
-    vid,
-    old_pid,
-    new_pid,
-    vendor_rma,
-    ship_tracking,
-    recv_tracking,
-    jira,
-    dc_ticket,
-    dc_receiving,
-    note,
-    date_shipped,
-    date_received,
-    date_closed
-  ) values (
-    NEW.dcd,
-    ifnull(NEW.sid, (select sid from servers where hostname=NEW.hostname)),
-    NEW.vid,
-    NEW.old_pid,
-    NEW.new_pid,
-    NEW.vendor_rma,
-    NEW.ship_tracking,
-    NEW.recv_tracking,
-    NEW.jira,
-    NEW.dc_ticket,
-    NEW.dc_receiving,
-    NEW.note,
-    NEW.date_shipped,
-    NEW.date_received,
-    NEW.date_closed
-  ); 
-END;
-
-DROP TRIGGER IF EXISTS rmaview_update;
-CREATE TRIGGER rmaview_update INSTEAD OF UPDATE ON rmaview 
-BEGIN
-    update rmas set 
-        --sid=coalesce(NEW.sid, OLD.sid, (select sid from servers where hostname=NEW.hostname)),
-        sid=coalesce(NEW.sid, OLD.sid, (select sid from servers where hostname=NEW.hostname)),
-        dcd=ifnull(NEW.dcd, OLD.dcd),
-        sid=ifnull(NEW.sid, OLD.sid),
-        vid=ifnull(NEW.vid, OLD.vid),
-        old_pid=ifnull(NEW.old_pid, OLD.old_pid),
-        new_pid=ifnull(NEW.new_pid, OLD.new_pid),
-        vendor_rma=ifnull(NEW.vendor_rma, OLD.vendor_rma),
-        ship_tracking=ifnull(NEW.ship_tracking, OLD.ship_tracking),
-        recv_tracking=ifnull(NEW.recv_tracking, OLD.recv_tracking),
-        jira=ifnull(NEW.jira, OLD.jira),
-        dc_ticket=ifnull(NEW.dc_ticket, OLD.dc_ticket),
-        dc_receiving=ifnull(NEW.dc_receiving, OLD.dc_receiving),
-        note=ifnull(NEW.note, OLD.note),
-        date_shipped=ifnull(NEW.date_shipped, OLD.date_shipped),
-        date_received=ifnull(NEW.date_received, OLD.date_received),
-        date_closed=ifnull(NEW.date_closed, OLD.date_closed)
-    where rma_id = OLD.rma_id;
-END;
 
 DROP VIEW IF EXISTS rma_report;
 CREATE VIEW rma_report as 
-  select r.*, u.login, s.dc, s.hostname, s.sn as server_sn, s.rack, s.ru, v.name as vendor_name,
+  select r.*, u.login, s.site, s.hostname, s.sn as server_sn, s.rack, s.ru, v.name as vendor_name,
          b.serial_no as bad_serial, b.part_no as bad_partno
   from  rmas r
   left outer join users u on r.user_id = u.id
-  left outer join sview s on r.sid = s.id
+  left outer join devices_view s on r.did = s.did
   left outer join vendors v on r.vid = v.vid
 ;
 
 
-DROP VIEW IF EXISTS vview; 
-CREATE VIEW vview as
-  select r.dcd, d.name as dc, r.rack as rack, s.rid, s.hostname as server, v.*
+DROP VIEW IF EXISTS vms_view; 
+CREATE VIEW vms_view as
+  select ifnull(r.sti,0) as sti, s.name as site, r.rack as rack, d.rid, d.hostname as server, v.*
   from vms v
-  left outer join servers s on v.sid = s.id
+  left outer join devices d on v.did = d.did
   left outer join racks r on s.rid = r.rid
-  left outer join datacenters d on r.dcd = d.dcd;
+  left outer join sites s on r.sti = s.sti
+    ;
+
+DROP VIEW IF EXISTS vms_view;
+CREATE VIEW vms_view as
+    select d.sti, d.rid, d.site, d.rack, d.ru, d.hostname as server, v.*
+    from vms v
+    left outer join devices_view d on v.did = d.did
+;
+DROP VIEW IF EXISTS vms_ips; 
+CREATE VIEW vms_ips as
+    select v.*, i.iid, i.ipt, i.ipv4, i.iptype
+    from vms_view v
+    left outer join ips_view i on v.vmi = i.vmi
+    ;
+
 
 DROP VIEW IF EXISTS rackspace; 
-create view rackspace as select *,ru+height-1 as top from sview;
-
-DROP VIEW IF EXISTS ipprivate; 
-CREATE VIEW ipprivate as 
-  select vmi as id, ifnull(dcd, 0) as dcd, dc, 'vm' as kind, 'private' as what,  hostname, private as ip, note
-  from vview where private > '';
-
-DROP VIEW IF EXISTS ipinternal; 
-CREATE VIEW ipinternal as 
-  select id, dcd, dc, 'server' as kind, 'internal' as what, hostname, ip_internal as ip, note
-  from sview s
-  where ip_internal > '';
-
-/*
-CREATE VIEW ipprivate as 
-  select id, dcd, 'vm' as kind, 'private' as what,  dc, hostname, private as ip, note
-  from vview where private > '';
-
-CREATE VIEW ipinternal as 
-  select id, dcd, 'server' as kind, 'internal' as what, dc, hostname, ip_internal as ip, note
-  from sview s
-  where ip_internal > '';
-*/
-
-DROP VIEW IF EXISTS ippublic; 
-CREATE VIEW ippublic as 
-  select vmi as id, dcd, dc, 'vm' as kind, 'public' as what, hostname, public as ip, note
-  from vview where public > ''
-  union
-  select vmi as id, dcd, dc, 'vm' as kind, 'vip' as what, hostname, vip as ip, note
-  from vview where vip > ''
-  union
-  select id, dcd, dc, 'server' as kind, 'public' as what, hostname, ip_public as ip, note
-  from sview where ip_public > '';
-
-DROP VIEW IF EXISTS ipipmi; 
-CREATE VIEW ipipmi as 
-  select id, dcd, dc, 'server' as kind, 'ipmi' as what, hostname, ip_ipmi as ip, note
-  from sview where ip_ipmi > '';
-
-DROP VIEW IF EXISTS ipinside; 
-CREATE VIEW ipinside as
-  select * from ipinternal
-  union
-  select * from ipipmi
-  union
-  select * from ipprivate;
-
-DROP VIEW IF EXISTS ipmstr; 
-CREATE VIEW ipmstr as
-  select * from ipinside
-  union
-  select * from ippublic;
-
-DROP VIEW IF EXISTS ippool; 
-CREATE VIEW ippool as 
-  select ip_internal as ip from servers where ip_internal > ''
-  union
-  select ip_ipmi as ip from servers where ip_ipmi > ''
-  union
-  select private as ip from vms where private > '';
+create view rackspace as select *,ru+height-1 as top from devices_view;
 
 
-DROP VIEW IF EXISTS vlanview;
-CREATE VIEW vlanview as
-    select d.name as dc, v.*
+DROP VIEW IF EXISTS vlans_view;
+CREATE VIEW vlans_view as
+    select s.name as site, v.*
     from vlans v
-    left outer join datacenters d on v.did = d.dcd
+    left outer join sites s on v.sti = s.sti
+    order by v.sti, v.name
     ;
 
 DROP VIEW IF EXISTS rack_vlans;
@@ -335,18 +122,97 @@ union
 select rid, vid, "stop" as action, last_ip as ip from racknet;
 
 
-DROP VIEW IF EXISTS nview;
-CREATE VIEW nview as
-  select d.name as dc, r.dcd, r.rack as rack, n.*
-  from routers n
-  left outer join racks r on n.rid = r.rid
-  left outer join datacenters d on r.dcd = d.dcd
+-- 
+-- totals for front page
+--
+drop view if exists summary;
+create view summary as
+with vcnt as (select sti, count(*) as vms from vms_view group by sti),
+     scnt as (select sti, site, count(*) as servers from devices_view group by sti)
+   select s.*, ifnull(v.vms,0) as vms from scnt s
+  left outer join vcnt v on s.sti = v.sti
   ;
 
-DROP VIEW IF EXISTS rackunits;
-CREATE VIEW rackunits as
-select * from (
-    select dcd, dc, rack, 0 as nid, id as sid, rid, ru, height, hostname, alias, ip_ipmi as ipmi, ip_internal as internal, asset_tag, sn, note  from sview
+drop view if exists devices_network;
+create view devices_network as
+    select d.*, i.*
+    from devices_view d
+    left outer join interfaces_view i on d.did = i.did
+    ;
+
+drop view if exists devices_all_ips;
+create view devices_all_ips as
+    select r.sti, s.name as site, d.*, r.rack, dt.name as devtype, i.ipt, i.ipv4, t.name as iptype 
+    from devices d
+    left outer join racks r on d.rid = r.rid
+    left outer join sites s on r.sti = s.sti
+    left outer join device_types dt on d.dti = dt.dti
+    left outer join interfaces f on d.did = f.did
+    left outer join ips i on f.ifd = i.ifd
+    left outer join ip_types t on i.ipt = t.ipt
+    where ipv4 > ''
+    ;
+
+drop view if exists devices_ips;
+create view devices_ips as
+    select did, hostname, group_concat(ipv4, ', ') as ips
+    from devices_all_ips
+    --where iptype not in ('IPMI','VIP')
+    where iptype = 'Internal'
+    group by did
+    ;
+
+drop view if exists devices_mgmt;
+create view devices_mgmt as
+    select did, group_concat(ipv4, ', ') as mgmt
+    from devices_all_ips
+    where iptype in ('IPMI')
+    group by did
+    ;
+
+DROP VIEW IF EXISTS devices_list;
+CREATE VIEW devices_list as
+  select d.*, i.ips, m.mgmt
+  from devices_view d 
+    left outer join devices_ips as i on d.did = i.did
+    left outer join devices_mgmt as m on d.did = m.did 
+    ;
+
+
+DROP VIEW IF EXISTS ips_vms;
+CREATE VIEW ips_vms as
+    select i.*, v.hostname, 'VM' as devtype
+    from ips_view i 
+    left outer join vms v on i.vmi = v.vmi
+    left outer join devices d on v.did = d.did
+    where i.vmi > 0
+;
+
+DROP VIEW IF EXISTS ips_devices;
+CREATE VIEW ips_devices as
+    select r.sti, i.*, d.hostname, t.name as devtype
+    from ips_view i 
+    left outer join interfaces f on i.ifd = f.ifd
+    left outer join devices d on f.did = d.did
+    left outer join device_types t on d.dti = t.dti
+    left outer join racks r on d.rid = r.rid
+    where i.ifd > 0
+    ;
+
+DROP VIEW IF EXISTS ips_reserved;
+CREATE VIEW ips_reserved as
+    select v.sti, vli, i.ipt, v.site, i.iptype, ipv4, i.note  
+        from ips_view i
+    left outer join vlans_view v on i.vli = v.vli
+        where i.ipv4 > '' 
+        and i.ipttype = 'Reserved'
+        ;
+
+DROP VIEW IF EXISTS ips_list;
+CREATE VIEW ips_list as
+    select sti, did as id, rid, ipt, devtype as host, site, rack, ipv4 as ip, iptype, hostname, note  from devices_all_ips where ipv4 > ''
     union
-    select dcd, dc, rack, id as nid, 0 as sid, rid, ru, height,  hostname, '' as alias, '' as ipmi, ip_mgmt as ip_internal, asset_tag, sn, note from nview
-) order by dcd, rack, ru desc;
+    select sti, vmi as id, rid, ipt, 'VM' as host, site, rack, ipv4 as ip, iptype, hostname, note  from vms_ips where ipv4 > '' and iptype != 'VIP'
+    union
+    select sti, vli as id, rid, ipt, iptype as host, site, '' as rack, ipv4 as ip, iptype, iptype as hostname, note from ips_reserved 
+    ;

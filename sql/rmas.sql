@@ -1,23 +1,4 @@
 
-/*
-
-CREATE TABLE "parts" (
-    pid integer primary key,
-    kid integer not null default 0,
-    vid integer not null default 0,
-    sid integer not null default 0,
-    dcd integer not null default 0,
-    --rma_id integer default 0, -- needs foreign key to rmas
-    unused integer default 0, -- boolean (1 is unused)
-    bad    integer default 0, -- boolean (1 is bad)
-    location text,
-    serial_no text,
-    asset_tag text, 
-    user_id integer not null default 0, 
-    modified date DEFAULT CURRENT_TIMESTAMP
-);
-*/
-
 drop table if exists logger;
 create table logger (
     log text
@@ -40,50 +21,6 @@ INSERT INTO "tags" VALUES(4,'HBA');
 COMMIT;
 
 
-
-/*
-
-CREATE TABLE "servers" (
-    id integer primary key AUTOINCREMENT,
-    rid int,
-    tid int default 0,
-    ru int,
-    height int default 1,
-    asset_tag text default '',
-    vendor_sku text default '',
-    sn text default '',
-    profile default '', 
-    hostname text not null COLLATE NOCASE,
-    ip_internal text default '',
-    ip_ipmi text default '',
-    port_eth0 text default '',
-    port_eth1 text default '',
-    port_ipmi text default '',
-    cable_eth0 text default '',
-    cable_eth1 text default '',
-    cable_ipmi text default '',
-    cpu text default '',
-    memory int default 0,  -- what unit should this be in?
-    mac_eth0 text  default '', 
-    mac_eth1 text default '',
-    mac_ipmi text default '',
-    pdu_a text default '',
-    pdu_b text default '',
-    outlet text default '',
-    note text default '', 
-    ip_public text default '', 
-    alias text default '', 
-    assigned text default '',
-    kernel text default '',
-    release text default '',
-    modified timestamp DEFAULT CURRENT_TIMESTAMP, 
-    uid int default 0, 
-    remote_addr text default '' 
-);
-
-
-
-*/
 
 DROP TRIGGER if exists servers_audit;
 CREATE TRIGGER servers_audit BEFORE UPDATE
@@ -130,8 +67,9 @@ CREATE TABLE "mfgrs" (
 DROP TABLE IF EXISTS "skus" ;
 CREATE TABLE "skus" (
     kid integer primary key,
-    mid integer not null,
-    pti integer not null,
+    vid integer,
+    mid integer,
+    pti integer,
     description text not null,
     part_no text , 
     user_id integer , 
@@ -202,14 +140,6 @@ BEGIN
         ;
 END;
 
-drop view if exists inventory;
-create view inventory as
-    select dcd, kid, pti, bad, dc, count(kid) as qty, mfgr, parttype, description 
-    from partload
-    where unused = 1
-    group by dc, kid, bad
-    ;
-
 /*
 --select distinct p_mfg from parttmp ;
 insert into mfgrs (name) select distinct p_mfg from parttmp ;
@@ -219,6 +149,13 @@ select * from mfgrs;
 insert into partload (parttype, description, mfgr, dc) select p_type, p_desc, p_mfg, 'NY7' from parttmp ;
 
 .header on
+--select p_type, p_desc, p_mfg, 'NY7' from parttmp ;
+.print 'SKUVIEW'
+select * from skuview;
+
+select count(*) as pcnt from partload;
+select count(*) as cnt from parttmp;
+select count(*) as pcnt from parts;
 
 
 /*
@@ -230,7 +167,7 @@ update parts set bad=1 where pid % 3 == 0;
 
 select bad, dc, qty, mfgr, parttype, description from inventory;
 select * from inventory limit 1;
-.exit
+--.exit
 
 /*
 select * from logger;

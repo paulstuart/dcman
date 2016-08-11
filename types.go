@@ -1,15 +1,10 @@
 package main
 
 import (
-	"database/sql"
+	"database/sql/driver"
 	"fmt"
-	"html/template"
-	"io"
-	"log"
+	//"log"
 	"net"
-	"net/http"
-	"os"
-	"path"
 	"regexp"
 	"sort"
 	"strconv"
@@ -22,9 +17,69 @@ import (
 var (
 	noNumbers = regexp.MustCompile("[^0-9]*")
 	noRange   = regexp.MustCompile("-.*")
+	//ipAddr    = regexp.MustCompile("[0-9+]\\.[0-9+]\\.[0-9+]\\.[0-9+]")
 )
 
 //go:generate dbgen
+
+type JSONDate time.Time
+
+func (d JSONDate) MarshalJSON() ([]byte, error) {
+	t := time.Time(d)
+	if t.IsZero() {
+		return []byte(`""`), nil
+	}
+	stamp := fmt.Sprintf(`"%s"`, t.Format("2006-01-02"))
+	return []byte(stamp), nil
+}
+
+func (d *JSONDate) UnmarshalJSON(in []byte) error {
+	s := string(in)
+	fmt.Printf("\nPARSE THIS: (%d) %s\n\n", len(s), s)
+	if len(in) < 3 {
+		return nil
+	}
+	if d == nil {
+		d = new(JSONDate)
+	}
+	//const xx =       "2016-07-27T18:26:49.037Z"
+	const longform = `"2006-01-02T15:04:05.000Z"`
+	if len(s) == len(longform) {
+		t, err := time.Parse(longform, s)
+		*d = JSONDate(t)
+		return err
+	}
+	t, err := time.Parse(`"2006-1-2"`, s)
+	if err != nil {
+		t, err = time.Parse(`"2006/1/2"`, s)
+	}
+	if err == nil {
+		*d = JSONDate(t)
+	}
+	return err
+}
+
+// Scan implements the Scanner interface.
+func (d *JSONDate) Scan(value interface{}) error {
+	//*d = value.(JSONDate) //(time.Time)
+	*d = JSONDate(value.(time.Time))
+	return nil
+}
+
+// Value implements the driver Valuer interface.
+func (d *JSONDate) Value() (driver.Value, error) {
+	if d == nil {
+		return nil, nil
+	}
+	return time.Time(*d), nil
+}
+
+type Summary struct {
+	ID      int64   `sql:"sti" key:"true" table:"summary"`
+	Site    *string `sql:"site"`
+	Servers *string `sql:"servers"`
+	VMs     *string `sql:"vms"`
+}
 
 type User struct {
 	ID     int64  `sql:"id" key:"true" table:"users"`
@@ -33,79 +88,90 @@ type User struct {
 	First  string `sql:"firstname"`
 	Last   string `sql:"lastname"`
 	Email  string `sql:"email"`
+	APIKey string `sql:"apikey"`
 	Level  int    `sql:"admin"`
 }
 
-type Document struct {
-	ID         int64     `sql:"id" key:"true" table:"documents"`
-	DID        int64     `sql:"did"`
-	Filename   string    `sql:"filename"`
-	Title      string    `sql:"title"`
-	RemoteAddr string    `sql:"remote_addr"`
-	UID        int64     `sql:"user_id"`
-	Modified   time.Time `sql:"modified"`
-}
-
-func (d Document) Fullpath() string {
-	return path.Join(documentDir, d.Filename)
+// FullUser has *all* user fields exposed
+type FullUser struct {
+	ID       int64  `sql:"id" key:"true" table:"users"`
+	RealID   int64  // when emulating another user, retain real identity
+	Login    string `sql:"login"`
+	First    string `sql:"firstname"`
+	Last     string `sql:"lastname"`
+	Email    string `sql:"email"`
+	APIKey   string `sql:"apikey"`
+	Password string `sql:"pw_hash"`
+	Salt     string `sql:"pw_salt"`
+	Level    int    `sql:"admin"`
 }
 
 type Vendor struct {
-	VID        int64     `sql:"vid" key:"true" table:"vendors"`
-	Name       string    `sql:"name"`
-	WWW        string    `sql:"www"`
-	Phone      string    `sql:"phone"`
-	Address    string    `sql:"address"`
-	City       string    `sql:"city"`
-	State      string    `sql:"state"`
-	Country    string    `sql:"country"`
-	Postal     string    `sql:"postal"`
-	Note       string    `sql:"note"`
-	RemoteAddr string    `sql:"remote_addr"`
-	UID        int64     `sql:"user_id"  audit:"user"`
-	Modified   time.Time `sql:"modified" audit:"time"`
+	VID      int64     `sql:"vid" key:"true" table:"vendors"`
+	Name     string    `sql:"name"`
+	WWW      string    `sql:"www"`
+	Phone    string    `sql:"phone"`
+	Address  string    `sql:"address"`
+	City     string    `sql:"city"`
+	State    string    `sql:"state"`
+	Country  string    `sql:"country"`
+	Postal   string    `sql:"postal"`
+	Note     string    `sql:"note"`
+	UID      int64     `sql:"user_id"  audit:"user"`
+	Modified time.Time `sql:"modified" audit:"time"`
+}
+
+type IPType struct {
+	IPT  int64   `sql:"ipt" key:"true" table:"ip_types"`
+	Name *string `sql:"name"`
 }
 
 type RMA struct {
-	ID        int64     `sql:"rma_id" key:"true" table:"rmas"`
+	RMAID     int64     `sql:"rma_id" key:"true" table:"rmas"`
+	STI       int64     `sql:"sti"`
 	DID       int64     `sql:"did"`
 	VID       int64     `sql:"vid"`
+	OldPID    int64     `sql:"old_pid"`
+	NewPID    int64     `sql:"new_pid"`
+	VendorRMA *string   `sql:"vendor_rma"`
+	Jira      *string   `sql:"jira"`
+	ShipTrack *string   `sql:"ship_tracking"`
+	RecvTrack *string   `sql:"recv_tracking"`
+	DCTicket  *string   `sql:"dc_ticket"`
+	Receiving *string   `sql:"dc_receiving"`
+	Note      *string   `sql:"note"`
+	Shipped   *JSONDate `sql:"date_shipped"`
+	Received  *JSONDate `sql:"date_received"`
+	Closed    *JSONDate `sql:"date_closed"`
+	Created   *JSONDate `sql:"date_created"`
 	UID       int64     `sql:"user_id"`
-	Number    string    `sql:"rma_no"`
-	Note      string    `sql:"note"`
-	Jira      string    `sql:"jira"`
-	DCTicket  string    `sql:"dc_ticket"`
-	Receiving string    `sql:"dc_receiving"`
-	Opened    time.Time `sql:"date_opened"`
-	Closed    time.Time `sql:"date_closed"`
 }
 
-func notReturned(s string) bool {
-	return s == "return"
-}
-
-func (r RMA) Table() (*dbutil.Table, error) {
-	const q = "select * from rma_action where rma_id=?"
-	log.Println("RMA ID:", r.ID)
-	table, err := dbTable(q, r.ID)
-	if err != nil {
-		return nil, err
-	}
-	table.Hide(0, 1, 2, 3, 4)
-	setLinks(table, 7, "/server/parts/%s", 3)
-	setLinksWhen(table, notReturned, 10, "/rma/return/add/%s/%s", 2, 1)
-	return table, nil
-}
-
-func (r RMA) Returns() (*dbutil.Table, error) {
-	const q = "select return_id,tracking_no from rma_returns where rma_id=?"
-	table, err := dbTable(q, r.ID)
-	if err != nil {
-		return nil, err
-	}
-	table.Hide(0)
-	setLinks(table, 1, "/rma/return/%s", 0)
-	return table, nil
+type RMAView struct {
+	RMAID       int64     `sql:"rma_id" key:"true" table:"rmaview"`
+	STI         int64     `sql:"sti"`
+	DID         int64     `sql:"did"`
+	VID         int64     `sql:"vid"`
+	OldPID      int64     `sql:"old_pid"`
+	NewPID      int64     `sql:"new_pid"`
+	Site        *string   `sql:"site"`
+	Hostname    *string   `sql:"hostname"`
+	ServerSN    *string   `sql:"server_sn"`
+	Description *string   `sql:"description"`
+	PartSN      *string   `sql:"part_sn"`
+	PartNumber  *string   `sql:"part_no"`
+	VendorRMA   *string   `sql:"vendor_rma"`
+	Jira        *string   `sql:"jira"`
+	ShipTrack   *string   `sql:"ship_tracking"`
+	RecvTrack   *string   `sql:"recv_tracking"`
+	DCTicket    *string   `sql:"dc_ticket"`
+	Receiving   *string   `sql:"dc_receiving"`
+	Note        *string   `sql:"note"`
+	Shipped     *JSONDate `sql:"date_shipped"`
+	Received    *JSONDate `sql:"date_received"`
+	Closed      *JSONDate `sql:"date_closed"`
+	Created     *JSONDate `sql:"date_created"`
+	UID         int64     `sql:"user_id"`
 }
 
 type Carrier struct {
@@ -114,15 +180,6 @@ type Carrier struct {
 	URL       string    `sql:"tracking_url"`
 	UID       int64     `sql:"user_id"`
 	Modified  time.Time `sql:"modified"`
-}
-
-func carriers() []Carrier {
-	c, err := dbObjectList(Carrier{})
-	if err != nil || c == nil {
-		log.Println("no carriers:", err)
-		return []Carrier{}
-	}
-	return c.([]Carrier)
 }
 
 type Return struct {
@@ -139,32 +196,11 @@ type Sent struct {
 	PID      int64 `sql:"pid"`
 }
 
-func (s Sent) Unsent() bool {
-	const q = "select count(*) from rma_sent where return_id=? and pid=?"
-	cnt, _ := dbGetInt(q, s.ReturnID, s.PID)
-	return cnt < 1
-}
-
 type Received struct {
 	RMAID int64     `sql:"rma_id" table:"rma_received"`
 	PID   int64     `sql:"pid"`
 	UID   int64     `sql:"user_id"`
 	TS    time.Time `sql:"date_received"`
-}
-
-func (r RMA) Parts() []Part {
-	p, err := dbObjectListQuery(Part{}, "where rmaid=?", r.ID)
-	if err != nil {
-		log.Println("parts err:", err)
-	}
-	return p.([]Part)
-}
-
-func (r RMA) DC() string {
-	if dc, ok := dcIDs[r.DID]; ok {
-		return dc.Name
-	}
-	return ""
 }
 
 type Manufacturer struct {
@@ -176,192 +212,56 @@ type Manufacturer struct {
 	Modified time.Time `sql:"modified" audit:"time"`
 }
 
-func (m *Manufacturer) PageData(r *http.Request) (interface{}, error) {
-	if len(r.URL.Path) > 0 {
-		if err := dbFindByID(m, r.URL.Path); err != nil {
-			return nil, err
-		}
-	}
-	return struct {
-		Common
-		Manufacturer *Manufacturer
-	}{
-		Common:       NewCommon(r, "Edit"),
-		Manufacturer: m,
-	}, nil
-}
-
 type PartType struct {
-	TID      int64     `sql:"tid" key:"true" table:"part_types"`
+	PTI      int64     `sql:"pti" key:"true" table:"part_types"`
 	Name     string    `sql:"name"`
 	UID      int64     `sql:"user_id"  audit:"user"`
 	Modified time.Time `sql:"modified" audit:"time"`
 }
 
-func (p *PartType) PageData(r *http.Request) (interface{}, error) {
-	if len(r.URL.Path) > 0 {
-		if err := dbFindByID(p, r.URL.Path); err != nil {
-			return nil, err
-		}
-	}
-	return struct {
-		Common
-		PartType *PartType
-	}{
-		Common:   NewCommon(r, "Edit"),
-		PartType: p,
-	}, nil
-}
-
-func partTypes() []PartType {
-	pt, _ := dbObjectList(PartType{})
-	return pt.([]PartType)
-}
-
 type SKU struct {
 	KID         int64     `sql:"kid" key:"true" table:"skus"`
 	MID         int64     `sql:"mid"`
-	TID         int64     `sql:"tid"`
+	PTI         int64     `sql:"pti"`
 	PartNumber  string    `sql:"part_no"`
 	Description string    `sql:"description"`
 	UID         int64     `sql:"user_id"  audit:"user"`
 	Modified    time.Time `sql:"modified" audit:"time"`
 }
 
-func (s *SKU) Manufacturer() Manufacturer {
-	m := Manufacturer{MID: s.MID}
-	dbFindSelf(&m)
-	return m
-}
-
-func (s *SKU) PartType() *PartType {
-	if s != nil {
-		pt := &PartType{}
-		if err := dbFindByID(pt, s.TID); err == nil {
-			return pt
-		}
-	}
-	return nil
-}
-
-func (s *SKU) PageData(r *http.Request) (interface{}, error) {
-	if len(r.URL.Path) > 0 {
-		if err := dbFindByID(s, r.URL.Path); err != nil {
-			return nil, err
-		}
-	}
-	return struct {
-		Common
-		SKU   *SKU
-		Types []PartType
-	}{
-		Common: NewCommon(r, "Edit"),
-		SKU:    s,
-		Types:  partTypes(),
-	}, nil
-}
-
-func (t *Tag) PageData(r *http.Request) (interface{}, error) {
-	if len(r.URL.Path) > 0 {
-		if err := dbFindByID(t, r.URL.Path); err != nil {
-			return nil, err
-		}
-	}
-	return struct {
-		Common
-		Tag *Tag
-	}{
-		Common: NewCommon(r, "Edit"),
-		Tag:    t,
-	}, nil
-}
-
 type Part struct {
 	PID      int64     `sql:"pid" key:"true" table:"parts"`
-	KID      int64     `sql:"kid"`    // part type lookup id
-	SID      int64     `sql:"sid"`    // server id
-	DID      int64     `sql:"did"`    // dc id
-	RMAID    int64     `sql:"rma_id"` // rma id
-	Location string    `sql:"location"`
-	Serial   string    `sql:"serial_no"`
-	AssetTag string    `sql:"asset_tag"`
+	KID      *int64    `sql:"kid"` // vendor sku id
+	VID      *int64    `sql:"vid"` // vendor id
+	DID      *int64    `sql:"did"` // server id
+	STI      *int64    `sql:"sti"` // site id
+	Location *string   `sql:"location"`
+	Serial   *string   `sql:"serial_no"`
+	AssetTag *string   `sql:"asset_tag"`
+	Unused   bool      `sql:"unused"` // BOOL
+	Bad      bool      `sql:"bad"`    // BOOL
 	UID      int64     `sql:"user_id"  audit:"user"`
 	Modified time.Time `sql:"modified" audit:"time"`
 }
 
-func (p *Part) SKU() *SKU {
-	pl := &SKU{}
-	if nil == dbFindByID(pl, p.KID) {
-		return pl
-	}
-	return nil
-}
-
-func (p *Part) PartType() *PartType {
-	if s := p.SKU(); s != nil {
-		if nil == dbFindByID(s, p.KID) {
-			return s.PartType()
-		}
-	}
-	return nil
-}
-
-func (p *Part) PartNumber() string {
-	if pl := p.SKU(); pl != nil {
-		return pl.PartNumber
-	}
-	return ""
-}
-
-func (p *Part) Manufacturer() *Manufacturer {
-	m := p.SKU().Manufacturer()
-	return &m
-}
-
-func (p *Part) Server() *Server {
-	if p != nil {
-		s := Server{}
-		if nil == dbFindByID(&s, p.SID) {
-			return &s
-		}
-	}
-	return nil
-}
-
-func (p *Part) Datacenter() *Datacenter {
-	if p == nil {
-		return nil
-	}
-	if p.DID > 0 {
-		if dc, ok := dcIDs[p.DID]; ok {
-			return &dc
-		}
-		return nil
-	}
-	if s := p.Server(); s != nil {
-		return s.Datacenter()
-	}
-	return nil
-}
-
-func (p *Part) PageData(r *http.Request) (interface{}, error) {
-	if len(r.URL.Path) > 0 {
-		if err := dbFindByID(p, r.URL.Path); err != nil {
-			return nil, err
-		}
-	}
-	return struct {
-		Common
-		Part *Part
-	}{
-		Common: NewCommon(r, "Edit"),
-		Part:   p,
-	}, nil
-}
-
-func (p *Part) Log(action string, u User) {
-	const q = "insert into part_log (pid, action, ts, user_id) values (?,?,?,?)"
-	dbExec(q, p.PID, action, time.Now(), u.ID)
+type PartView struct {
+	PID         int64   `sql:"pid" key:"true" table:"parts_view"`
+	KID         *int64  `sql:"kid"`    // vendor sku id
+	VID         *int64  `sql:"vid"`    // vendor id
+	DID         *int64  `sql:"did"`    // device id
+	STI         *int64  `sql:"sti"`    // site id
+	RMAID       *int64  `sql:"rma_id"` // rma id
+	Site        *string `sql:"site"`
+	Hostname    *string `sql:"hostname"`
+	Location    *string `sql:"location"`
+	Serial      *string `sql:"serial_no"`
+	AssetTag    *string `sql:"asset_tag"`
+	PartType    *string `sql:"part_type"`
+	PartNumber  *string `sql:"part_no"`
+	Description *string `sql:"description"`
+	Mfgr        *string `sql:"mfgr"`
+	Unused      bool    `sql:"unused"` // BOOL
+	Bad         bool    `sql:"bad"`    // BOOL
 }
 
 func (u User) Admin() bool {
@@ -383,153 +283,17 @@ func (u User) Access() string {
 	}
 }
 
-type Datacenter struct {
-	ID         int64     `sql:"id" key:"true" table:"datacenters"`
-	Name       string    `sql:"name"`
-	Address    string    `sql:"address"`
-	City       string    `sql:"city"`
-	State      string    `sql:"state"`
-	Phone      string    `sql:"phone"`
-	Web        string    `sql:"web"`
-	DCMan      string    `sql:"dcman"`
-	PXEHost    string    `sql:"pxehost"`
-	PXEUser    string    `sql:"pxeuser"`
-	PXEPass    string    `sql:"pxepass"`
-	PXEKey     string    `sql:"pxekey"`
-	RemoteAddr string    `sql:"remote_addr"`
-	UID        int64     `sql:"user_id"  audit:"user"`
-	Modified   time.Time `sql:"modified" audit:"time"`
-}
-
-func (d Datacenter) Count() int {
-	c, err := dbGetInt("select count(*) from rackunits where dc=?", d.Name)
-	if err != nil {
-		fmt.Println("ERR!", err)
-	}
-	return c
-}
-
-func (d Datacenter) Selected() template.HTML {
-	if thisDC.ID == d.ID {
-		return template.HTML("selected")
-	}
-	return template.HTML("")
-}
-
-func (d Datacenter) Current() bool {
-	return thisDC.ID == d.ID
-}
-
-func (d Datacenter) Racks() []Rack {
-	r, err := dbObjectListQuery(Rack{}, "where did=? order by rack", d.ID)
-	if err != nil {
-		fmt.Println("racks err:", err)
-	}
-	return r.([]Rack)
-}
-
-type DCView struct {
-	ID          int64     `sql:"id" key:"true" table:"dcview"`
-	DID         int64     `sql:"datacenter"`
-	Hostname    string    `sql:"hostname"`
-	AssetNumber string    `sql:"asset_number"`
-	CPU         string    `sql:"cpu_id"`
-	CPUSpeed    int       `sql:"cpu_speed"`
-	MemoryMB    int       `sql:"memory"`
-	Created     time.Time `sql:"created" update:"false"`
-}
-
-type ServerVMs struct {
-	ID       int64          `sql:"id" key:"true" table:"servervms"`
-	DC       string         `sql:"dc"`
-	Hostname string         `sql:"hostname"`
-	VMList   sql.NullString `sql:"vms"`
-	IDList   sql.NullString `sql:"ids"`
-}
-
-type VMPair struct {
-	ID       int
-	Hostname string
-}
-
-type RackUnit struct {
-	DC       string `sql:"dc" table:"rackunits"`
-	Rack     int    `sql:"rack"`
-	NID      int64  `sql:"nid"`
-	SID      int64  `sql:"sid"`
-	RID      int64  `sql:"rid"`
-	RU       int    `sql:"ru"`
-	Height   int    `sql:"height"`
-	Hostname string `sql:"hostname"`
-	Alias    string `sql:"alias"`
-	AssetTag string `sql:"asset_tag"`
-	SerialNo string `sql:"sn"`
-	IPMI     string `sql:"ipmi"`
-	Internal string `sql:"internal"`
-	Note     string `sql:"note"`
-}
-
-func (r Rack) Units() ([]RackUnit, error) {
-	RUs, err := dbObjectListQuery(RackUnit{}, "where rid=? order by ru asc", r.ID)
-	return RUs.([]RackUnit), err
-}
-
-func (r Rack) PDUs() ([]PDU, error) {
-	if r.ID == 0 {
-		return []PDU{}, nil
-	}
-	pdus, err := dbObjectListQuery(PDU{}, "where rid=?", r.ID)
-	return pdus.([]PDU), err
-}
-
-func (r Rack) RackUnits() []RackUnit {
-	size := r.RUs
-	if size == 0 {
-		size = 45
-	}
-	units := make([]RackUnit, size)
-	for i := range units {
-		units[size-(i+1)].RU = i + 1
-		units[size-(i+1)].Height = 1
-	}
-	RUs, err := r.Units()
-	if err != nil {
-		fmt.Println("RackUnits error:", err)
-	} else {
-		for _, unit := range RUs {
-			units[size-unit.RU] = unit
-		}
-	}
-	// clear heights above 1U
-	zero := 0
-	for i := range units {
-		idx := size - (i + 1)
-		if units[idx].Height > 1 {
-			zero = units[idx].Height - 1
-			continue
-		}
-		if zero > 0 {
-			units[idx].Height = 0
-			zero--
-		}
-
-	}
-	return units
-}
-
-func (s ServerVMs) VMs() []VMPair {
-	vms := strings.Split(s.VMList.String, ",")
-	m := make([]VMPair, len(vms))
-	for i, id := range strings.Split(s.IDList.String, ",") {
-		m[i].ID, _ = strconv.Atoi(id)
-		m[i].Hostname = vms[i]
-	}
-	return m
-}
-
-func (s ServerVMs) List() []ServerVMs {
-	vms, _ := dbObjectList(ServerVMs{})
-	return vms.([]ServerVMs)
+type Site struct {
+	STI      int64     `sql:"sti" key:"true" table:"sites"`
+	Name     string    `sql:"name"`
+	Address  string    `sql:"address"`
+	City     string    `sql:"city"`
+	State    string    `sql:"state"`
+	Phone    string    `sql:"phone"`
+	Web      string    `sql:"web"`
+	DCMan    string    `sql:"dcman"`
+	UID      int64     `sql:"user_id"  audit:"user"`
+	Modified time.Time `sql:"modified" audit:"time"`
 }
 
 type Tag struct {
@@ -537,131 +301,31 @@ type Tag struct {
 	Name string `sql:"tag"`
 }
 
-type Server struct {
-	ID         int64     `sql:"id" key:"true" table:"servers"`
-	RID        int64     `sql:"rid"`
-	TID        int64     `sql:"tid"`
-	RU         int       `sql:"ru"`
-	Height     int       `sql:"height"`
-	Hostname   string    `sql:"hostname"`
-	Alias      string    `sql:"alias"`
-	Profile    string    `sql:"profile"`
-	Assigned   string    `sql:"assigned"`
-	Note       string    `sql:"note"`
-	AssetTag   string    `sql:"asset_tag"`
-	PartNo     string    `sql:"vendor_sku"`
-	SerialNo   string    `sql:"sn"`
-	IPInternal string    `sql:"ip_internal"`
-	IPPublic   string    `sql:"ip_public"`
-	IPIpmi     string    `sql:"ip_ipmi"`
-	PortEth0   string    `sql:"port_eth0"`
-	PortEth1   string    `sql:"port_eth1"`
-	PortIpmi   string    `sql:"port_ipmi"`
-	CableEth0  string    `sql:"cable_eth0"`
-	CableEth1  string    `sql:"cable_eth1"`
-	CableIpmi  string    `sql:"cable_ipmi"`
-	MacPort0   string    `sql:"mac_eth0"`
-	MacPort1   string    `sql:"mac_eth1"`
-	MacIPMI    string    `sql:"mac_ipmi"`
-	CPU        string    `sql:"cpu"`
-	RemoteAddr string    `sql:"remote_addr"`
-	Modified   time.Time `sql:"modified" audit:"time"`
-	UID        int64     `sql:"uid"      audit:"user"`
-}
-
-func (s Server) InternalVLAN() string {
-	v, err := findVLAN(s.DID(), s.IPInternal)
-	if err != nil {
-		return "vlan error:" + err.Error()
-	}
-	return v.String()
-}
-
-func deleteServerFromRack(rid, ru string) error {
-	s := Server{}
-	query := fmt.Sprintf("delete from %s where rid=? and ru=?", s.TableName())
-	return dbExec(query, rid, ru)
-}
-
-type Router struct {
-	ID         int64     `sql:"id" key:"true" table:"routers"`
-	RID        int64     `sql:"rid"`
-	Height     int       `sql:"height"`
-	RU         int       `sql:"ru"`
-	Hostname   string    `sql:"hostname"`
-	Make       string    `sql:"make"`
-	Model      string    `sql:"model"`
-	Note       string    `sql:"note"`
-	AssetTag   string    `sql:"asset_tag"`
-	MgmtIP     string    `sql:"ip_mgmt"`
-	PartNo     string    `sql:"sku"`
-	SerialNo   string    `sql:"sn"`
-	RemoteAddr string    `sql:"remote_addr"`
-	Modified   time.Time `sql:"modified"`
-	UID        int       `sql:"uid"`
-}
-
 type Rack struct {
-	ID       int64      `sql:"id" key:"true" table:"racks"`
-	DID      int64      `sql:"did"`
-	RUs      int        `sql:"rackunits"`
-	Label    int        `sql:"rack"`
-	VendorID string     `sql:"vendor_id"`
-	XPos     string     `sql:"x_pos"`
-	YPos     string     `sql:"y_pos"`
-	UID      int        `sql:"uid"`
-	TS       *time.Time `sql:"ts" update:"false"`
-	Table    dbutil.Table
+	RID      int64        `sql:"rid" key:"true" table:"racks"`
+	STI      int64        `sql:"sti"`
+	RUs      int          `sql:"rackunits"`
+	Label    int          `sql:"rack"`
+	VendorID string       `sql:"vendor_id"`
+	XPos     string       `sql:"x_pos"`
+	YPos     string       `sql:"y_pos"`
+	UID      int          `sql:"uid"`
+	TS       *time.Time   `sql:"ts" update:"false"`
+	Table    dbutil.Table `json:"-"`
 }
 
-func (r Rack) Datacenter() Datacenter {
-	dc := dcIDs[r.DID]
-	return dc
-}
-
-func (r Rack) DC() string {
-	dc := dcIDs[r.DID]
-	return dc.Name
-}
-
-func (r Router) DC() string {
-	q := "where id=?"
-	rack, _ := getRack(q, r.RID)
-	dc := dcIDs[rack.DID]
-	return dc.Name
-}
-
-func (r Rack) String() string {
-	return fmt.Sprintf("rack: %d dc: %s", r.Label, r.DC())
-}
-
-func (s Server) String() string {
-	return fmt.Sprintf("server: %s dc: %s", s.Hostname, s.DC())
-}
-
-func (r Router) String() string {
-	return fmt.Sprintf("router: %s dc: %s", r.Hostname, r.DC())
-}
-
-// arg 1 is dc, arg 2 is rack number
-func RackTable(args ...string) (Rack, *dbutil.Table, error) {
-	if len(args) == 0 {
-		return Rack{}, nil, fmt.Errorf("No datacenter or rack number provided\n")
-	}
-	query := "select id,dc,rack,ru,hostname,alias,profile,assigned,ip_ipmi,ip_internal,ip_public,asset_tag,vendor_sku,sn from sview"
-	if len(args) == 1 {
-		query += " where dc=? order by dc,rack,ru desc"
-		table, err := dbTable(query, args[0])
-		return Rack{}, table, err
-	}
-	dc := dcLookup[args[0]]
-	rack, err := getRack("where did=? and rack=?", dc.ID, args[1])
-	if err != nil {
-		return Rack{}, nil, err
-	}
-	query += " where rid=? order by dc,rack,ru desc"
-	table, err := dbTable(query, rack.ID)
-	return rack, table, err
+type RackView struct {
+	RID      int64        `sql:"rid" key:"true" table:"racks_view"`
+	STI      int64        `sql:"sti"`
+	RUs      int          `sql:"rackunits"`
+	Label    int          `sql:"rack"`
+	Site     string       `sql:"site"`
+	VendorID string       `sql:"vendor_id"`
+	XPos     string       `sql:"x_pos"`
+	YPos     string       `sql:"y_pos"`
+	UID      int          `sql:"uid"`
+	TS       *time.Time   `sql:"ts" update:"false"`
+	Table    dbutil.Table `json:"-"`
 }
 
 type RackNet struct {
@@ -683,7 +347,7 @@ func (r RackNet) String() string {
 }
 
 func (r Rack) RackNets() []RackNet {
-	rn, _ := dbObjectListQuery(RackNet{}, "where rid=? order by vid", r.ID)
+	rn, _ := dbObjectListQuery(RackNet{}, "where rid=? order by vid", r.RID)
 	return rn.([]RackNet)
 }
 
@@ -694,38 +358,28 @@ func (rn RackNets) Swap(i, j int)      { rn[i], rn[j] = rn[j], rn[i] }
 func (rn RackNets) Less(i, j int) bool { return rn[i].MinIP < rn[j].MinIP }
 
 type VM struct {
-	ID         int64     `sql:"id" key:"true" table:"vms"`
-	SID        int64     `sql:"sid"`
-	Hostname   string    `sql:"hostname"`
-	Private    string    `sql:"private"`
-	Public     string    `sql:"public"`
-	VIP        string    `sql:"vip"`
-	Profile    string    `sql:"profile"`
-	Note       string    `sql:"note"`
-	Modified   time.Time `sql:"modified"`
-	RemoteAddr string    `sql:"remote_addr"`
-	UID        int64     `sql:"uid"`
+	VMI      int64     `sql:"vmi" key:"true" table:"vms"`
+	DID      int64     `sql:"did"`
+	Hostname *string   `sql:"hostname"`
+	Profile  *string   `sql:"profile"`
+	Note     *string   `sql:"note"`
+	Modified time.Time `sql:"modified"`
+	UID      int64     `sql:"user_id"`
 }
 
-type Orphan struct {
-	ID       int64  `sql:"rowid" key:"true" table:"vmbad"`
-	DC       string `sql:"dc"`
-	Hostname string `sql:"hostname"`
-	Private  string `sql:"private"`
-	Public   string `sql:"public"`
-	VIP      string `sql:"vip"`
-	Note     string `sql:"note"`
-	Profile  string
-	Server   string
-	Error    string
-}
-
-func (o Orphan) Delete() error {
-	err := dbExec("delete from vmdetail where rowid=?", o.ID)
-	if err != nil {
-		fmt.Println("Orphan delete error", err)
-	}
-	return err
+type VMView struct {
+	VMI      int64     `sql:"vmi" key:"true" table:"vms_view"`
+	DID      int64     `sql:"did"`
+	RID      *int64    `sql:"rid"`
+	STI      *int64    `sql:"sti"`
+	Rack     *int      `sql:"rack"`
+	Site     *string   `sql:"site"`
+	Server   *string   `sql:"server"`
+	Hostname *string   `sql:"hostname"`
+	Profile  *string   `sql:"profile"`
+	Note     *string   `sql:"note"`
+	Modified time.Time `sql:"modified"`
+	UID      int64     `sql:"user_id"`
 }
 
 func normalColumns(words []string) {
@@ -738,151 +392,10 @@ func normalColumns(words []string) {
 	}
 }
 
-func ServerColumns(words []string) error {
-	columns := dbutil.GetColumns(Server{})
-	for _, word := range words {
-		if key, ok := columns[word]; !ok {
-			// we will use these to calculate rack id
-			if word == "dc" || word == "rack" {
-				continue
-			}
-			vakid := []string{"dc", "rack"}
-			for k, v := range columns {
-				if !v && k != "id" && k != "rid" {
-					vakid = append(vakid, k)
-				}
-			}
-			return fmt.Errorf("invalid column: %s\nValid columns: %s", word, strings.Join(vakid, ","))
-		} else if key {
-			return fmt.Errorf("invalid column: %s - it is a key field and is internal only", word)
-		}
-	}
-	return nil
-}
-
-func ServerAdd(columns, words []string) error {
-	var dc, rack, ru, hostname string
-	args := []interface{}{}
-	params := []string{}
-	for i, col := range columns {
-		switch {
-		case col == "dc":
-			dc = strings.ToUpper(words[i])
-		case col == "rack":
-			rack = noNumbers.ReplaceAllLiteralString(words[i], "")
-		case col == "ru":
-			ru = noRange.ReplaceAllLiteralString(words[i], "")
-			ru = noNumbers.ReplaceAllLiteralString(ru, "")
-			args = append(args, ru)
-			params = append(params, col)
-		case col == "hostname":
-			hostname = strings.ToLower(words[i])
-			args = append(args, hostname)
-			params = append(params, col)
-		default:
-			args = append(args, words[i])
-			params = append(params, col)
-		}
-	}
-	if len(dc) == 0 {
-		return fmt.Errorf("no datacenter specified")
-	}
-	if len(rack) == 0 {
-		return fmt.Errorf("no rack specified")
-	}
-	d, ok := dcLookup[dc]
-	if !ok {
-		return fmt.Errorf("invalid datacenter: %s", dc)
-	}
-	rid := RackID(d.ID, rack)
-	if rid == 0 {
-		var err error
-		num, err := strconv.Atoi(rack)
-		if err != nil {
-			fmt.Printf("bad rack number for rack: %s (%s): %s\n", rack, dc, err)
-		}
-		rid, err = dbObjectInsert(Rack{DID: d.ID, Label: num})
-		if err != nil {
-			return fmt.Errorf("can't create rack: %s (%s): %s", rack, dc, err)
-		}
-		log.Println("added rid:", rid)
-	}
-	args = append(args, fmt.Sprintf("%d", rid))
-	params = append(params, "rid")
-	dbDebug(true)
-	query := fmt.Sprintf("replace into servers (%s) values (%s)", strings.Join(params, ","), dbutil.Placeholders(len(args)))
-	_, err := dbInsert(query, args...)
-	dbDebug(false)
-	return err
-}
-
-// an array of tab-delimited lines
-func LoadServers(data []string) error {
-	log.Println("Loading!")
-	var columns []string
-	for i, line := range data {
-		if i == 0 {
-			columns = strings.Split(line, "\t")
-			normalColumns(columns)
-			if err := ServerColumns(columns); err != nil {
-				return err
-			}
-			continue
-		}
-		words := strings.Split(line, "\t")
-		if err := ServerAdd(columns, words); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func LoadParts(did int64, data []string) error {
-	var columns []string
-	valid := []string{"qty", "item", "mfgr", "part_no", "asset_tag", "sn"}
-	log.Println("Loading parts!")
-	for i, line := range data {
-		line = strings.TrimSpace(line)
-		if len(line) == 0 {
-			continue
-		}
-		if i == 0 {
-			columns = strings.Split(line, "\t")
-			normalColumns(columns)
-			for _, col := range columns {
-				if !stringInSlice(col, valid) {
-					return fmt.Errorf("invalid column: %s. must be one of: %s\n", col, strings.Join(valid, ","))
-				}
-			}
-			//			log.Println("COL OK:", columns)
-			continue
-		}
-		words := strings.Split(line, "\t")
-		//		log.Println("LINE:", i, "WORDS:", strings.Join(words, ","))
-		if err := PartsAdd(did, columns, words); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func PartsAdd(did int64, columns, words []string) error {
+/*
+func PartsAdd(dcd int64, columns, words []string) error {
 	var item, mfgr, asset, partNo, sn string
 	qty := 1
-	/*
-		2016/01/27 10:57:29 COL OK: [qty mfgr item]
-		2016/01/27 10:57:29 LINE: 1 WORDS: 3,Cisco,48 port Gigabit module
-		2016/01/27 10:57:29 ADDING MFGR:  PN:  DESC:
-
-		2016/01/27 10:59:36 COL OK: [qty mfgr item]
-		2016/01/27 10:59:36 LINE: 1 WORDS: 3,Cisco,48 port Gigabit module
-		2016/01/27 10:59:36 PARTS COLS: []
-		2016/01/27 10:59:36 ADDING MFGR:  PN:  DESC:
-		2016/01/27 10:59:36 ADD SKU MID: 6 PN:  DESC:
-		2016/01/27 10:59:36 LINE: 2 WORDS: 1,Cisco,6500 Supervisor module
-		2016/01/27 10:59:36 PARTS COLS: []
-
-	*/
 	log.Println("PARTS COLS:", columns)
 	var err error
 	for i, col := range columns {
@@ -910,152 +423,13 @@ func PartsAdd(did int64, columns, words []string) error {
 	}
 	log.Println("ADDING MFGR:", mfgr, "PN:", partNo, "DESC:", item)
 	for i := 0; i < qty; i++ {
-		if _, err = AddPart(did, mfgr, partNo, item, sn, asset, ""); err != nil {
+		if _, err = AddPart(dcd, mfgr, partNo, item, sn, asset, ""); err != nil {
 			return err
 		}
 	}
 	return err
 }
-func serversByQuery(where string, args ...interface{}) []Server {
-	s, _ := dbObjectListQuery(Server{}, where, args...)
-	return s.([]Server)
-}
-
-func getServer(where string, args ...interface{}) (Server, error) {
-	var s Server
-	return s, dbObjectLoad(&s, where, args...)
-}
-
-func getRouter(where string, args ...interface{}) (Router, error) {
-	var s Router
-	return s, dbObjectLoad(&s, where, args...)
-}
-
-func getVM(where string, args ...interface{}) (VM, error) {
-	var v VM
-	return v, dbObjectLoad(&v, where, args...)
-}
-
-func getVMs(serverID int64) []VM {
-	v, _ := dbObjectListQuery(VM{}, "where sid=?", serverID)
-	return v.([]VM)
-}
-
-func vmsByQuery(where string, args ...interface{}) []VM {
-	r, _ := dbObjectListQuery(VM{}, where, args...)
-	return r.([]VM)
-}
-
-func getRack(where string, args ...interface{}) (Rack, error) {
-	var r Rack
-	return r, dbObjectLoad(&r, where, args...)
-}
-
-func RackID(dc int64, rack string) int64 {
-	q := "where did=? and rack=?"
-	r, err := getRack(q, dc, rack)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "rack did (%d) id (%s) error: %s\n", dc, rack, err)
-	}
-	return r.ID
-}
-
-func (v VM) Server() Server {
-	s, _ := getServer("where id=?", v.SID)
-	return s
-}
-
-func (v VM) Delete() error {
-	return dbObjectDelete(v)
-}
-
-func (s Server) Delete() error {
-	for _, vm := range getVMs(s.ID) {
-		if err := vm.Delete(); err != nil {
-			return err
-		}
-	}
-	return dbObjectDelete(s)
-}
-
-func (s Server) Update() error {
-	return dbObjectUpdate(s)
-}
-
-func (s Server) VMs() []VM {
-	v, _ := dbObjectListQuery(VM{}, "where sid=?", s.ID)
-	return v.([]VM)
-}
-
-func (s Server) DID() int64 {
-	q := "where id=?"
-	if r, err := getRack(q, s.RID); err == nil {
-		return r.DID
-	}
-	return 0
-}
-
-func (s Server) Datacenter() *Datacenter {
-	q := "where id=?"
-	r, _ := getRack(q, s.RID)
-	if dc, ok := dcIDs[r.DID]; ok {
-		return &dc
-	}
-	return nil
-}
-
-func (s Server) DC() string {
-	q := "where id=?"
-	r, _ := getRack(q, s.RID)
-	if dc, ok := dcIDs[r.DID]; ok {
-		return dc.Name
-	}
-	return ""
-}
-
-func (s Server) Tag() string {
-	t := Tag{}
-	if err := dbFindByID(&t, s.TID); err == nil {
-		return t.Name
-	}
-	return ""
-}
-
-func (s Server) Rack() int {
-	r, err := getRack("where id=?", s.RID)
-	if err != nil {
-		fmt.Println("Server.Rack() rid:", s.RID, "error:", err)
-	}
-	return r.Label
-}
-
-func (r Router) Rack() int {
-	rack, err := getRack("where id=?", r.RID)
-	if err != nil {
-		fmt.Println("Router.Rack() rid:", r.RID, "error:", err)
-	}
-	return rack.Label
-}
-
-func (r Router) Insert() (int64, error) {
-	return dbObjectInsert(r)
-}
-
-func (r Router) Delete() error {
-	return dbObjectDelete(r)
-}
-
-func (r Router) Update() error {
-	return dbObjectUpdate(r)
-}
-
-func (v VM) Insert() (int64, error) {
-	return dbObjectInsert(v)
-}
-
-func (v VM) Update() error {
-	return dbObjectUpdate(v)
-}
+*/
 
 func getUser(where string, args ...interface{}) (User, error) {
 	u := User{}
@@ -1178,13 +552,6 @@ func NextIPs(rid int64) (map[string]string, error) {
 	return next, err
 }
 
-func (s Server) FixMac() {
-	var err error
-	if s.MacPort0, err = FindMAC(s.IPIpmi); err == nil {
-		dbSave(&s)
-	}
-}
-
 type Audit struct {
 	Hostname string `sql:"hostname" table:"auditing"`
 	IP       string `sql:"remote_addr"`
@@ -1214,6 +581,7 @@ type PDU struct {
 	AssetTag string `sql:"asset_tag"`
 }
 
+/*
 func typeID(name string) int64 {
 	pt := PartType{}
 	if err := dbObjectLoad(&pt, "where name=?", name); err != nil {
@@ -1222,6 +590,7 @@ func typeID(name string) int64 {
 	}
 	return pt.TID
 }
+*/
 
 type DiskInfo struct {
 	Hostname, IP string
@@ -1232,66 +601,6 @@ type DiskData struct {
 	Size, Location, Manufacturer, PartNumber, SerialNumber string
 }
 
-func ServerImportDMI(sid int64, r io.Reader) error {
-	s := Server{}
-	if err := dbFindByID(&s, sid); err != nil {
-		return err
-	}
-	dc := s.Datacenter()
-	did := dc.ID
-	tid := typeID("memory")
-
-	sys := ParseDMI(r)
-	if sys == nil {
-		return fmt.Errorf("dmi parse failed")
-	}
-	for _, m := range sys.Memory {
-		if len(m.Size) == 0 {
-			continue
-		}
-		if m.PartNumber == "NO DIMM" || m.SerialNumber == "NO DIMM" {
-			continue
-		}
-		desc := m.Size + " " + m.Speed
-		if _, err := AddDevicePart(did, sid, tid, m.Manufacturer, m.PartNumber, desc, m.SerialNumber, m.AssetTag, m.Locator); err != nil {
-			log.Println("add error:", err)
-			return err
-		}
-	}
-	tid = typeID("motherboard")
-	b := sys.Motherboard
-	if _, err := AddDevicePart(did, sid, tid, b.Manufacturer, b.ProductName, b.Type, b.SerialNumber, b.AssetTag, b.LocationInChassis); err != nil {
-		log.Println("add error:", err)
-		return err
-	}
-	return nil
-}
-
-func ServerImportDisks(d DiskInfo) error {
-	//log.Println("IMPORTING DISK SID:", sid, "RECORDS:", len(disks))
-	dot := strings.Index(d.Hostname, ".")
-	if dot < 0 {
-		dot = len(d.Hostname)
-	}
-	hostname := d.Hostname[:dot]
-	s := Server{}
-	if err := dbObjectLoad(&s, "where hostname=?", hostname); err != nil {
-		return err
-	}
-	dc := s.Datacenter()
-	did := dc.ID
-	tid := typeID("disk")
-
-	for _, disk := range d.Disks {
-		desc := disk.Size
-		if _, err := AddDevicePart(did, s.ID, tid, disk.Manufacturer, disk.PartNumber, desc, disk.SerialNumber, "", disk.Location); err != nil {
-			log.Println("disk add error:", err)
-			return err
-		}
-	}
-	return nil
-}
-
 func stringInSlice(a string, list []string) bool {
 	for _, b := range list {
 		if b == a {
@@ -1299,4 +608,16 @@ func stringInSlice(a string, list []string) bool {
 		}
 	}
 	return false
+}
+
+type Inventory struct {
+	STI         *int64  `sql:"sti" table:"inventory" json:",omitempty"`
+	KID         *int64  `sql:"kid"			json:",omitempty"`
+	PTI         *int64  `sql:"pti"			json:",omitempty"`
+	Qty         *int64  `sql:"qty"			json:",omitempty"`
+	Site        *string `sql:"site"			json:",omitempty"`
+	Mfgr        *string `sql:"mfgr"		    json:",omitempty"`
+	PartNumber  *string `sql:"part_no"		json:",omitempty"`
+	PartType    *string `sql:"part_type"		json:",omitempty"`
+	Description *string `sql:"description"	json:",omitempty"`
 }

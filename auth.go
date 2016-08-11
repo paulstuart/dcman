@@ -24,6 +24,10 @@ func saveToFile(name string, text []byte) {
 	ioutil.WriteFile(name, text, 0644)
 }
 
+func b64(s string) string {
+	return base64.StdEncoding.EncodeToString([]byte(s))
+}
+
 func SAMLSession(body io.Reader) string {
 	doc, err := html.Parse(body)
 	if err != nil {

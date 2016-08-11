@@ -1,3 +1,84 @@
+ 
+var get = function(url) {
+  // Return a new promise.
+  return new Promise(function(resolve, reject) {
+    // Do the usual XHR stuff
+    var req = new XMLHttpRequest();
+    req.open('GET', url);
+    if (user_apikey && user_apikey.length > 0) {
+	    req.setRequestHeader("X-API-KEY", user_apikey)
+    }
+
+    req.onload = function() {
+      // This is called even on 404 etc
+      // so check the status
+      console.log('get status:', req.status, 'txt:', req.statusText)
+      if (req.status == 200) {
+        // Resolve the promise with the response text
+        //console.log('woo:', req.responseText)
+        var obj = JSON.parse(req.responseText)
+        resolve(obj)
+        //resolve(JSON.parse(req.responseText))
+        //resolve(req.response);
+      }
+      else {
+        // Otherwise reject with the status text
+        // which will hopefully be a meaningful error
+        console.log('rejecting!!! ack:',req.status, 'txt:', req.statusText)
+        reject(Error(req.statusText));
+      }
+    };
+
+    // Handle network errors
+    req.onerror = function() {
+      console.log('get network error');
+      reject(Error("Network Error"));
+    };
+
+    // Make the request
+    req.send();
+  });
+}
+
+var getData = function(url) {
+  return new Promise(function(resolve, reject) {
+    // Do the usual XHR stuff
+    var req = new XMLHttpRequest();
+    req.open('GET', url);
+    if (user_apikey && user_apikey.length > 0) {
+	    req.setRequestHeader("X-API-KEY", user_apikey)
+    }
+
+    req.onload = function() {
+      // This is called even on 404 etc
+      // so check the status
+      //console.log('get status:', req.status, 'txt:', req.statusText)
+      if (req.status == 200) {
+        var obj = JSON.parse(req.responseText)
+        resolve(req)
+      }
+      else {
+        // Otherwise reject with the status text
+        // which will hopefully be a meaningful error
+        console.log('get failed. url:', url, 'status:',req.status, 'txt:', req.statusText)
+        reject(Error(req.statusText));
+      }
+    };
+
+    // Handle network errors
+    req.onerror = function() {
+      console.log('get network error for url:',url);
+      reject(Error("Network Error"));
+    };
+
+    // Make the request
+    req.send();
+  });
+}
+
+var getJSON = function(url) {
+      return getData(url).then(JSON.parse);
+}
 
 var postIt = function(url, data, fn, method) {
     var xhr = new XMLHttpRequest();
@@ -5,16 +86,25 @@ var postIt = function(url, data, fn, method) {
     xhr.open(method, url, true);
     //xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded; charset=UTF-8');
 	xhr.setRequestHeader("Content-Type", "application/json")
+    if (user_apikey && user_apikey.length > 0) {
+	    xhr.setRequestHeader("X-API-KEY", user_apikey)
+    }
     xhr.send(JSON.stringify(data));
     xhr.onreadystatechange = function() {
         if (typeof fn === 'function') {
             fn(xhr);
             return
         }
+/*
         if (xhr.readyState == 4 && xhr.status != 200) {
             alert("Oops:" + xhr.responseText);
         }
+*/
     };
+}
+
+var deleteIt = function(url, fn) {
+    postIt(url, null, fn, 'DELETE')
 }
 
 function toQueryString(obj) {
@@ -55,8 +145,11 @@ var fetchData = function (url, fn) {
       var xhr = new XMLHttpRequest()
       xhr.open('GET', url)
       //xhr.setRequestHeader("Access-Control-Allow-Origin", "*")
+      if (user_apikey && user_apikey.length > 0) {
+	      xhr.setRequestHeader("X-API-KEY", user_apikey)
+      }
       xhr.onload = function () {
-        fn(JSON.parse(xhr.responseText), xhr.status)
+        if (fn) fn(JSON.parse(xhr.responseText), xhr.status)
       }
       xhr.send()
 }
@@ -271,22 +364,25 @@ var menuMIX = {
 
 var inURL = "/dcman/api/inventory/";
 var serverURL = "/dcman/api/server/view/";
-var vmURL = "/dcman/api/vm/view/";
+var vmURL = "/dcman/api/vm/";
+var vmViewURL = "/dcman/api/vm/view/";
+var partTypesURL = "/dcman/api/part/type/";
 var partURL = "/dcman/api/part/view/";
 var rackURL = "/dcman/api/rack/view/";
 var rmaURL = "/dcman/api/rma/";
 var rmaviewURL = "/dcman/api/rma/view/";
 var tagURL = "/dcman/api/tag/";
-var dcURL = "/dcman/api/dc/" ; 
-var networkURL = "/dcman/api/network/ip/";
+var sitesURL = "/dcman/api/site/" ; 
+var networkURL = "/dcman/api/network/ip/used/";
 var userURL = "/dcman/api/user/" ; 
 var vlanURL = "/dcman/api/vlan/view/" ; 
+var vendorURL = "/dcman/api/vendor/" ; 
 
 var RMA = function() {
     Maker(this, [
         'RMAID',
         'SID',
-        'DCD',
+        'STI',
         'VID',
         'OldPID',
         'NewPID',
@@ -310,45 +406,13 @@ var RMA = function() {
     ])
 }
 
-var Server = function() {
-    Maker(this, [
-        'Alias',
-        'AssetTag',
-        'Assigned',
-        'CableEth0',
-        'CableEth1',
-        'CableIpmi',
-        'DC',
-        'DCD',
-        'Height',
-        'Hostname',
-        'ID',
-        'IPInternal',
-        'IPIpmi',
-        'IPPublic',
-        'MacIPMI',
-        'MacPort0',
-        'MacPort1',
-        'Note',
-        'PartNo',
-        'PortEth0',
-        'PortEth1',
-        'PortIpmi',
-        'Profile',
-        'Rack',
-        'RID',
-        'RU',
-        'Serial',
-        'TID',
-    ])
-}
-
 var Part = function() {
     Maker(this, [
         'PID',
-        'SID',
-        'DCD',
-        'DC',
+        'DID',
+        'STI',
+        'PTI',
+        'Site',
         'Hostname',
         'Description',
         'PartNumber',
@@ -370,11 +434,11 @@ var Tag = function() {
 var VM = function() {
     Maker(this, [
         'VMI',
-        'SID',
+        'DID',
         'RID',
-        'DCD',
+        'STI',
         'Rack',
-        'DC',
+        'Site',
         'Server',
         'Hostname',
         'Private',
@@ -387,9 +451,9 @@ var VM = function() {
 
 var VLAN = function() {
     Maker(this, [
-       'ID',
-       'DCD',
-       'DC',
+       'VLI',
+       'STI',
+       'Site',
        'Name',
        'Profile',
        'Gateway',
@@ -412,10 +476,50 @@ var User = function() {
 var Rack = function() {
     Maker(this, [
         'RID',
-        'DCD',
-        'DC',
+        'STI',
+        'Site',
         'RUs',
         'Label',
         'VendorID',
     ])
 }
+
+var Vendor = function() {
+    Maker(this, [
+        'VID',
+        'Name',
+        'WWW',
+        'Phone',
+        'Address',
+        'City',
+        'State',
+        'Country',
+        'Postal',
+        'Note',
+    ])
+}
+
+var Device = function() {
+    Maker(this, [
+        'Alias',
+        'AssetTag',
+        'Assigned',
+        'Site',
+        'DID',
+        'DTI',
+        'DevType',
+        'Height',
+        'Hostname',
+        'ID',
+        'Note',
+        'PartNo',
+        'Profile',
+        'Rack',
+        'RID',
+        'RU',
+        'SerialNo',
+        'STI',
+        'TID',
+    ])
+}
+
