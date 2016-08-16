@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 
 	"github.com/paulstuart/secrets"
 )
@@ -19,7 +20,7 @@ type userLevel struct {
 var userLevels = []userLevel{{0, "User"}, {1, "Editor"}, {2, "Admin"}}
 
 func UserByID(id interface{}) (User, error) {
-	return getUser("where id=?", id)
+	return getUser("where usr=?", id)
 }
 
 func userLogin(id string) string {
@@ -95,6 +96,7 @@ type credentials struct {
 func userAuth(username, password string) (*User, error) {
 	user, err := UserByEmail(username)
 	if err != nil {
+		log.Println("user error:", err)
 		return nil, fmt.Errorf("%s is not authorized for access", username)
 	}
 	if Authenticate(username, password) {

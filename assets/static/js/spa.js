@@ -2,6 +2,15 @@
 
 var pingURL = "http://10.100.182.16:8080/dcman/api/pings?debug=true";
 
+var deviceURL      = '/dcman/api/device/view/'
+var deviceListURL  = '/dcman/api/device/ips/'
+var deviceTypesURL = '/dcman/api/device/type/'
+var ipURL          = '/dcman/api/network/ip/'
+var iptypesURL     = '/dcman/api/network/ip/type/'
+var ifaceURL       = '/dcman/api/interface/'
+var ifaceViewURL   = '/dcman/api/interface/view/'
+var mfgrURL        = '/dcman/api/mfgr/'
+
 var userInfo = {};
 
 var mySTI = 1;
@@ -11,8 +20,24 @@ var rackData = {
     list: [],
 }
 
-var deviceListURL = '/dcman/api/device/ips/'
-var deviceTypesURL = '/dcman/api/device/type/'
+
+var getIt = function(geturl, what) {
+    return function(id, query) {
+        var url = geturl;
+        if (query) {
+            url += query + id
+        } else if (id && id > 0) {
+            url += id
+        }
+        return get(url).then(function(result) {
+            console.log('fetched:', what)
+            return result;
+        })
+        .catch(function(x) {
+            console.log('fetch failed for:', what, 'because:', x);
+        });
+    }
+}
 
 var commonListMIX = {
     computed: {
@@ -29,90 +54,29 @@ var commonListMIX = {
 
 // TODO: these should be generated from a factory function
 function getSiteLIST(all) {
-  return get(sitesURL).then(function(result) {
-       console.log('sitelist fetched:', result.length);
+    return get(sitesURL).then(function(result) {
+        console.log('sitelist fetched:', result.length);
         if (all) {
-       result.unshift({STI:0, Name:'All Sites'})
+            result.unshift({STI:0, Name:'All Sites'})
         }
-       return result;
+        return result;
     })
     .catch(function(x) {
       console.log('Could not load sitelist: ', x);
     });
 }
 
-function getTagList() {
-  return get(tagURL).then(function(result) {
-       console.log('tag list fetched:', result.length);
-       return result;
-    })
-    .catch(function(x) {
-      console.log('Could not tag list: ', x);
-    });
-}
+var getVendorList = getIt(vendorURL, 'vendors');
+var getPart = getIt(partURL, 'parts');
+var getPartTypes = getIt(partTypesURL, 'part typess');
+var getInventory = getIt(inURL, 'inventory');
+var getDeviceTypes = getIt(deviceTypesURL, 'device typess');
+var getIPTypes = getIt(iptypesURL, 'ip typess');
+var getDeviceLIST = getIt(deviceListURL, 'device list');
+var getTagList = getIt(tagURL, 'tags');
+var getDevice = getIt(deviceURL, 'device');
+var getMfgr = getIt(mfgrURL, 'mfgr');
 
-function getPartTypes() {
-  return get(partTypesURL).then(function(result) {
-       console.log('part types fetched:', result.length);
-       return result;
-    })
-    .catch(function(x) {
-      console.log('Could not load part types: ', x);
-    });
-}
-
-function getDeviceTypes() {
-  return get(deviceTypesURL).then(function(result) {
-       console.log('device types fetched:', result.length);
-       return result;
-    })
-    .catch(function(x) {
-      console.log('Could not load device types: ', x);
-    });
-}
-
-function getIPTypes() {
-  return get(iptypesURL).then(function(result) {
-       console.log('ip types fetched:', result.length);
-       return result;
-    })
-    .catch(function(x) {
-      console.log('Could not load ip types: ', x);
-    });
-}
-
-function getDeviceLIST(STI) {
-  var url = deviceListURL;
-  if (STI > 0) {
-    url += "?STI=" + STI
-  }
-  return get(url).then(function(result) {
-       console.log('device list fetched:', result.length);
-       return result;
-    })
-    .catch(function(x) {
-      console.log('Could not load device list: ', x);
-    });
-}
-
-
-function getDevice(DID) {
-  // Use the fetch API to get the information
-  // fetch returns a promise
-  var url = deviceURL;
-  if (DID && DID > 0) {
-    //url += "?DID=" + DID
-    url += DID
-  }
-  return get(url).then(function(result) {
-       console.log('device fetched')
-       return result;
-    })
-    .catch(function(x) {
-      //throw new Error('Could not load serverlist: ');
-      console.log('Could not load device: ', x);
-    });
-}
 
 function getInterfaces(device) {
   //var device = data[0];
@@ -145,27 +109,29 @@ function getInterfaces(device) {
    })
 }
 
+/*
+function getRMA(RMD) {
+  var url = rmaviewURL;
+  if (RMD && RMD > 0) {
+    url += RMD
+  }
+  return get(url).then(function(result) {
+       console.log('rma(s) fetched')
+       return result;
+    })
+    .catch(function(x) {
+      console.log('Could not load rma(s): ', x);
+    });
+}
+*/
+
 // device info with associated interface / IPs
 var completeDevice = function(DID) {
    return getDevice(DID).then(getInterfaces); 
 }
 
-function fetchRacks(STI) {
-    var url = rackURL;
-    if (STI > 0) {
-        url += "?STI=" + STI
-    }
-     return get(url).then(function(result) {
-           console.log('rack fetched:', result.length);
-             result.unshift({RID:0, Label:''})
-           rackData.list = result;
-           return result;
-        })
-        .catch(function(x) {
-          //throw new Error('Could not load serverlist: ');
-          console.log('Could not load racks: ', x);
-        });
-}
+var getRack = getIt(rackURL, 'racks')
+var getRMA = getIt(rmaviewURL, 'rma')
 
 
 function remember() {
@@ -198,6 +164,7 @@ var siteMIX = {
 }
 
 var validIP = function(ip) {
+    if (! ip || ip.length === 0) return false;
     var octs = ip.split('.')
     if (octs.length != 4) return false
     for (var i=0; i<4; i++) {
@@ -229,6 +196,14 @@ var ipv4 = function(ip) {
     return a + "." + b + "." + c + "." + d
 }
 
+var saveMe = function(url, data, id, fn) {
+    if (id && id > 0) {
+        postIt(url + id + "?debug=true", data, fn, 'PATCH')
+    } else {
+        postIt(this.dataURL + id + "?debug=true", data, fn)
+    }
+}
+
 // common stuff for edits 
 var editVue = {
     created: function () {
@@ -236,9 +211,6 @@ var editVue = {
     },
     methods: {
         saveSelf: function() {
-            if (this.preSave) {
-                this.preSave
-            }
             var data = this.myself()
             var id = this.myID()
             if (id > 0) {
@@ -367,6 +339,7 @@ var searchVue = {
     methods: {
         search: function(what) {
             console.log("DO SEARCH:",what)
+            this.searchText = what
             var self = this;
             if (what.length === 0) { 
                 return
@@ -388,6 +361,8 @@ var searchVue = {
                     } else {
                         self.found = data
                     }
+                } else {
+                    self.found = []
                 }
             })
         }
@@ -802,12 +777,6 @@ var serverAddVue = {
 }
 */
 
-var ipURL = '/dcman/api/network/ip/'
-var deviceURL = '/dcman/api/device/view/'
-var iptypesURL = '/dcman/api/network/ip/type/'
-var ifaceURL = '/dcman/api/interface/'
-var ifaceViewURL = '/dcman/api/interface/view/'
-
 var ipMIX = {
     props: ['iptypes', 'ports'],
     data: function() {
@@ -986,7 +955,7 @@ var deviceEditVue = {
     },
     route: { 
           data: function (transition) {
-            console.log('ROUTE TRANS:',transition)
+            console.log('DEVICE ROUTE TRANS:',transition)
             console.log('route did:',this.$route.params.DID)
             return Promise.all([
                 getSiteLIST(false), 
@@ -994,9 +963,7 @@ var deviceEditVue = {
                 getTagList(),
                 getIPTypes(),
                 completeDevice(this.$route.params.DID), 
-                //fetchRacks(this.STI), 
            ]).then(function (data) {
-               // console.log('NEW DEVICE:', data[3]);
               return {
                 sites: data[0],
                 device_types: data[1],
@@ -1007,12 +974,6 @@ var deviceEditVue = {
             })
           }
     },
-/*
-    created: function () {
-        this.loadTags()
-        //this.loadSelf()
-    },
-*/
     methods: {
         saveSelf: function(event) {
             if (this.Device.DID == 0) {
@@ -1037,6 +998,7 @@ var deviceEditVue = {
                  self.racks = data
              })
         },
+            /*
         loadDevice: function () {
              var self = this;
 
@@ -1119,6 +1081,7 @@ var deviceEditVue = {
                  self.ipTypes = data
                })
         },
+        */
         loadTags: function () {
              var self = this;
              fetchData(tagURL, function(data) {
@@ -1145,6 +1108,7 @@ var deviceEditVue = {
 
     },
 
+        /*
     watch: {
         "Device.STI": function(older, newer) {
             console.log("new device STI:", this.Device.STI)
@@ -1154,6 +1118,7 @@ var deviceEditVue = {
             console.log("new device id:", this.Device.DID)
         },
     },
+    */
 }
 
 var deviceEdit = Vue.component('device-edit', {
@@ -1389,12 +1354,6 @@ var App = Vue.extend({
             window.user_apikey = ''
             fetchData('/dcman/api/logout')
         },
-/*
-        'search-for': function (msg) {
-            console.log('*** search-for event:', msg)
-            this.search(msg)
-        },
-*/
         'search-again': function(text) {
             // relay event from navbar search
             this.$broadcast('search-again', text)
@@ -1432,7 +1391,7 @@ var deviceListVue = {
   data: function() {
       console.log('device data returning')
       return {
-          STI: mySTI,
+          STI: 1,
           RID: 0,
           sites: [],
           racks: [],
@@ -1462,49 +1421,33 @@ var deviceListVue = {
             console.log('device list promises starting for STI:', self.STI)
             return Promise.all([
                 getSiteLIST(), 
-                getDeviceLIST(self.STI), 
-                fetchRacks(self.STI), 
+                getDeviceLIST(self.STI, '?sti='), 
+                getRack(self.STI, '?sti='), 
            ]).then(function (data) {
               console.log('device list promises returning')
              return {
                 sites: data[0],
                 gridData: data[1],
                 racks: data[2],
-                //site: getSiteName(data[0], self.STI),
               }
             })
           }
     },
-  methods: {
-    loadRacks: function () {
-         var self = this,
-              url = rackURL + "?STI=" + self.STI;
-
-         fetchData(url, function(data) {
-             if (data) {
-                 data.unshift({RID:0, Label:''})
-                 self.racks = data
-             }
-         })
+    methods: {
+        reload: function() {
+            var self = this;
+            getDeviceLIST(self.STI, '?sti=').then(function(devices) {
+                self.gridData = devices
+            })
+            getRack(self.STI, '?sti=').then(function(racks) {
+                self.racks = racks
+            })
+        }
     },
-    loadSelf: function () {
-         self = this
-         self.RID = 0
-
-         var url = deviceListURL;
-         if (self.STI > 0) {
-             url += "?sti=" + self.STI
-         }
-         fetchData(url, function(data) {
-             self.gridData = data
-         })
-         self.loadRacks()
-    },
-  },
-  watch: {
+    watch: {
     'STI': function(val, oldVal){
             mySTI = val
-            this.loadSelf()
+            this.reload()
         },
     },
 }
@@ -1523,7 +1466,7 @@ var vlanMIX = {
             return (key == 'Name')
         },
         linkpath: function(entry, key) {
-            return '/vlan/edit/' + entry['ID']
+            return '/vlan/edit/' + entry['VLI']
         }
     },
 }
@@ -1589,17 +1532,6 @@ var vlanEditVue = {
           }
       },
       methods: {
-/*
-          Updated: function(event) {
-              console.log('send update event: ' + event);
-              this.Server.TID = parseInt(this.Server.TID)
-              postIt(serverURL + this.SID + "?debug=true", this.Server, this.showList, 'PATCH')
-          },
-          Deleted: function(event) {
-              console.log('delete event: ' + event)
-              postIt(serverURL + this.SID, null, this.showList, 'DELETE')
-          },
-*/
           myID: function() {
               return this.VLAN.ID
           },
@@ -1857,42 +1789,11 @@ var inventoryMIX = {
         myFilter: function(a, b, c) {
             return a
         },
-        /*
-        updated: function(ev) {
-            var qty = ev.target.value
-            var arr = ev.target.id.split("-")
-            updateQty(arr[1], qty)
-        },
-        sortBy: function (key) {
-          this.sortKey = key
-          this.sortOrders[key] = this.sortOrders[key] * -1
-        },
-        delPart: function (ev) {
-            var id = parseInt(ev.target.id.split('-')[1])
-            postIt(partURL + id, null, function(xreq) {
-                if (xreq.readyState == 4) {
-                     if (xreq.status != 200) {
-                        alert("Oops:" + xreq.responseText);
-                        return
-                     }
-                    self.$dispatch('item-added', 'incoming!')
-                }
-            }, 'DELETE')
-        },
-        usePart: function(ev) {
-            var id = parseInt(ev.target.id.split('-')[1]);
-            this.$dispatch('select-part', id)
-        },
-        addPart: function(ev) {
-            var id = parseInt(ev.target.id.split('-')[1]);
-            this.$dispatch('new-item', id) 
-        }, 
-        */
         linkable: function(key) {
             return (key == 'Description')
         },
         linkpath: function(entry, key) {
-            return '/part/inventory/' + entry['STI'] + '/' + entry['KID']
+            return '/part/use/' + entry['STI'] + '/' + entry['KID']
         },
         slotid: function(entry) {
             alert(entry)
@@ -1906,42 +1807,40 @@ var inventoryMIX = {
 var dg = childTable("inventory-grid", "#tmpl-base-table", [inventoryMIX])
 
 var inventoryVue = {
-  data: function() {
-      return {
-      showgrid: true,
-      DID: 0,
-      STI: 4,
-      PID: 0,
-      available: [],
-      sites: [],
-      hostname: '',
-      other: '',
-      searchQuery: '',
-      partData: [],
-      gridColumns: ['Site', 'Description', 'PartNumber', 'Mfgr', 'Qty'],
-    }
-  },
-  created: function () {
-      this.loadSelf()
-  },
-  methods: {
-    updated: function(event) {
-        console.log('the event: ' + event)
+    data: function() {
+        return {
+            showgrid: true,
+            DID: 0,
+            STI: 4,
+            PID: 0,
+            available: [],
+            sites: [],
+            hostname: '',
+            other: '',
+            searchQuery: '',
+            partData: [],
+            gridColumns: ['Site', 'Description', 'PartNumber', 'Mfgr', 'Qty', 'Price'],
+        }
     },
-    loadSelf: function () {
-         var self = this;
-         var url = inURL;
-         if (self.STI > 0) {
-            url += "?sti=" + self.STI
-         }
-         fetchData(url, function(data) {
-             self.partData = data
-         })
-     },
-  },
-  watch: {
-    'STI': function(val, oldVal){
-            this.loadSelf()
+    route: {
+        data: function (transition) {
+            return {
+                partData: getInventory(this.STI, '?sti='),
+                sites: getSiteLIST(true), 
+            }
+        }
+    },
+    methods: {
+        updated: function(event) {
+            console.log('the event: ' + event)
+        },
+    },
+    watch: {
+        'STI': function(val, oldVal){
+             var self = this;
+             getInventory(this.STI, '?sti=').then(function(data) {
+                 self.partData = data
+             })
         },
     },
 }
@@ -1954,18 +1853,19 @@ var iiPart = Vue.component('part-inventory', {
 
 
 var partUseVue = {
-  data: function() {
-      return {
-      DID: 0,
-      STI: 4,
-      PID: 0,
-      available: [],
-      sites: [],
-      hostname: '',
-      other: '',
-      searchQuery: '',
-      partData: [],
-    }
+    data: function() {
+        return {
+            badHost: false,
+            DID: 0,
+            STI: 4,
+            PID: 0,
+            available: [],
+            sites: [],
+            hostname: '',
+            other: '',
+            searchQuery: '',
+            partData: [],
+        }
   },
   created: function () {
       this.loadData()
@@ -1999,17 +1899,34 @@ var partUseVue = {
       findhost: function(ev) {
           var self = this;
           console.log("find hostname:",this.hostname);
-          fetchData("/dcman/api/server/hostname/" + this.hostname, function(data, status) {
-                var enable = (status == 200);
-                buttonEnable(document.getElementById('use-btn'), enable)
-                self.DID = enable ? data.ID : 0;
+          var url = deviceURL + "?hostname=" + this.hostname;
+            getData(url).then(function(resp) {
+                if (resp && resp !== 'null') {
+                    console.log("RESP:", resp)
+                }
             })
       },
+        findhost: function() {
+            if (this.hostname.length === 0) {
+                this.badHost = false
+                return
+            }
+            var self = this;
+            var url = deviceURL + "?hostname=" + this.hostname;
+            getJSON(url).then(function(hosts) {
+                if (hosts && hosts.length == 1) {
+                    self.RMA.DID = hosts[0].DID
+                    self.badHost = false;
+                } else {
+                    self.badHost = true;
+                }
+            })
+        },
   },
 }
 
 var usePart = Vue.component('part-use', {
-    template: '#tmpl-use-part',
+    template: '#tmpl-part-use',
     mixins: [partUseVue],
 })
 
@@ -2024,77 +1941,52 @@ var partListVue = {
             isgood: true,
             isbad: false,
             DID: 0,
-            STI: 4,
+            STI: 0,
             PID: 0,
             available: [],
             sites: [],
             hostname: '',
             other: '',
             searchQuery: '',
-            partData: [],
             ktype: 1,
             kinds: [
                 {id: 1, name: "All Parts"},
                 {id: 2, name: "Good Parts"},
                 {id: 3, name: "Bad Parts"},
             ],
-            gridColumns: [
+            rows: [],
+            columns: [
                "Site",
-               //"Hostname",
+               "Hostname",
                "Serial",
                "PartType",
                "PartNumber",
                "Description",
                "Mfgr",
+               "Price",
                "Bad",
             ]
         }
     },
-    created: function () {
-        this.loadSelf()
-    },
     route: { 
           data: function (transition) {
-            //var userId = transition.to.params.userId
-            return {
-              sites: getSiteLIST(true), //sitePromise,
-            }
-          }
+            var self = this;
+            var STI = parseInt(transition.to.params.STI);
+            console.log('part list promises starting for STI:', self.STI)
+            return Promise.all([
+                getSiteLIST(true), 
+                (STI > 0 ? getPart(STI, '?sti=') : getPart()), 
+           ]).then(function (data) {
+              console.log('part list promises returning')
+             return {
+                sites: data[0],
+                rows: data[1],
+                STI: STI,
+              }
+            })
+        }
     },
     methods: {
-        loadSelf: function () {
-        var self = this
-        var url = partURL;
-        if (self.STI > 0) {
-            url += "?sti=" + self.STI
-        }
-        fetchData(url, function(data) {
-            if (data) {
-                for (var i=0; i<data.length; i++) {
-                    data[i].Serial = data[i].Serial || '';
-                }
-             }
-             self.partData = data
-        })
-    },
-    partOk: function(ev) {
-          var part = {
-            KID: parseInt(document.getElementById("new-kid").value),
-            Serial: document.getElementById("add-sn").value,
-            Unused: 1,
-          }
-          postIt(mypartURL, part)
-      },
-      useOk: function(ev) {
-          var pid = document.getElementById("PID").value
-          var part = {
-            PID: parseInt(pid),
-            STI: this.STI,
-            DID: this.DID,
-            Unused: 0,
-          }
-          postIt(mypartURL + pid, part, null, "PATCH")
-      },
       findhost: function(ev) {
           var self = this;
           console.log("find hostname:",this.hostname);
@@ -2109,19 +2001,18 @@ var partListVue = {
         },
     },
     watch: {
-        'STI': function() {
-            this.loadSelf()
+        'STI': function(newVal,oldVal) {
+            router.go('/part/list/' + newVal)
+                /*
+            var self = this;
+            getPart(self.STI, '?sti=').then(function(parts) {
+                self.partData = parts
+            })
+            */
         }
     }
 }
 
-
-/*
-var iList = Vue.component('part-inventory', {
-    template: '#tmpl-part-inventory',
-    mixins: [inventoryVue, siteMIX],
-})
-*/
 
 
 var partsMIX = {
@@ -2146,7 +2037,7 @@ var partsMIX = {
     }
 }
 
-var partt = Vue.component('parts-table', {
+var partt = Vue.component('part-table', {
     template: '#tmpl-base-table',
     props: ['kfilter', 'filterKey', 'myfn'],
     mixins: [tableTmpl, partsMIX],
@@ -2158,6 +2049,53 @@ var partt = Vue.component('parts-table', {
 var pList = Vue.component('part-list', {
     template: '#tmpl-part-list',
     mixins: [partListVue, commonListMIX],
+})
+
+//
+// Part Types List
+// 
+var ptypesMIX = {
+    methods: {
+        subFilter: function(a, b, c) {
+            return a
+        },
+        linkable: function(key) {
+            return (key == 'Name')
+        },
+        linkpath: function(entry, key) {
+            return '/part/type/edit/' + entry['PTI']
+        }
+    }
+}
+
+var ptgrid = Vue.component('part-types-table', {
+    template: '#tmpl-base-table',
+    props: ['filterKey'],
+    mixins: [tableTmpl, ptypesMIX],
+})
+
+var partTypesListVue = {
+    data: function() {
+        return {
+            searchQuery: '',
+            rows: [],
+            columns: [
+               "Name",
+            ]
+        }
+    },
+    route: { 
+          data: function (transition) {
+            return {
+              rows: getPartTypes(),
+            }
+          }
+    },
+}
+
+var pList = Vue.component('part-types', {
+    template: '#tmpl-part-types',
+    mixins: [partTypesListVue, commonListMIX],
 })
 
 //
@@ -2191,7 +2129,7 @@ var rmaListMIX = {
             return (key == 'Description')
         },
         linkpath: function(entry, key) {
-            return '/rma/edit/' + entry['RMAID']
+            return '/rma/edit/' + entry['RMD']
         },
         subFilter: function(a, b, c) {
             if (this.kfilter == 1) {
@@ -2217,7 +2155,7 @@ var rmaListVue = {
             searchQuery: '',
             ktype: 1,
             gridColumns: [
-                "RMAID",
+                "RMD",
                 "Description",
                 "Hostname",
                 "ServerSN",
@@ -2335,7 +2273,6 @@ var vendorListMIX = {
     }
 }
 var vendg = childTable("vendor-grid", "#tmpl-base-table", [vendorListMIX])
-//var vendg = childTable("vendor-grid", "#tmpl-base-table")
 
 var vendorList = Vue.component('vendor-list', {
     template: '#tmpl-vendor-list',
@@ -2344,8 +2281,10 @@ var vendorList = Vue.component('vendor-list', {
 
 var vendorEditVue = {
     data: function() {
+        var vendor = new(Vendor);
+        vendor.VID = 0
         return {
-            Vendor: new(Vendor),
+            Vendor: vendor,
             dataURL: vendorURL,
             listURL: '/vendor/list',
         }
@@ -2377,6 +2316,90 @@ var vendorEdit = Vue.component('vendor-edit', {
 })
 
 //
+// MFGR LIST
+//
+
+var mfgrListVue = {
+    data: function() {
+        return {
+            sites: [],
+            searchQuery: '',
+            rows: [],
+            columns: [
+                'Name',
+                'Note',
+            ],
+        }
+    },
+    created: function () {
+        this.loadSelf()
+    },
+    methods: {
+        loadSelf: function () {
+            var self = this;
+            fetchData(mfgrURL, function(data) {
+                self.rows = data
+            })
+        },
+    },
+}
+
+var mfgrListMIX = {
+    methods: {
+        linkable: function(key) {
+            return (key == 'Name')
+        },
+        linkpath: function(entry, key) {
+            return '/mfgr/edit/' + entry['MID']
+        },
+    }
+}
+var mfgrg = childTable("mfgr-grid", "#tmpl-base-table", [mfgrListMIX])
+
+var mfgrList = Vue.component('mfgr-list', {
+    template: '#tmpl-mfgr-list',
+    mixins: [mfgrListVue],
+})
+
+var mfgrEditVue = {
+    data: function() {
+        var mfgr = new(Mfgr);
+        mfgr.MID = 0
+        return {
+            Mfgr: mfgr,
+        }
+    },
+    methods: {
+        showList: function(xhr) {
+            router.go('/mfgr/list')
+        },
+        deleteSelf: function() {
+            deleteIt(mfgrURL + this.Mfgr.MID, this.showList)
+        },
+        saveSelf: function()  {
+            saveMe(mfgrURL, this.Mfgr, this.Mfgr.MID, this.showList)
+        } 
+    },
+    route: { 
+          data: function (transition) {
+            //console.log('part list promises starting for STI:', self.STI) 
+            return Promise.all([
+                getMfgr(transition.to.params.MID)
+           ]).then(function (data) {
+             return {
+                Mfgr: data[0],
+              }
+            })
+        }
+    },
+}
+
+var mfgrEdit = Vue.component('mfgr-edit', {
+    template: '#tmpl-mfgr-edit',
+    mixins: [mfgrEditVue],
+})
+
+//
 // PART EDIT
 //
 var partEditVue = {
@@ -2389,8 +2412,10 @@ var partEditVue = {
         part.Bad = false;
         part.Used = false;
        return {
+            badHost: false,
             sites: [],
             types: [],
+            vendors: [],
             STI: 4,
             Part: part,
        }
@@ -2402,10 +2427,9 @@ var partEditVue = {
                 return (this.Part.STI == 0 || this.Part.PTI == 0 || this.Part.Description.length == 0)
                 //return (this.Part.Description.length == 0)
             }
-/*
-            return false;
-            return this.Part.Description.length == 0 || this.Part.Mfgr.length == 0
-*/
+        },
+        badPrice: function() {
+            return false
         }
     },
     created: function () {
@@ -2417,6 +2441,10 @@ var partEditVue = {
             return {
               sites: getSiteLIST(), //sitePromise,
               types: getPartTypes(),
+              vendors: getVendorList().then(function(list) {
+                  list.unshift({VID:0, Name:''})
+                    return list
+              }),
             }
           }
     },
@@ -2424,8 +2452,12 @@ var partEditVue = {
         showList: function(ev) {
             router.go('/part/list')
         },
+        validprice: function() {
+        },
         saveSelf: function(event) {
-            console.log('send event: ' + event)
+            this.Part.Price = parseFloat(this.Part.Price)
+            this.Part.Cents = Math.round(this.Part.Price * 100)
+            console.log('save part price: ' + this.Part.Price, 'cents:', this.Part.Cents)
             var url = partURL;
             if (this.Part.PID > 0) {
                 url += this.Part.PID
@@ -2437,18 +2469,7 @@ var partEditVue = {
             }
         },
         doRMA: function(ev) {
-            ev.preventDefault();
-            var data = {
-                STI: this.STI,
-                OldPID: this.Part.PID,
-                Created: new Date(),
-            };
-            postIt(rmaURL + "?debug=true", data, function(xhr) {
-                if (xhr.readyState == 4 && (xhr.status == 200 || xhr.status == 201)) {
-                    var rma = JSON.parse(xhr.responseText)
-                    router.go('/rma/edit/' + rma.RMAID)
-                }
-            })
+            router.go('/rma/create/' + this.Part.PID)
         },
         loadPart: function () {
              var id = this.$route.params.PID;
@@ -2461,14 +2482,22 @@ var partEditVue = {
                  })
              }
         },
-        findhost: function(ev) {
-              var self = this;
-              console.log("find hostname:",this.Part.Hostname);
-                fetchData("api/server/hostname/" + this.Part.Hostname, function(data, status) {
-                    var enable = (status == 200);
-                     // buttonEnable(document.getElementById('use-btn'), enable)
-                    self.Part.DID = enable ? data.ID : 0;
-                })
+        findhost: function() {
+            if (this.Part.Hostname.length === 0) {
+                this.Part.DID = 0
+                this.badHost = false
+                return
+            }
+            var self = this;
+            var url = deviceURL + "?hostname=" + this.Part.Hostname;
+            getJSON(url).then(function(hosts) {
+                if (hosts && hosts.length == 1) {
+                    self.Part.DID = hosts[0].DID
+                    self.badHost = false;
+                } else {
+                    self.badHost = true;
+                }
+            })
         },
     },
 }
@@ -2483,67 +2512,195 @@ var pEdit = Vue.component('part-edit', {
 //
 // RMA EDIT
 //
-var rmaEditVue = {
-  data: function() {
-      return {
-        sites: [],
-        racks: [],
-        tags: [],
-        dataURL: rmaviewURL,
-        RMA: new(RMA),
-    }
-  },
-  created: function () {
-      this.loadRMA()
-  },
+var rmaCommon = {
+    data: function() {
+        var rma = new(RMA);
+        rma.RMD = 0
+        rma.NewPID = 0
+        rma.OldPID = 0
+        rma.UID = 0
+        return {
+            badHost: false,
+            dataURL: rmaviewURL,
+            RMA: rma
+        }
+    },
+    methods: {
+        saveSelf: function(event) {
+            if (this.RMA.RMD > 0) {
+                postIt(rmaviewURL + this.RMA.RMD + "?debug=true", this.RMA, this.showList, 'PATCH')
+            } else {
+                postIt(rmaviewURL+ "?debug=true", this.RMA, this.showList)
+            }
+        },
+        showList: function() {
+            router.go('/rma/list')
+        },
+        findhost: function() {
+            if (this.RMA.Hostname.length === 0) {
+                this.RMA.DID = 0
+                this.badHost = false
+                return
+            }
+            var self = this;
+            var url = deviceURL + "?hostname=" + this.RMA.Hostname;
+            getJSON(url).then(function(hosts) {
+                if (hosts && hosts.length == 1) {
+                    self.RMA.DID = hosts[0].DID
+                    self.badHost = false;
+                } else {
+                    self.badHost = true;
+                }
+            })
+        },
+    },
+}
 
-  methods: {
-      Updated: function(event) {
-          console.log('send update event: ' + event);
-          postIt(rmaviewURL + this.RMA.RMAID + "?debug=true", this.RMA, this.showList, 'PATCH')
-      },
-      // TODO: use editVue mixin
-      myID: function() {
-          return this.RMA.RMAID
-      },
+
+var rmaEditVue = {
+    route: { 
+        data: function (transition) {
+            return {
+                RMA: getRMA(this.$route.params.RMD),
+            }
+        }
+    },
+    methods: {
         deleteSelf: function(event) {
             console.log('delete event: ' + event)
             postIt(this.dataURL + this.myID(), null, this.showList, 'DELETE')
         },
-      showList: function() {
-          //ev.preventDefault();
-          router.go('/rma/list')
-      },
-      loadRMA: function () {
-          var self = this;
-          var id = this.$route.params.RMAID;
-          if (id > 0) {
-              this.DID = id
-              var url = rmaviewURL + id;
-
-              fetchData(url, function(data) {
-                  console.log('self 2', self);
-                  self.RMA.Load(data);
-              })
-          }
-      },
-      findhost: function(ev) {
-          var self = this;
-          console.log("find hostname:",this.RMA.Hostname);
-            fetchData("api/server/hostname/" + this.RMA.Hostname, function(data, status) {
-                var enable = (status == 200);
-               // buttonEnable(document.getElementById('use-btn'), enable)
-                self.RMA.DID = enable ? data.ID : 0;
-            })
-      },
-  },
+    },
 }
 
 var rEdit = Vue.component('rma-edit', {
     template: '#tmpl-rma-edit',
-    mixins: [rmaEditVue],
+    mixins: [rmaCommon, rmaEditVue],
 })
 
+//
+// RMA CREATE
+//
+
+var rmaCreateVue = {
+    route: { 
+        data: function (transition) {
+            var part = getPart(this.$route.params.PID);
+            var self = this;
+            return {
+                RMA: getPart(this.$route.params.PID).then(function(part) {
+                        // TODO: this is goofy -- where to initialize RMA?
+                        var rma = new(RMA);
+                        rma.RMD = 0
+                        rma.SID = part.SID
+                        rma.OldPID = part.PID
+                        rma.Description = part.Description
+                        rma.Hostname = part.Hostname
+                        rma.PartSN = part.Serial
+                        return(rma)
+                }),
+            }
+        },
+    },
+}
+
+var rCreate = Vue.component('rma-create', {
+    template: '#tmpl-rma-edit',
+    mixins: [rmaCommon, rmaCreateVue],
+})
+
+
+//
+// PART LOAD
+//
+var partLoadVue = {
+    data: function() {
+        return {
+            Parts: '',
+            sites: [],
+            STI: 2,
+        }
+    },
+    route: {
+        data: function (transition) {
+            return {
+                sites: getSiteLIST()
+            }
+        }
+    },
+    methods: {
+        showList: function(ev) {
+            router.go('/part/list')
+        },
+        saveParts: function() {
+            var partCol = function(col) {
+                switch (col) {
+                    case "Item":            return "PartType";
+                    case "Part Number":     return "PartNumber";
+                    case "SKU":             return col;
+                    case "Description":     return col;
+                    case "Manufacturer":    return "Mfgr";
+                    case "Qty":             return col;
+                    case "Price":           return col;
+                }
+                return ""
+            }
+            var parts = this.Parts.split("\n");
+            var cols = {};
+            for (var i=0; i < parts.length; i++) {
+                var line = parts[i].split("\t");
+                if (i === 0) {
+                    for (var k=0; k < line.length; k++) {
+                        console.log("COL:", line[k])
+                        var col = partCol(line[k])
+                        if (col.length > 0) {
+                            cols[k] = col
+                        }
+                    }
+                    console.log("COLS:", cols)
+                    continue
+                }
+                var part = new(Part);
+                part.PID = 0;
+                part.KID = null;
+                part.DID = null;
+                part.VID = 0;
+                part.STI = this.STI;
+                part.Bad = false;
+                part.Unused = true;
+                for (var j in cols) {
+                    var col = cols[j];
+                    part[col] = line[j];
+                }
+                //console.log("PART:",part)
+                var qty = parseInt(part["Qty"]);
+                if (qty === 0) qty = 1;
+                //console.log("Price was:", part.Price)
+                if (part.Price) {
+                    part.Price = part.Price.replace(/[^0-9.]*/g,'')
+                    //console.log("Price fix:", part.Price)
+                    part.Price = parseFloat(part.Price)
+                    //console.log("Price now:", part.Price)
+                    part.Cents = Math.round(part.Price * 100)
+                    //console.log("Cents now:", part.Cents)
+                } else {
+                    part.Price = 0.0
+                    part.Cents = 0
+                }
+                var url = partURL;
+                url += "?debug=true"
+                for (var j=0; j < qty; j++) {
+                    postIt(url, part, function(xhr) {});
+                }
+            }
+        },
+    },
+}
+
+var ploadVue = Vue.component('part-load', {
+    template: '#tmpl-part-load',
+    mixins: [partLoadVue],
+})
 
 //
 // TAGS
@@ -2672,15 +2829,6 @@ var rackEditVue = {
     created: function () {
         this.loadSelf()
     },
-        /*
-    attached: function() {
-        console.log("RACK ATTACHED:", this.$route.params[this.id])
-        var id = this.$route.params[this.id];
-        if (id && id != this.myID()) {
-              this.loadSelf()
-        }
-    },
-    */
     methods: {
         myID: function() {
               return this.Rack.RID
@@ -2691,10 +2839,6 @@ var rackEditVue = {
           showList: function(ev) {
               router.go('/rack/list')
           },
-        preSave: function() {
-            this.Rack.Rack = parseInt(this.Rack.Rack)
-            this.Rack.RUs = parseInt(this.Rack.RUs)
-        },            
           loadSelf: function () {
                var self = this;
 
@@ -3141,16 +3285,28 @@ router.map({
     '/vm/list': {
         component:  Vue.component('vm-list')
     },
+    '/mfgr/edit/:MID': {
+        component: Vue.component('mfgr-edit')
+    },
+    '/mfgr/list': {
+        component:  Vue.component('mfgr-list')
+    },
     '/part/add': {
         component:  Vue.component('part-edit')
     },
     '/part/edit/:PID': {
         component:  Vue.component('part-edit')
     },
-    '/part/list': {
+    '/part/list/:STI': {
         component:  Vue.component('part-list')
     },
-    '/part/inventory/:STI/:KID': {
+    '/part/load': {
+        component:  Vue.component('part-load')
+    },
+    '/part/types': {
+        component:  Vue.component('part-types')
+    },
+    '/part/use/:STI/:KID': {
         component:  Vue.component('part-use')
     },
     '/part/inventory': {
@@ -3165,7 +3321,10 @@ router.map({
     '/rack/layout': {
         component:  Vue.component('rack-layout')
     },
-    '/rma/edit/:RMAID': {
+    '/rma/create/:PID': {
+        component:  Vue.component('rma-create')
+    },
+    '/rma/edit/:RMD': {
         component:  Vue.component('rma-edit')
     },
     '/rma/list': {

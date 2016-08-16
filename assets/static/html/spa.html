@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>AssMan Test</title>
+    <title>DCMan Beta</title>
     <link rel="stylesheet" type="text/css" href="/dcman/static/css/bootstrap.css">
     <!--
     <link rel="stylesheet" type="text/css" href="/dcman/static/css/base.css">
@@ -82,12 +82,18 @@
           <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Parts<span class="caret"></span></a>
           <ul class="dropdown-menu">
             <li><a v-link="{ path: '/part/inventory' }">Parts Inventory</a></li>
-            <li><a v-link="{ path: '/part/list' }">All Parts</a></li>
+            <li><a v-link="{ path: '/part/load' }">Load Inventory</a></li>
+            <li><a v-link="{ path: '/part/list/0' }">All Parts</a></li>
             <li><a v-link="{ path: '/part/add' }">Add Part</a></li>
+            <li role="separator" class="divider"></li>
+            <li><a v-link="{ path: '/part/types' }">Part Types</a></li>
             <li role="separator" class="divider"></li>
             <li><a v-link="{ path: '/rma/list' }">RMA List</a></li>
             <li role="separator" class="divider"></li>
             <li><a v-link="{ path: '/vendor/list' }">Vendor List</a></li>
+            <li><a v-link="{ path: '/vendor/edit/0' }">Add Vendor</a></li>
+            <li role="separator" class="divider"></li>
+            <li><a v-link="{ path: '/mfgr/list' }">Manufactuer List</a></li>
           </ul>
         <li class="dropdown">
           <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Network<span class="caret"></span></a>
@@ -103,7 +109,7 @@
         <div class="form-group">
           <input type="text" class="form-control" placeholder="Search" v-model="searchText">
         </div>
-        <button class="btn btn-default" v-on:click="doSearch">Search</button>
+        <button class="btn btn-default" v-on:click.prevent="doSearch">Search</button>
       </form>
       <ul class="nav navbar-nav navbar-right">
         <li class="dropdown">
@@ -160,7 +166,7 @@
     <thead>
       <tr>
         <th v-for="key in columns"
-          @click="sortBy(key)"
+          @click.prevent="sortBy(key)"
           :class="{active: sortKey == key}">
           {{key | capitalize}}
           <span class="arrow"
@@ -212,12 +218,25 @@
 
         <label for="query">Search</label>
         <input id="query" name="query" v-model="searchQuery">
-        <parts-table
+        <part-table
             v-bind:kfilter="ktype"
-            :rows="partData"
-            :columns="gridColumns"
+            :rows="rows"
+            :columns="columns"
             :filter-key="searchQuery">
-        </parts-table>
+        </part-table>
+    </div>
+</script>
+
+<script type="text/x-template" id="tmpl-part-types">
+    <div id="ptypes-div">
+        <h1 class="mytitle">Part Types</h1>
+        <label for="query">Search</label>
+        <input id="query" name="query" v-model="searchQuery">
+        <part-types-table
+            :rows="rows"
+            :columns="columns"
+            :filter-key="searchQuery">
+        </part-types-table>
     </div>
 </script>
 
@@ -435,8 +454,8 @@
             </select>
         </td>
         <td>
-            <button class="btn" v-on:click="updateIP($index)">Update</button>
-            <button class="btn" v-on:click="deleteIP($index)">Delete</button>
+            <button class="btn" v-on:click.prevent="updateIP($index)">Update</button>
+            <button class="btn" v-on:click.prevent="deleteIP($index)">Delete</button>
         </td>
       </tr>
        
@@ -452,7 +471,7 @@
             </select>
         </td>
         <td>
-            <button class="btn" v-on:click="addIP" :disabled="ipAddDisabled">Add</button>
+            <button class="btn" v-on:click.prevent="addIP" :disabled="ipAddDisabled">Add</button>
         </td>
       </tr>
 
@@ -486,11 +505,15 @@
 <script type="text/x-template" id="tmpl-search-for">
 <div>
     <div v-if="found.length">
-        <h1 class="mytitle">Multiple matches found for: {{ searchText }}</h1>
+        <h1 class="mytitle">{{ found.length }} matches found for: {{ searchText }}</h1>
         <found-list
             :columns="columns"
             :rows="found">
         </found-list>
+    </div>
+    <div v-else>
+        <h1 class="mytitle">No matches found for: {{ searchText }}</h1>
+    </div>
 </div>
 </script>
 
@@ -614,7 +637,7 @@
             <fieldset class="col-xs-12">
                 <div class="form-group">
                     <div class="col-xs-offset-1 col-xs-1">
-                        <button class="btn" onclick="javascript:window.history.go(-1)">Cancel</button>
+                        <button class="btn" v-on:click.prevent="showList">Cancel</button>
                     </div>
                     <div class="col-xs-1">
                         <button class="btn" v-on:click.prevent="saveSelf">
@@ -680,13 +703,95 @@
         <fieldset class="col-xs-12">
             <div class="form-group">
                 <div class="col-xs-offset-1 col-xs-1">
-                    <button class="btn" onclick="javascript:window.history.go(-1)">Cancel</button>
+                    <button class="btn" v-on:click.prevent="showList">Cancel</button>
                 </div>
                 <div class="col-xs-1">
-                    <button class="btn" v-on:click="saveSelf">Update</button>
+                    <button class="btn" v-on:click.prevent="saveSelf">
+                    <template v-if="Vendor.VID">Update</template>
+                    <template v-else>Add</template>
+                    </button>
+                </div>
+                <div class="col-xs-1" v-if="Vendor.VID">
+                    <button class="btn" v-on:click.prevent="deleteSelf">Delete</button>
+                </div>
+            </div>
+        </fieldset>
+    </form>
+    </div>
+</script>
+
+<script type="text/x-template" id="tmpl-mfgr-edit">
+    <form role="form" class="form-horizontal">
+        <fieldset class="col-xs-12">
+            <legend>Manufacturer</legend>
+            <div class="form-group">
+                <label for="name" class="control-label col-xs-2">Name</label>
+                <div class="col-xs-2">
+                    <input type="text" name="name" v-model="Mfgr.Name"/>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="note" class="control-label col-xs-2">Note</label>
+                <div class="col-xs-2">
+                    <input type="text" name="note" v-model="Mfgr.Note"/>
+                </div>
+            </div>
+        </fieldset>
+
+        <fieldset class="col-xs-12">
+            <div class="form-group">
+                <div class="col-xs-offset-1 col-xs-1">
+                    <button class="btn" v-on:click.prevent="showList">Cancel</button>
                 </div>
                 <div class="col-xs-1">
-                    <button class="btn" v-on:click="deleteSelf">Delete</button>
+                    <button class="btn" v-on:click.prevent="saveSelf">
+                    <template v-if="Mfgr.MID">Update</template>
+                    <template v-else>Add</template>
+                    </button>
+                </div>
+                <div class="col-xs-1" v-if="Mfgr.MID">
+                    <button class="btn" v-on:click.prevent="deleteSelf">Delete</button>
+                </div>
+            </div>
+        </fieldset>
+    </form>
+    </div>
+</script>
+
+<script type="text/x-template" id="tmpl-part-load">
+    <form role="form" class="form-horizontal">
+        <h2>Paste and save tab delimited parts list</h2>
+        <fieldset class="col-xs-12">
+            <legend>Load Parts</legend>
+
+            <div class="form-group">
+                <label for="STI" class="control-label col-xs-2">Site</label>
+                <div class="col-xs-2">
+                    <select id="STI" v-model="STI" number>
+                        <option v-for="site in sites" v-bind:value="site.STI">
+                            {{ site.Name }}
+                        </option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="Parts" class="control-label col-xs-2">Parts</label>
+                <div class="col-xs-2">
+                    <textarea cols="80" rows="20" name="Note" v-model="Parts">
+                    </textarea>
+                </div>
+            </div>
+        </fieldset>
+
+        <fieldset class="col-xs-12">
+            <div class="form-group">
+                <div class="col-xs-offset-1 col-xs-1">
+                    <button class="btn" v-on:click.prevent="showList">Cancel</button>
+                </div>
+                <div class="col-xs-1">
+                    <button class="btn btn-primary" v-on:click.prevent="saveParts">Load</button>
                 </div>
             </div>
         </fieldset>
@@ -698,14 +803,6 @@
     <form role="form" class="form-horizontal">
         <fieldset class="col-xs-12">
             <legend>Rack</legend>
-            <!--
-            <div class="form-group">
-                <label for="Site" class="control-label col-xs-2">Site</label>
-                <div class="col-xs-2">
-                    <input type="text" name="Site" v-model="Rack.DC"/>
-                </div>
-            </div>
--->
             <div class="form-group">
                     <label for="STI" class="control-label col-xs-2">Site</label>
                     <div class="col-xs-2">
@@ -736,6 +833,13 @@
                     <input type="text" name="RUs" v-model="Rack.RUs" number/>
                 </div>
             </div>
+
+            <div class="form-group">
+                <label for="Note" class="control-label col-xs-2">Note</label>
+                <div class="col-xs-2">
+                    <textarea cols="25" rows="2" name="Note" v-model="Rack.Note"></textarea>
+                </div>
+            </div>
         </fieldset>
 
         <fieldset class="col-xs-12" v-if="Rack.RID != 0">
@@ -748,13 +852,13 @@
         <fieldset class="col-xs-12">
             <div class="form-group">
                 <div class="col-xs-offset-1 col-xs-1">
-                    <button class="btn" onclick="javascript:window.history.go(-1)">Cancel</button>
+                    <button class="btn" v-on:click.prevent="showList">Cancel</button>
                 </div>
                 <div class="col-xs-1">
-                    <button class="btn" v-on:click="saveSelf">Update</button>
+                    <button class="btn" v-on:click.prevent="saveSelf">Update</button>
                 </div>
                 <div class="col-xs-1">
-                    <button class="btn" v-on:click="deleteSelf">Delete</button>
+                    <button class="btn" v-on:click.prevent="deleteSelf">Delete</button>
                 </div>
             </div>
         </fieldset>
@@ -793,6 +897,20 @@
             :columns="columns"
             :filter-key="searchQuery">
         </vendor-grid>
+    </div>
+</script>
+
+
+<script type="text/x-template" id="tmpl-mfgr-list">
+    <div>
+        <h1 class="mytitle">Manufacturers</h1>
+        <label for="query">Search</label>
+        <input id="query" v-model="searchQuery">
+        <mfgr-grid
+            :rows="rows"
+            :columns="columns"
+            :filter-key="searchQuery">
+        </mfgr-grid>
     </div>
 </script>
 
@@ -840,7 +958,7 @@
 <script type="text/x-template" id="tmpl-rack-layout">
     <div>
         <h1 class="mytitle">Rack View
-        <button class="btn" v-on:click="ping">Ping</button>
+        <button class="btn" v-on:click.prevent="ping">Ping</button>
         </h1>
         <label for="STI">Site</label>
         <select id="STI" name="STI" v-model="STI" number>
@@ -911,13 +1029,13 @@
         <fieldset class="col-xs-12">
             <div class="form-group">
                 <div class="col-xs-offset-1 col-xs-1">
-                    <button class="btn" onclick="javascript:window.history.go(-1)">Cancel</button>
+                    <button class="btn" v-on:click.prevent="showList">Cancel</button>
                 </div>
                 <div class="col-xs-1">
                     <button class="btn" v-on:click.prevent="saveSelf">Update</button>
                 </div>
                 <div class="col-xs-1">
-                    <button class="btn" v-on:click="deleteSelf">Delete</button>
+                    <button class="btn" v-on:click.prevent="deleteSelf">Delete</button>
                 </div>
             </div>
         </fieldset>
@@ -941,7 +1059,9 @@
             {{ site.Name }}
         </option>
         </select>
-
+<!--
+        INV: {{ partData.length }}
+-->
         <label for="query">Search</label>
         <input id="query" v-model="searchQuery">
         <inventory-grid
@@ -1032,13 +1152,13 @@
             <fieldset class="col-xs-12">
                 <div class="form-group">
                     <div class="col-xs-offset-1 col-xs-1">
-                        <button class="btn" onclick="javascript:window.history.go(-1)">Cancel</button>
+                        <button class="btn" v-on:click.prevent="showList">Cancel</button>
                     </div>
                     <div class="col-xs-1">
-                        <button class="btn" v-on:click="saveSelf">Update</button>
+                        <button class="btn" v-on:click.prevent="saveSelf">Update</button>
                     </div>
                     <div class="col-xs-1">
-                        <button class="btn" v-on:click="deleteSelf">Delete</button>
+                        <button class="btn" v-on:click.prevent="deleteSelf">Delete</button>
                     </div>
                 </div>
             </fieldset>
@@ -1076,8 +1196,8 @@
 
                 <div class="form-group">
                     <label for="Network" class="control-label col-xs-2">Network Range</label>
-                    <div class="col-xs-2">
-                        <input class="form-control col-xs-2" type="text" id="Network" v-model="Network" readonly/>
+                    <div class="col-xs-3">
+                        <input class="form-control col-xs-3" type="text" id="Network" v-model="Network" readonly/>
                     </div>
                 </div>
 <!--
@@ -1128,7 +1248,7 @@
             <fieldset class="col-xs-12">
                 <div class="form-group">
                     <div class="col-xs-offset-1 col-xs-1">
-                        <button class="btn" onclick="javascript:window.history.go(-1)">Cancel</button>
+                        <button class="btn" v-on:click.prevent="showList">Cancel</button>
                     </div>
                     <div class="col-xs-1">
                         <button class="btn btn-primary" v-on:click.prevent="reserveIPs" :disabled="disableReserve">Reserve</button>
@@ -1138,6 +1258,114 @@
         </form>
     </div>
 </script>
+
+<script type="text/x-template" id="tmpl-part-edit">
+    <div id="part-edit">
+
+        <h1 class="mytitle" v-if="Part.PID">Edit Part</h1>
+        <h1 class="mytitle" v-else>Add Part</h1>
+
+        <form id="part-edit" class="form-horizontal">
+        <div class="form-group">
+            <label for="STI" class="control-label col-xs-2">Site</label>
+            <div class="col-xs-2">
+                <select id="STI" name="STI" v-model="Part.STI" number>
+                <option v-for="site in sites" v-bind:value="site.STI">
+                    {{ site.Name }}
+                </option>
+                </select>
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="description" class="control-label col-xs-2">Description</label>
+            <div class="col-xs-4">
+                <input type="text" class="form-control" id="description" v-model="Part.Description">
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="PTI" class="control-label col-xs-2">Part Type</label>
+            <div class="col-xs-2">
+                <select id="PTI" name="PTI" v-model="Part.PTI" number>
+                <option v-for="type in types" v-bind:value="types.PTI">
+                    {{ type.Name }}
+                </option>
+                </select>
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="VID" class="control-label col-xs-2"><a v-link="{ path: '/vendor/list' }">Vendor</a></label>
+            <div class="col-xs-2">
+                <select id="VID" name="VID" v-model="Part.VID" number>
+                <option v-for="vendor in vendors" v-bind:value="vendors.VID">
+                    {{ vendor.Name }}
+                </option>
+                </select>
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="part-number" class="control-label col-xs-2">Part Number</label>
+            <div class="col-xs-2">
+                <input type="text" class="form-control" id="part-number" v-model="Part.PartNumber">
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="part-sn" class="control-label col-xs-2">Serial Number</label>
+            <div class="col-xs-2">
+                <input type="text" class="form-control" id="part-sn" v-model="Part.Serial">
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="part-tag" class="control-label col-xs-2">Asset Tag</label>
+            <div class="col-xs-2">
+                <input type="text" class="form-control" id="part-tag" v-model="Part.AssetTag">
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="vendor-rma" class="control-label col-xs-2">Manufacturer</label>
+            <div class="col-xs-2">
+                <input type="text" class="form-control" id="vendor-rma" v-model="Part.Mfgr">
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="part-price" class="control-label col-xs-2">Price</label>
+            <div class="col-xs-2">
+                <input type="text" class="form-control"  v-bind:class="{badentry: badPrice}" id="part-price" v-model="Part.Price" @change="validprice">
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="bad-part" class="control-label col-xs-2">Bad Part</label>
+            <div class="col-xs-2">
+                <input type="checkbox" class="form-control" id="bad-part" v-model="Part.Bad">
+            </div>
+        </div>
+        <div class="form-group" v-if="Part.PID">
+            <label for="hostname" class="control-label col-xs-2">Server Hostname</label>
+            <div class="col-xs-2">
+                <input type="text" class="form-control" v-bind:class="{badentry: badHost}" id="hostname" placeholder="optional"  v-model="Part.Hostname" @change="findhost">
+            </div>
+        </div>
+        <div class="form-group">
+            <div class="col-xs-offset-1 col-xs-1">
+                <button class="btn" type="cancel" v-on:click.prevent="showList">Cancel</button>
+            </div>
+            <div class="col-xs-1" v-if="Part.PID">
+                <button class="btn" v-on:click.prevent="doRMA">RMA</button>
+            </div>
+            <div class="col-xs-1">
+                <button class="btn btn-primary" v-on:click.prevent="saveSelf" :disabled="disableSave">
+                <template v-if="Part.PID">
+                    Update
+                </template>
+                <template v-else>
+                    Add
+                </template>
+                </button>
+            </div>
+        </div>
+        </form>
+    </div>
+</script>
+
 
 <script type="text/x-template" id="tmpl-part-edit">
     <div id="part-edit">
@@ -1205,18 +1433,18 @@
         <div class="form-group">
             <label for="hostname" class="control-label col-xs-2">Server Hostname</label>
             <div class="col-xs-2">
-                <input type="text" class="form-control" id="hostname" placeholder="optional"  v-model="Part.Hostname" @change="findhost">
+                <input type="text" class="form-control" v-bind:class="{badentry: badHost}" id="hostname" placeholder="optional"  v-model="Part.Hostname" @change="findhost">
             </div>
         </div>
         <div class="form-group">
             <div class="col-xs-offset-1 col-xs-1">
-                <button class="btn" type="cancel" v-on:click="showList">Cancel</button>
+                <button class="btn" type="cancel" v-on:click.prevent="showList">Cancel</button>
             </div>
             <div class="col-xs-1" v-if="Part.PID">
-                <button class="btn" v-on:click="doRMA">RMA</button>
+                <button class="btn" v-on:click.prevent="doRMA">RMA</button>
             </div>
             <div class="col-xs-1">
-                <button class="btn btn-primary" v-on:click="saveSelf" :disabled="disableSave">
+                <button class="btn btn-primary" v-on:click.prevent="saveSelf" :disabled="disableSave">
                 <template v-if="Part.PID">
                 Update
                 </template>
@@ -1229,7 +1457,6 @@
         </form>
     </div>
 </script>
-
 
 <script type="text/x-template" id="tmpl-user-edit">
     <div id="user-edit">
@@ -1266,14 +1493,14 @@
             </div>
             <div class="form-group">
                 <div class="col-xs-offset-1 col-xs-1">
-                    <button class="btn" type="cancel" v-on:click="showList">Cancel</button>
+                    <button class="btn" type="cancel" v-on:click.prevent="showList">Cancel</button>
                 </div>
                 <div class="col-xs-1" v-if="User.ID">
-                    <button class="btn btn-primary" v-on:click="saveSelf" v-if="User.ID">Update</button>
-                    <button class="btn btn-primary" v-on:click="addSelf" v-else>Add</button>
+                    <button class="btn btn-primary" v-on:click.prevent="saveSelf" v-if="User.ID">Update</button>
+                    <button class="btn btn-primary" v-on:click.prevent="addSelf" v-else>Add</button>
                 </div>
                 <div class="col-xs-1" v-if="User.ID">
-                    <button class="btn" v-on:click="deleteSelf">Delete</button>
+                    <button class="btn" v-on:click.prevent="deleteSelf">Delete</button>
                 </div>
             </div>
         </form>
@@ -1284,16 +1511,11 @@
 <script type="text/x-template" id="tmpl-rma-edit">
     <div id="rma-edit">
 
-        <h1 class="mytitle">RMA #{{RMA.RMAID}}</h1>
+        <h1 class="mytitle">
+        <template v-if="RMA.RMD">RMA #{{RMA.RMD}}</template>
+        <template v-else>New RMA</template>
+        </h1>
         <form class="form-horizontal">
-        <!--
-            <div class="form-group">
-                <label for="sid" class="control-label col-xs-2">SID</label>
-                <div class="col-xs-2">
-                    <input type="text" class="form-control" id="sid" v-model="RMA.SID">
-                </div>
-            </div>
-            -->
             <div class="form-group">
                 <label for="description" class="control-label col-xs-2">Description</label>
                 <div class="col-xs-2">
@@ -1374,23 +1596,23 @@
             </div>
             <div class="form-group">
                 <div class="col-xs-offset-1 col-xs-1">
-                    <button class="btn" type="cancel" v-on:click="showList">Cancel</button>
+                    <button class="btn" type="cancel" v-on:click.prevent="showList">Cancel</button>
                 </div>
-                <div class="col-xs-1" v-if="RMA.RMAID">
-                    <button class="btn" v-on:click="Updated">Update</button>
+                <div class="col-xs-1">
+                    <button class="btn btn-primary" v-on:click.prevent="saveSelf">
+                    <template v-if="RMA.RMD">Update</template>
+                    <template v-else>Create</template>
+                    </button>
                 </div>
-                <div class="col-xs-1" v-if="RMA.RMAID">
-                    <button v-if="RMA.RMAID" class="btn" v-on:click="deleteSelf">Delete</button>
-                </div>
-                <div class="col-xs-1" v-else>
-                    <button v-else class="btn btn-primary">Create</button>
+                <div class="col-xs-1" v-if="RMA.RMD">
+                    <button v-if="RMA.RMD" class="btn" v-on:click.prevent="deleteSelf">Delete</button>
                 </div>
             </div>
         </form>
     </div>
 </script>
 
-<script type="text/x-template" id="tmpl-use-part">
+<script type="text/x-template" id="tmpl-part-use">
     <div id="use-part">
         <form class="form-horizontal">
             <div class="form-group">
@@ -1417,10 +1639,10 @@
             </div>
             <div class="form-group">
                 <div class="col-xs-offset-2 col-xs-1">
-                    <button class="btn" v-on:click="showList">Cancel</button>
+                    <button class="btn" v-on:click.prevent="showList">Cancel</button>
                 </div>
                 <div class="col-xs-1">
-                    <button id="use-btn" class="btn disabled"v-on:click="thisPart" disabled>Use Part</button>
+                    <button id="use-btn" class="btn disabled" v-on:click.prevent="thisPart" disabled>Use Part</button>
                 </div>
             </div>
         </form>
@@ -1457,10 +1679,10 @@
             <fieldset class="col-xs-12">
                 <div class="form-group">
                     <div class="col-xs-offset-1 col-xs-1">
-                        <button class="btn" onclick="showList">Cancel</button>
+                        <button class="btn" v-on:click.prevent="showList">Cancel</button>
                     </div>
                     <div class="col-xs-1">
-                        <button :disabled="tag.Name.length==0" class="btn" v-on:click="saveSelf">
+                        <button :disabled="tag.Name.length==0" class="btn" v-on:click.prevent="saveSelf">
                         <template v-if="tag.TID > 0">
                         Update
                         </template>
@@ -1470,7 +1692,7 @@
                         </button>
                     </div>
                     <div class="col-xs-1">
-                        <button :disabled="tag.TID==0" class="btn" v-on:click="deleteSelf">Delete</button>
+                        <button :disabled="tag.TID==0" class="btn" v-on:click.prevent="deleteSelf">Delete</button>
                     </div>
                 </div>
             </fieldset>
@@ -1504,10 +1726,10 @@
                 </fieldset>
                 <div class="form-group">
                     <div class="col-xs-offset-2 col-xs-1">
-                        <button class="btn" v-on:click="cancel">Cancel</button>
+                        <button class="btn" v-on:click.prevent="cancel">Cancel</button>
                     </div>
                     <div class="col-xs-1">
-                        <button id="use-btn" class="btn btn-primary" v-on:click="login">Login</button>
+                        <button id="use-btn" class="btn btn-primary" v-on:click.prevent="login">Login</button>
                     </div>
                 </div>
             </form>
@@ -1520,10 +1742,10 @@
         <h3>Really log out?</h3>
         <div class="form-group">
             <div class="col-xs-offset-2 col-xs-1">
-                <button class="btn" v-on:click="cancel">Cancel</button>
+                <button class="btn" v-on:click.prevent="cancel">Cancel</button>
             </div>
             <div class="col-xs-1">
-                <button id="use-btn" class="btn btn-primary" v-on:click="logout">Logout</button>
+                <button id="use-btn" class="btn btn-primary" v-on:click.prevent="logout">Logout</button>
             </div>
         </div>
     </div>

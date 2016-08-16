@@ -13,28 +13,44 @@ DROP TABLE IF EXISTS sites;
 CREATE TABLE "sites" (
     sti integer primary key,
     name text not null,
-    address text not null,
-    city text not null,
-    state text not null,
-    phone text not null,
-    web text not null,
-    dcman text not null,
-    remote_addr text not null default '', 
-    modified timestamp, 
-    user_id int default 0
+    address text,
+    city text,
+    state text,
+    phone text,
+    web text,
+    postal text,
+    country text,
+    usr integer default 0, 
+    ts timestamp DEFAULT CURRENT_TIMESTAMP
 );
 
 DROP TABLE IF EXISTS "racks";
 CREATE TABLE "racks" (
     rid integer primary key,
+    sti integer,
     rack integer,
-    sti int,
     x_pos text default '',
     y_pos text default '',
-    rackunits int default 45,
-    uid int default 0,
-    ts timestamp DEFAULT CURRENT_TIMESTAMP, 
+    rackunits integer default 45,
     vendor_id text default '',
+    note text default '',
+    usr integer default 0, 
+    ts timestamp DEFAULT CURRENT_TIMESTAMP, 
+    FOREIGN KEY(sti) REFERENCES sites(sti)
+);
+
+DROP TABLE IF EXISTS "audit_racks";
+CREATE TABLE "audit_racks" (
+    rid integer,
+    sti integer,
+    rack integer,
+    x_pos text,
+    y_pos text,
+    rackunits integer,
+    vendor_id text,
+    note text,
+    usr integer default 0, 
+    ts timestamp,
     FOREIGN KEY(sti) REFERENCES sites(sti)
 );
 
@@ -42,8 +58,8 @@ DROP TABLE IF EXISTS "part_types" ;
 CREATE TABLE "part_types" (
     pti integer primary key,
     name text not null COLLATE NOCASE,
-    user_id integer not null default 0, 
-    modified date DEFAULT CURRENT_TIMESTAMP,
+    usr integer default 0, 
+    ts date DEFAULT CURRENT_TIMESTAMP,
     unique (name)
 );
 
@@ -54,14 +70,31 @@ DROP TABLE IF EXISTS "mfgrs" ;
 CREATE TABLE "mfgrs" (
     mid integer primary key,
     name text not null COLLATE NOCASE, -- full given name
-    aka text , -- shortened and unique
-    url text , 
-    user_id integer , 
-    modified date DEFAULT CURRENT_TIMESTAMP,
+    aka text, -- shortened and unique (to avoid dupes of different versions of same)
+    url text, 
+    note text, 
+    usr integer default 0, 
+    ts date DEFAULT CURRENT_TIMESTAMP,
     unique (name)
 );
+
 -- ensure we have a 'catch all'
 insert into mfgrs (name) values('unknown');
+
+CREATE TABLE "vendors" (
+    vid integer primary key,
+    name text,
+    www text,
+    phone text,
+    address text,
+    city text,
+    state text,
+    country text,
+    postal text,
+    note text,
+    usr integer default 0, 
+    ts date DEFAULT CURRENT_TIMESTAMP
+);
 
 
 DROP TABLE IF EXISTS "skus" ;
@@ -70,48 +103,37 @@ CREATE TABLE "skus" (
     vid integer,
     mid integer,
     pti integer,
-    description text not null,
-    part_no text , 
-    user_id integer , 
-    modified date DEFAULT CURRENT_TIMESTAMP,
+    description text,
+    part_no text, 
+    sku text, 
+    usr integer default 0, 
+    ts date DEFAULT CURRENT_TIMESTAMP,
     unique (mid,description),
+    FOREIGN KEY(vid) REFERENCES vendors(vid)
     FOREIGN KEY(mid) REFERENCES mfgrs(mid)
     FOREIGN KEY(pti) REFERENCES part_types(pti)
-);
-
-CREATE TABLE "vendors" (
-    vid integer primary key,
-    name text not null ,
-    www text not null default '',
-    phone text not null default '',
-    address text not null default '',
-    city text not null default '',
-    state text not null default '',
-    country text not null default '',
-    postal text not null default '',
-    note text not null default '',
-    remote_addr text not null default '', 
-    user_id int default 0,
-    modified date DEFAULT CURRENT_TIMESTAMP
 );
 
 DROP TABLE IF EXISTS "parts" ;
 CREATE TABLE "parts" (
     pid integer primary key,
-    kid integer default 0,
-    vid integer default 0,
-    did integer default 0,
-    sti integer default 0,
-    --rma_id integer default 0, -- needs foreign key to rmas
+    kid integer,
+    vid integer,
+    did integer,
+    sti integer,
     unused integer default 0, -- boolean (1 is unused)
     bad    integer default 0, -- boolean (1 is bad)
     location text,
     serial_no text,
     asset_tag text, 
-    user_id integer not null default 0, 
-    modified date DEFAULT CURRENT_TIMESTAMP  ,
+    cents integer default 0,  -- in cents to avoid floating point
+    usr integer default 0, 
+    ts date DEFAULT CURRENT_TIMESTAMP  
+    ,
     FOREIGN KEY(sti) REFERENCES sites(sti)
     FOREIGN KEY(kid) REFERENCES skus(kid)
+    FOREIGN KEY(did) REFERENCES devices(did)
+    on update set null
     /*
     FOREIGN KEY(vid) REFERENCES vendors(vid)
     */
@@ -120,12 +142,12 @@ CREATE TABLE "parts" (
 
 DROP TABLE IF EXISTS "rmas" ;
 CREATE TABLE "rmas" (
-    rma_id integer primary key,
-    sti integer default 0, -- site id
-    did integer default 0, -- device id
-    vid integer default 0, -- vendor id
-    old_pid integer default 0,
-    new_pid integer default 0,
+    rmd integer primary key,
+    sti integer, -- site id
+    did integer, -- device id
+    vid integer, -- vendor id
+    old_pid integer,
+    new_pid integer,
     vendor_rma text default '',
     ship_tracking text default '',
     recv_tracking text default '',
@@ -137,7 +159,7 @@ CREATE TABLE "rmas" (
     date_received date,
     date_closed date,
     date_created date DEFAULT CURRENT_TIMESTAMP,
-    user_id integer default 0 ,
+    usr integer default 0,
     FOREIGN KEY(sti) REFERENCES sites(sti)
 );
 
@@ -158,10 +180,10 @@ CREATE TABLE "device_types" (
 drop table if exists devices;
 CREATE TABLE "devices" (
     did integer primary key,
-    kid integer default 0,    -- vendor sku ID
-    rid integer default 0,    -- rack ID
-    dti integer default 0,    -- device type ID
-    tid integer default 0,    -- tag ID
+    rid integer,    -- rack ID
+    dti integer,    -- device type ID
+    kid integer,    -- vendor sku ID
+    tid integer,    -- tag ID
     ru  integer default 0,
     height    int default 1,
     hostname  text not null COLLATE NOCASE,
@@ -171,21 +193,39 @@ CREATE TABLE "devices" (
     profile   text,
     assigned  text,
     note      text,
-    user_id   integer not null default 0, 
-    modified  date DEFAULT CURRENT_TIMESTAMP,
+    usr integer default 0,
+    ts  date DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(rid) REFERENCES racks(rid)
     FOREIGN KEY(dti) REFERENCES device_types(dti)
+    FOREIGN KEY(kid) REFERENCES skus(kid)
+    FOREIGN KEY(tid) REFERENCES tags(tid)
 );
 
 CREATE TABLE "vms" (
     vmi integer primary key,
-    did int,
+    did integer,
     hostname text,
     profile text default '',
     note text default '',
-    user_id int default 0,
-    modified timestamp DEFAULT CURRENT_TIMESTAMP,
+    usr integer default 0,
+    ts timestamp DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(did) REFERENCES devices(did)
+);
+
+DROP TABLE IF EXISTS "vlans";
+CREATE TABLE "vlans" (
+    vli integer primary key,
+    sti integer,
+    name integer not null,
+    profile string not null,
+    gateway text not null,
+    netmask text not null,
+    route text not null,
+    note text,
+    min_ip32 integer,
+    max_ip32 integer,
+    usr integer default 0,
+    ts timestamp DEFAULT CURRENT_TIMESTAMP
 );
 
 drop table if exists interfaces;
@@ -211,17 +251,24 @@ create table "ips" (
     iid integer primary key,
     ifd integer,    -- interface ID
     vmi integer,    -- VM ID, if applicable
-    vli integer,    -- VLAN ID, for reserved IPs
     ipt integer,    -- ip type ID
+    vli integer,    -- VLAN ID, for reserved IPs
     ip32 integer default 0,    -- ip address as integer
     ipv4 text default '',    -- ip address as string
     note text,
-    user_id integer not null default 0, 
-    modified date DEFAULT CURRENT_TIMESTAMP,
+    usr integer default 0, 
+    ts date DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(ifd) REFERENCES interfaces(ifd)
     FOREIGN KEY(vmi) REFERENCES vms(vmi)
     FOREIGN KEY(ipt) REFERENCES ip_types(ipt)
+    FOREIGN KEY(vli) REFERENCES vlans(vli)
 );
+
+drop index if exists ips_ip32;
+create index ips_ip32 on ips(ip32);
+
+drop index if exists ips_ipv4;
+create index ips_ipv4 on ips(ipv4);
 
 drop table if exists audit_devices;
 CREATE TABLE "audit_devices" (
@@ -239,13 +286,13 @@ CREATE TABLE "audit_devices" (
     profile   text,
     assigned  text,
     note      text,
-    user_id   integer,
-    modified  date
+    usr   integer default 0,
+    ts  date
 );
 
 DROP TABLE IF EXISTS users;
 CREATE TABLE users (
-    id integer primary key,
+    usr integer primary key,
     login text, -- optional unix login name
     firstname text,
     lastname text,
@@ -257,20 +304,53 @@ CREATE TABLE users (
     apikey text default (lower(hex(randomblob(32))))
 );
 
--- rack specific vlans
-DROP TABLE IF EXISTS "vlans";
-CREATE TABLE "vlans" (
-    vli integer primary key,
-    sti integer not null,
-    name integer not null,
-    profile string not null,
-    gateway text not null,
-    netmask text not null,
-    route text not null,
+DROP TABLE IF EXISTS "providers";
+CREATE TABLE "providers" (
+    pri integer primary key,
+    name text not null,
+    contact text,
+    phone text,
+    email text,
+    url text,
     note text,
-    user_id int not null,
-    modified timestamp DEFAULT CURRENT_TIMESTAMP
+    usr integer default 0,
+    ts timestamp DEFAULT CURRENT_TIMESTAMP
 );
 
+DROP TABLE IF EXISTS "circuits";
+CREATE TABLE "circuits" (
+    cid integer primary key,
+    sti integer,
+    pri integer,
+    circuit_id text,
+    sub_id text,
+    a_side_xcon text,
+    a_side_handoff text,
+    z_side_location text,
+    z_side_xcon text
+);
+
+DROP TABLE IF EXISTS "sub_circuits";
+CREATE TABLE "sub_circuits" (
+    sci integer primary key,
+    cid integer,
+    sub_circuit_id text
+);
+
+/*
+
+CID sub CID provider    A-side Data Center X-con ID A-side location A-side handoff  panel info  Z-side Data Center X-con ID Z-side location Z-side handoff  panel info  patch cable circuit type    service start   service term    purpose description Notes
+10846533        Equinix EU  10846533    AM3                 Cat5    100M    August 2013 unknown OOB 
+eqixCID11251637     AMS-IX/Equinix  11251637    AM3                 SC-SC SM    10G December 2013   unknown Peering at AMS-IX 80.249.210.220/21 
+GI/Ethernet/00360258        GTT 14315011 needs confirmation, query sent to eqix AM3 "AM3:3:20106:PUBMATIC
+PP:0104:170316 Ports 3-4"   dxcon-fg6fapza  AWS EU  unknown SC-SC SM    1G  April 2014  12  Xcon to AWS DirectConnect dxcon-fg6fapza    
+GI/Ethernet/00372586        GTT 16516962    AM3 "AM3:3:20106:PUBMATIC
+PP:0103:170315 Ports 7-8"   dxcon-fgit2je7  AWS EU  unknown SC-LC SM    10G September 2014  12  Xcon to AWS DirectConnect dxcon-fgit2je7 in London  
+GI/X-Connect/00342668       GTT investigating w/ equinix    AM3     transit transit transit         2013??? 10/01/16        
+GI/IP  TRANSIT/00337796     GTT investigating w/ equinix    AM3     transit transit transit         August 2014 24 months       
+investigating w/ equinix            10866711-A  AM3                         August 2013         
+investigating w/ equinix            10142073-A  AM3                         July 2013           
+
+*/
 CREATE VIRTUAL TABLE notes USING fts4(id, kind, hostname, note);
 COMMIT;

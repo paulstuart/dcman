@@ -1,5 +1,34 @@
 create table if not exists log(event text); 
 
+--
+-- IPs
+--
+
+DROP TRIGGER IF EXISTS ips_insert;
+CREATE TRIGGER ips_insert AFTER INSERT ON ips 
+--when NEW.ip32 is null and NEW.ipv4 > ''
+BEGIN
+    update ips 
+    set ip32 = (select ipcalc from ips_calc where iid = NEW.iid)
+    where iid=NEW.iid
+    ;
+END;
+
+DROP TRIGGER IF EXISTS ips_update;
+CREATE TRIGGER ips_update AFTER UPDATE OF ipv4 ON ips 
+--when NEW.ip32 is null and NEW.ipv4 > ''
+BEGIN
+    update ips 
+    set ip32 = (select ipcalc from ips_calc where iid = OLD.iid)
+    where iid=OLD.iid
+    ;
+END;
+
+
+--
+-- Devices
+--
+
 DROP TRIGGER IF EXISTS devices_view_insert;
 CREATE TRIGGER devices_view_insert INSTEAD OF INSERT ON devices_view 
 BEGIN
@@ -31,9 +60,6 @@ BEGIN
     ;
 END;
 
---
--- Devices
---
 DROP TRIGGER IF EXISTS devices_insert;
 CREATE TRIGGER devices_insert AFTER INSERT ON devices 
 BEGIN
@@ -80,12 +106,6 @@ BEGIN
     insert or ignore into part_types (name) values(ifnull(NEW.part_type, 'misc'));
     insert into log values('skus_view insert - mfgr:' || new.mfgr);
     insert or ignore into mfgrs (name) values(ifnull(NEW.mfgr,'unknown'));
-/*
-    insert or ignore into skus (description, part_no, mid)
-        select NEW.description, NEW.part_no, 
-            (select mid from mfgrs where name = ifnull(NEW.mfgr,'unknown'))
-            ;
-*/
     insert or ignore into skus (description, part_no, mid, pti)
         select NEW.description, NEW.part_no, 
             ifnull(NEW.mid, (select mid from mfgrs where name = ifnull(NEW.mfgr,'unknown'))),
@@ -170,13 +190,13 @@ BEGIN
         date_received=ifnull(NEW.date_received, OLD.date_received),
         date_created=ifnull(NEW.date_created, OLD.date_created),
         date_closed=ifnull(NEW.date_closed, OLD.date_closed)
-    where rma_id = OLD.rma_id;
+    where rmd = OLD.rmd;
 END;
 
 DROP TRIGGER IF EXISTS rmas_view_delete;
 CREATE TRIGGER rmas_view_delete INSTEAD OF DELETE ON rmas_view 
 BEGIN
-    delete from rmas where rma_id = OLD.rma_id;
+    delete from rmas where rmd = OLD.rmd;
 END;
 
 
@@ -201,6 +221,7 @@ BEGIN
   update racks set 
 	rackunits = ifnull(NEW.rackunits,OLD.rackunits),
 	vendor_id = ifnull(NEW.vendor_id,OLD.vendor_id),
+	note = ifnull(NEW.note,OLD.note),
 	sti = ifnull(NEW.sti,OLD.sti)
     where rid = OLD.rid
     ;
@@ -218,6 +239,148 @@ CREATE TRIGGER devices_audit BEFORE UPDATE
 ON devices
 BEGIN
    INSERT INTO audit_devices select * from devices where did=old.did;
+END;
+
+DROP TRIGGER IF EXISTS parts_view_insert_new_sku;
+CREATE TRIGGER parts_view_insert_new_sku INSTEAD OF INSERT ON parts_view 
+BEGIN
+    insert into log values('KID:' || ifnull(new.kid, 'no kid'));
+    insert into log values('part_no:' || ifnull(new.part_no, 'no part_no'));
+    insert into log values('part_type:' || ifnull(new.part_type, 'no part_type'));
+    insert into skus_view (
+        description,
+        part_no,
+        pti,
+        part_type,
+        mfgr
+    ) values (
+        new.description,
+        new.part_no,
+        new.pti,
+        new.part_type,
+        new.mfgr
+    );
+
+    insert into parts (
+        sti,
+        serial_no,
+        asset_tag,
+        unused,
+        bad,
+        location,
+        cents,
+        vid,
+        kid
+        )
+        select 
+            new.sti, 
+            new.serial_no,
+            new.asset_tag, 
+            new.unused,
+            new.bad,
+            new.location, 
+            new.cents,
+            ifnull((select vid from vendors where name=NEW.vendor), 0),
+            kid from skus_view 
+              where description=new.description
+                 and part_no=new.part_no 
+                 and part_type=ifnull(new.part_type,'misc') 
+                 and mfgr=ifnull(new.mfgr,'unknown')
+                ;
+END;
+
+DROP TRIGGER IF EXISTS parts_view_update;
+CREATE TRIGGER parts_view_update INSTEAD OF UPDATE ON parts_view 
+BEGIN
+    --insert into db_debug (log) values ('old.did:', ifnull 
+    update parts set
+        --did = coalesce(NEW.did, OLD.did, (select did from devices where hostname=NEW.hostname)),
+        did = ifnull(NEW.did, OLD.did),
+        kid = ifnull(NEW.kid, OLD.kid),
+        vid = ifnull(NEW.vid, OLD.vid),
+        serial_no = ifnull(new.serial_no, old.serial_no),
+        asset_tag = ifnull(new.asset_tag, old.asset_tag),
+        unused = ifnull(new.unused, old.unused),
+        bad = ifnull(new.bad, old.bad),
+        location = ifnull(new.location, old.location),
+        cents = ifnull(new.cents, old.cents)
+        where pid = old.pid
+        ;
+    update skus_view set 
+        description=ifnull(new.description,old.description),
+        part_no=ifnull(new.part_no,old.part_no),
+        part_type=ifnull(new.part_type,old.part_type),
+        mfgr=ifnull(new.mfgr,old.mfgr)
+        where kid=old.kid
+        ;
+END;
+
+
+DROP TRIGGER IF EXISTS racks_view_insert;
+CREATE TRIGGER racks_view_insert INSTEAD OF INSERT ON racks_view 
+BEGIN
+  insert into racks (rack, sti) values (NEW.rack, (select sti from sites where name=NEW.site));
+END;
+
+DROP TRIGGER IF EXISTS rmas_view_insert;
+CREATE TRIGGER rmas_view_insert INSTEAD OF INSERT ON rmas_view 
+BEGIN
+    insert into rmas (
+    sti,
+    did,
+    vid,
+    old_pid,
+    new_pid,
+    vendor_rma,
+    ship_tracking,
+    recv_tracking,
+    jira,
+    dc_ticket,
+    dc_receiving,
+    note,
+    date_shipped,
+    date_received,
+    date_closed
+  ) values (
+    NEW.sti,
+    ifnull(NEW.did, (select did from devices where hostname=NEW.hostname)),
+    NEW.vid,
+    NEW.old_pid,
+    NEW.new_pid,
+    NEW.vendor_rma,
+    NEW.ship_tracking,
+    NEW.recv_tracking,
+    NEW.jira,
+    NEW.dc_ticket,
+    NEW.dc_receiving,
+    NEW.note,
+    NEW.date_shipped,
+    NEW.date_received,
+    NEW.date_closed
+  ); 
+END;
+
+DROP TRIGGER IF EXISTS rmas_view_update;
+CREATE TRIGGER rmas_view_update INSTEAD OF UPDATE ON rmas_view 
+BEGIN
+    update rmas set 
+        did=coalesce(NEW.did, OLD.did, (select did from devices where hostname=NEW.hostname)),
+        sti=ifnull(NEW.sti, OLD.sti),
+        did=ifnull(NEW.did, OLD.did),
+        vid=ifnull(NEW.vid, OLD.vid),
+        old_pid=ifnull(NEW.old_pid, OLD.old_pid),
+        new_pid=ifnull(NEW.new_pid, OLD.new_pid),
+        vendor_rma=ifnull(NEW.vendor_rma, OLD.vendor_rma),
+        ship_tracking=ifnull(NEW.ship_tracking, OLD.ship_tracking),
+        recv_tracking=ifnull(NEW.recv_tracking, OLD.recv_tracking),
+        jira=ifnull(NEW.jira, OLD.jira),
+        dc_ticket=ifnull(NEW.dc_ticket, OLD.dc_ticket),
+        dc_receiving=ifnull(NEW.dc_receiving, OLD.dc_receiving),
+        note=ifnull(NEW.note, OLD.note),
+        date_shipped=ifnull(NEW.date_shipped, OLD.date_shipped),
+        date_received=ifnull(NEW.date_received, OLD.date_received),
+        date_closed=ifnull(NEW.date_closed, OLD.date_closed)
+    where rmd = OLD.rmd;
 END;
 
 /*
@@ -246,139 +409,3 @@ BEGIN
 END;
 */
 
-DROP TRIGGER IF EXISTS parts_view_insert_new_sku;
-CREATE TRIGGER parts_view_insert_new_sku INSTEAD OF INSERT ON parts_view 
---WHEN NEW.kid == 0
-BEGIN
-    insert into log values('KID:' || ifnull(new.kid, 'no kid'));
-    insert into log values('part_no:' || ifnull(new.part_no, 'no part_no'));
-    insert into log values('part_type:' || ifnull(new.part_type, 'no part_type'));
-    --insert into log values('KID:' || ' oh I kid');
-    insert into skus_view (
-        description,
-        part_no,
-        pti,
-        part_type,
-        mfgr
-    ) values (
-        new.description,
-        new.part_no,
-        new.pti,
-        new.part_type,
-        new.mfgr
-    );
-    insert into log values('the parts SN:' || new.serial_no);
-
-    insert into parts (
-        serial_no,
-        asset_tag,
-        unused,
-        bad,
-        location,
-        sti,
-        kid
-        )
-        select 
-            new.serial_no,
-            new.asset_tag, 
-            new.unused,
-            new.bad,
-            new.location, 
-            new.sti, 
-            kid from skus_view 
-              where description=new.description
-                 and part_no=new.part_no 
-                 and part_type=ifnull(new.part_type,'misc') 
-                 and mfgr=ifnull(new.mfgr,'unknown')
-                ;
-END;
-
-DROP TRIGGER IF EXISTS partup;
-DROP TRIGGER IF EXISTS parts_view_update;
-CREATE TRIGGER parts_view_update INSTEAD OF UPDATE ON parts_view 
-BEGIN
-    update parts set
-        did = coalesce(NEW.did, OLD.did, (select did from devices where hostname=NEW.hostname)),
-        serial_no = ifnull(new.serial_no, old.serial_no),
-        asset_tag = ifnull(new.asset_tag, old.asset_tag),
-        unused = ifnull(new.unused, old.unused),
-        bad = ifnull(new.bad, old.bad),
-        location = ifnull(new.location, old.location)
-        where pid = old.pid
-        ;
-    update skus_view set 
-        description=ifnull(new.description,old.description),
-        part_no=ifnull(new.part_no,old.part_no),
-        part_type=ifnull(new.part_type,old.part_type),
-        mfgr=ifnull(new.mfgr,old.mfgr)
-        where kid=old.kid
-        ;
-END;
-
-
-DROP TRIGGER IF EXISTS racks_view_insert;
-CREATE TRIGGER racks_view_insert INSTEAD OF INSERT ON racks_view 
-BEGIN
-  insert into racks (rack, sti) values (NEW.rack, (select sti from sites where name=NEW.site));
-END;
-
-DROP TRIGGER IF EXISTS rmas_view_insert;
-CREATE TRIGGER rmas_view_insert INSTEAD OF INSERT ON rmas_view 
-BEGIN
-    insert into rmas (
-    sites,
-    did,
-    vid,
-    old_pid,
-    new_pid,
-    vendor_rma,
-    ship_tracking,
-    recv_tracking,
-    jira,
-    dc_ticket,
-    dc_receiving,
-    note,
-    date_shipped,
-    date_received,
-    date_closed
-  ) values (
-    NEW.sites,
-    ifnull(NEW.did, (select did from devices where hostname=NEW.hostname)),
-    NEW.vid,
-    NEW.old_pid,
-    NEW.new_pid,
-    NEW.vendor_rma,
-    NEW.ship_tracking,
-    NEW.recv_tracking,
-    NEW.jira,
-    NEW.dc_ticket,
-    NEW.dc_receiving,
-    NEW.note,
-    NEW.date_shipped,
-    NEW.date_received,
-    NEW.date_closed
-  ); 
-END;
-
-DROP TRIGGER IF EXISTS rmas_view_update;
-CREATE TRIGGER rmas_view_update INSTEAD OF UPDATE ON rmas_view 
-BEGIN
-    update rmas set 
-        did=coalesce(NEW.did, OLD.did, (select did from devices where hostname=NEW.hostname)),
-        sites=ifnull(NEW.sites, OLD.sites),
-        did=ifnull(NEW.did, OLD.did),
-        vid=ifnull(NEW.vid, OLD.vid),
-        old_pid=ifnull(NEW.old_pid, OLD.old_pid),
-        new_pid=ifnull(NEW.new_pid, OLD.new_pid),
-        vendor_rma=ifnull(NEW.vendor_rma, OLD.vendor_rma),
-        ship_tracking=ifnull(NEW.ship_tracking, OLD.ship_tracking),
-        recv_tracking=ifnull(NEW.recv_tracking, OLD.recv_tracking),
-        jira=ifnull(NEW.jira, OLD.jira),
-        dc_ticket=ifnull(NEW.dc_ticket, OLD.dc_ticket),
-        dc_receiving=ifnull(NEW.dc_receiving, OLD.dc_receiving),
-        note=ifnull(NEW.note, OLD.note),
-        date_shipped=ifnull(NEW.date_shipped, OLD.date_shipped),
-        date_received=ifnull(NEW.date_received, OLD.date_received),
-        date_closed=ifnull(NEW.date_closed, OLD.date_closed)
-    where rma_id = OLD.rma_id;
-END;

@@ -14,6 +14,87 @@ CREATE VIEW ips_view as
     left outer join ip_types t on i.ipt = t.ipt
     ;
 
+    /*
+DROP VIEW IF EXISTS ips_calc;
+CREATE VIEW ips_calc as
+    with oct1(ipv4, iid, o1, rem1) as (
+            select ipv4, iid, substr(ipv4,0,instr(ipv4,'.')) as o1, 
+                substr(ipv4,instr(ipv4,'.')+1) as rem1
+                from ips
+        ),
+        oct2(iid, o2, rem2) as (
+            select iid, substr(rem1,0,instr(rem1,'.')) as o2, 
+                substr(rem1,instr(rem1,'.')+1) as rem2
+                from oct1
+        ),
+        oct3(iid, o3, o4) as (
+            select iid, substr(rem2,0,instr(rem2,'.')) as o3, 
+                substr(rem2,instr(rem2,'.')+1) as o4
+                from oct2
+        ),
+        calculated(iid, ipv4, ipcalc) as (
+            select
+                oct1.iid, oct1.ipv4, ((o1 << 24) + (o2 << 16) + (o3 << 8) + o4) as ipcalc
+            from 
+            oct1, oct2, oct3
+            where oct1.iid = oct2.iid
+              and oct1.iid = oct3.iid
+        )
+    select * from calculated
+    ;
+*/
+
+DROP VIEW IF EXISTS ips_calc;
+CREATE VIEW ips_calc as
+    with oct1(ipv4, iid, o1, rem1) as (
+            select ipv4, iid, substr(ipv4,0,instr(ipv4,'.')) as o1, 
+                substr(ipv4,instr(ipv4,'.')+1) as rem1
+                from ips
+        ),
+        oct2(iid, ipv4, o1, o2, rem2) as (
+            select iid, ipv4, o1,
+                substr(rem1,0,instr(rem1,'.')) as o2, 
+                substr(rem1,instr(rem1,'.')+1) as rem2
+                from oct1
+        ),
+        oct3(iid, ipv4, o1, o2, o3, o4) as (
+            select iid, ipv4, o1, o2,
+                substr(rem2,0,instr(rem2,'.')) as o3, 
+                substr(rem2,instr(rem2,'.')+1) as o4
+                from oct2
+        ),
+        calculated(iid, ipv4, ipcalc) as (
+            select
+                iid, ipv4, ((o1 << 24) + (o2 << 16) + (o3 << 8) + o4) as ipcalc
+            from oct3
+        )
+    select * from calculated
+    ;
+
+drop view if exists ips_missing;
+create view ips_missing as
+   select i.*, i.ip32+1 as ip33, j.ip32 as missing
+   from ips i
+   left outer join ips j on i.ip32 = (j.ip32 - 1)
+   where i.ip32 > 0
+     and missing is null
+    ;
+
+drop view if exists ips_next;
+create view ips_next as
+   with ipgap(ip32, next32) as (
+       select i.ip32+1 as ip32, j.ip32 as next32
+       from ips i
+       left outer join ips j on i.ip32 = (j.ip32 - 1)
+       where i.ip32 > 0
+   )
+   select *, 
+    (ip32 >> 24) || '.' || ((ip32 >> 16) & 255) || '.' || ((ip32 >> 8) & 255) || '.' || (ip32 & 255) as ipv4
+    from ipgap 
+    where next32 is null
+    order by ip32
+   ;
+
 drop view if exists devices_view;
 create view devices_view as
     select r.sti, r.site, r.rack, d.*, dt.name as devtype, t.tag
@@ -33,7 +114,8 @@ create view interfaces_view as
 
 DROP VIEW IF EXISTS skus_view;
 CREATE VIEW skus_view as 
-  select k.kid, k.vid, k.pti, k.mid, t.name as part_type, k.part_no, k.description, v.name as vendor, m.name as mfgr
+  --select k.kid, k.vid, k.pti, k.mid, t.name as part_type, k.part_no, k.description, v.name as vendor, m.name as mfgr
+  select k.*, t.name as part_type, v.name as vendor, m.name as mfgr
   from  skus k
   left outer join mfgrs m on k.mid = m.mid
   left outer join part_types t on k.pti = t.pti
@@ -43,7 +125,11 @@ CREATE VIEW skus_view as
 
 DROP VIEW IF EXISTS parts_view;
 CREATE VIEW parts_view as 
-   select p.pid, p.did, p.sti, ifnull(r.rma_id, 0) as rma_id, k.*, s.name as site, d.hostname, p.serial_no, p.asset_tag, p.unused, p.bad, p.location
+   select p.pid, p.did, p.sti, ifnull(r.rmd, 0) as rmd, 
+        k.kid, p.vid, k.mid, k.pti, k.description, k.part_no, k.sku, k.part_type, k.vendor, k.vendor, k.mfgr,
+        s.name as site, d.hostname, p.serial_no, p.asset_tag, p.unused, p.bad, 
+        p.location, p.cents, 
+        round(p.cents/100.0,2) as price
    from parts p
    left outer join skus_view k on p.kid = k.kid
    left outer join rmas r on p.pid = r.old_pid
@@ -53,7 +139,7 @@ CREATE VIEW parts_view as
 
 drop view if exists inventory;
 create view inventory as
-    select sti, kid, pti, site, count(kid) as qty, mfgr, part_no, part_type, description 
+    select sti, kid, pti, site, count(kid) as qty, mfgr, part_no, part_type, description, sum(cents) as cents, sum(price) as price 
     from parts_view
     where unused = 1
     and  bad = 0
@@ -62,7 +148,7 @@ create view inventory as
 
 DROP VIEW IF EXISTS "rmas_view" ;
 CREATE VIEW rmas_view as 
-    select r.*, p.description, p.serial_no as part_sn, p.part_no, s.hostname, s.sn as device_sn
+    select r.*, p.description, p.serial_no as part_sn, p.part_no, p.site, s.hostname, s.sn as device_sn
     from rmas r
     left join devices s on r.did = s.did
     left join parts_view p on p.pid = r.old_pid
@@ -178,6 +264,22 @@ CREATE VIEW devices_list as
     left outer join devices_mgmt as m on d.did = m.did 
     ;
 
+drop view if exists devices_public_ips;
+create view devices_public_ips as
+    select *
+    from devices_all_ips
+    where iptype in ('Public')
+    ;
+
+DROP VIEW IF EXISTS mactable;
+CREATE VIEW mactable as
+    select a.mac, a.hostname, a.site, a.profile, a.ipv4 as ip_internal, ifnull(b.ipv4, '-') as ip_public
+        from devices_network a
+        left outer join devices_public_ips b on a.did = b.did
+        where a.iptype = 'Internal'
+        and a.mac is not null
+        and a.mac > ''
+    ;
 
 DROP VIEW IF EXISTS ips_vms;
 CREATE VIEW ips_vms as
@@ -201,11 +303,11 @@ CREATE VIEW ips_devices as
 
 DROP VIEW IF EXISTS ips_reserved;
 CREATE VIEW ips_reserved as
-    select v.sti, vli, i.ipt, v.site, i.iptype, ipv4, i.note  
+    select v.sti, v.vli, i.ipt, 0 as rid, v.site, i.iptype, ipv4, i.note  
         from ips_view i
     left outer join vlans_view v on i.vli = v.vli
         where i.ipv4 > '' 
-        and i.ipttype = 'Reserved'
+        and i.iptype = 'Reserved'
         ;
 
 DROP VIEW IF EXISTS ips_list;
@@ -216,3 +318,19 @@ CREATE VIEW ips_list as
     union
     select sti, vli as id, rid, ipt, iptype as host, site, '' as rack, ipv4 as ip, iptype, iptype as hostname, note from ips_reserved 
     ;
+
+DROP VIEW IF EXISTS "circuits_view";
+CREATE VIEW "circuits_view" as
+    select s.name as site, p.name as provider, c.*
+    from circuits
+    left outer join providers p on c.pri = p.pri
+    left outer join sites s on c.sti = s.sti
+    ;
+
+DROP VIEW IF EXISTS "circuits_list";
+CREATE VIEW "circuits_list" as
+    select c.*, b.sub_circuit_id, b.note as sub_note
+    from circuits_view c
+    left outer join sub_circuit_id s on s.cid = c.cid
+    ;
+

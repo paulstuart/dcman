@@ -15,11 +15,8 @@ var get = function(url) {
       console.log('get status:', req.status, 'txt:', req.statusText)
       if (req.status == 200) {
         // Resolve the promise with the response text
-        //console.log('woo:', req.responseText)
         var obj = JSON.parse(req.responseText)
         resolve(obj)
-        //resolve(JSON.parse(req.responseText))
-        //resolve(req.response);
       }
       else {
         // Otherwise reject with the status text
@@ -54,7 +51,7 @@ var getData = function(url) {
       // so check the status
       //console.log('get status:', req.status, 'txt:', req.statusText)
       if (req.status == 200) {
-        var obj = JSON.parse(req.responseText)
+//        var obj = JSON.parse(req.responseText)
         resolve(req)
       }
       else {
@@ -77,7 +74,13 @@ var getData = function(url) {
 }
 
 var getJSON = function(url) {
-      return getData(url).then(JSON.parse);
+      //return getData(url).then(JSON.parse);
+      return getData(url).then(function(xhr) {
+          if (xhr.responseText === 'null') {
+              return null
+          }
+          return JSON.parse(xhr.responseText)
+      })
 }
 
 var postIt = function(url, data, fn, method) {
@@ -380,7 +383,7 @@ var vendorURL = "/dcman/api/vendor/" ;
 
 var RMA = function() {
     Maker(this, [
-        'RMAID',
+        'RMD',
         'SID',
         'STI',
         'VID',
@@ -412,6 +415,7 @@ var Part = function() {
         'DID',
         'STI',
         'PTI',
+        'VID',
         'Site',
         'Hostname',
         'Description',
@@ -419,6 +423,8 @@ var Part = function() {
         'Serial',
         'AssetTag',
         'Mfgr',
+        'Price',
+        'Cents',
         'Bad',
         'Used',
     ])
@@ -464,7 +470,7 @@ var VLAN = function() {
 
 var User = function() {
     Maker(this, [
-        'ID',
+        'USR',
         'Login',
         'First',
         'Last',
@@ -480,6 +486,7 @@ var Rack = function() {
         'Site',
         'RUs',
         'Label',
+        'Note',
         'VendorID',
     ])
 }
@@ -496,6 +503,15 @@ var Vendor = function() {
         'Country',
         'Postal',
         'Note',
+    ])
+}
+
+var Mfgr = function() {
+    Maker(this, [
+        'MID',
+        'Name',
+        'Note',
+        'URL',
     ])
 }
 

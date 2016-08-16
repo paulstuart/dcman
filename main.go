@@ -221,44 +221,57 @@ func searchDB(what string) []Hit {
 	dbDebug(true)
 	defer dbDebug(false)
 
-	q := "select did as id, 'server' as kind, hostname from devices where hostname=? or sn=? or alias=? or asset_tag=? or profile=?"
+	q := "select distinct did as id, 'server' as kind, hostname from devices where hostname=? or sn=? or alias=? or asset_tag=? or profile=?"
 	hits := dbHits(q, what, what, what, what, what)
 	if len(hits) > 0 {
 		return hits
 	}
 
-	q = "select vmi as id, 'vm' as kind, hostname from vms where hostname=?"
+	q = "select distinct vmi as id, 'vm' as kind, hostname from vms where hostname=?"
 	hits = dbHits(q, what)
 	if len(hits) > 0 {
 		return hits
 	}
 
-	q = "select did as id, devtype as kind, hostname from devices_network where mac=? or ipv4=?"
+	q = "select distinct did as id, devtype as kind, hostname from devices_network where mac=? or ipv4=?"
 	hits = dbHits(q, what, what)
 	if len(hits) > 0 {
 		return hits
 	}
 
-	q = "select did as id, 'server' as kind, hostname from devices where hostname like ?"
+	q = "select distinct did as id, 'server' as kind, hostname from devices where hostname like ?"
 	hits = dbHits(q, "%"+what+"%")
 	if len(hits) > 0 {
 		return hits
 	}
 
-	q = "select id, kind, hostname from notes where note MATCH ?"
+	q = "select distinct id, kind, hostname from notes where note MATCH ?"
 	hits = dbHits(q, what)
 	if len(hits) > 0 {
 		return hits
 	}
 
-	q = "select id, kind, hostname from notes where note MATCH ?"
+	q = "select distinct id, kind, hostname from notes where note MATCH ?"
 	hits = dbHits(q, what+"*")
 	if len(hits) > 0 {
 		return hits
 	}
 
-	q = "select id, kind, hostname from notes where note MATCH ?"
+	q = "select distinct id, kind, hostname from notes where note MATCH ?"
 	hits = dbHits(q, "*"+what)
+	if len(hits) > 0 {
+		return hits
+	}
+
+	// partial MAC addr?
+	if strings.Contains(what, ":") {
+		q = "select distinct did as id, devtype as kind, hostname from devices_network where mac like ?"
+		hits = dbHits(q, "%"+what+"%")
+		if len(hits) > 0 {
+			return hits
+		}
+	}
+
 	return hits
 }
 

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -11,8 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/davecgh/go-spew/spew"
+	//"github.com/davecgh/go-spew/spew"
 )
 
 type Common string
@@ -29,63 +27,6 @@ func HomePage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-control", "public, max-age=259200")
 	cors(w)
 	http.ServeContent(w, r, name, fi.ModTime(), file)
-}
-
-/*
-func PartsLoad(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "POST" {
-		r.ParseForm()
-		data := r.Form.Get("data")
-		did := r.Form.Get("DCD")
-		test := r.Form.Get("test")
-		fmt.Println("test:", test)
-		fmt.Println("DCD:", did)
-		fmt.Println("Data:", data)
-		id, err := strconv.ParseInt(did, 0, 64)
-		if err != nil {
-			http.Error(w, "invalid datacenter id: "+did, http.StatusNotAcceptable)
-			return
-		}
-		err = LoadParts(id, strings.Split(data, "\n"))
-		log.Println("UPLOADING PARTS")
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusNotAcceptable)
-		} else {
-			fmt.Fprintln(w, "ok")
-		}
-	} else {
-		renderTemplate(w, r, "loadparts", nil)
-	}
-}
-*/
-
-// check to see if a server can fit in a rack location
-func ServerCheckFit(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "POST" {
-		r.ParseForm()
-		rid := r.Form.Get("RID")
-		hostname := r.Form.Get("Hostname")
-		bot, err := strconv.Atoi(r.Form.Get("Bottom"))
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		top, err := strconv.Atoi(r.Form.Get("Top"))
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		const q = "select hostname from rackspace where rid=? and hostname != ? and (ru >= ?) and (top < ?) order by ru desc"
-		hosts, err := dbRows(q, rid, hostname, bot, top)
-		if err != nil || len(hosts) == 0 {
-			//log.Println("check err:", err)
-			fmt.Fprint(w, "ok")
-		} else {
-			//log.Println("conflicting hosts:", hosts)
-			msg := "occupied by: " + strings.Join(hosts, ",")
-			http.Error(w, msg, http.StatusBadRequest)
-		}
-	}
 }
 
 func RackAdjust(w http.ResponseWriter, r *http.Request) {
@@ -113,56 +54,21 @@ func RackMoveUnit(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func RackNetwork(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "POST" {
-		r.ParseForm()
-		var rn RackNet
-		objFromForm(&rn, r.Form)
-		action := r.Form.Get("action")
-		OriginalVID := r.Form.Get("OriginalVID")
-		rn.MinIP = ipFromString(rn.FirstIP)
-		rn.MaxIP = ipFromString(rn.LastIP)
-		if action == "Add" {
-			if _, err := dbObjectInsert(rn); err != nil {
-				log.Println("Racknet add error:", err)
-			}
-		} else if action == "Update" {
-			const q = "update racknet set vid=?,first_ip=?,last_ip=? where rid=? and vid=?"
-			if err := dbExec(q, rn.VID, rn.FirstIP, rn.LastIP, rn.RID, OriginalVID); err != nil {
-				log.Println("Racknet update error:", err)
-			}
-		} else if action == "Delete" {
-			const q = "delete from racknet where rid=? and vid=?"
-			dbExec(q, rn.RID, rn.VID)
-		}
-		user := currentUser(r)
-		auditLog(user.ID, RemoteHost(r), action, rn.String())
-		dc := r.FormValue("DC")
-		redirect(w, r, "/dc/racks/"+dc, http.StatusSeeOther)
-	}
-}
-
 func MacTable(w http.ResponseWriter, r *http.Request) {
-	sx, err := dbObjectList(Device{})
-	if err != nil {
-		log.Println("error loading objects:", err)
+	const h = "#%-19s %-15s %-10s %-20s %-15s  %s\n"
+	const s = "%-20s %-15s %-10s %-20s %-15s  %s\n"
+	fn := func(columns []string, count int, buffer []interface{}) {
+		if count == 0 {
+			cols := make([]interface{}, 0, len(columns))
+			for _, c := range columns {
+				cols = append(cols, c)
+			}
+			fmt.Fprintf(w, h, cols...)
+		}
+		fmt.Fprintf(w, s, buffer...)
 	}
 	w.Header().Set("Content-Type", "text/plain")
-	sendJSON(w, sx)
-	/*
-		servers := sx.([]Device)
-		for _, s := range servers {
-			p := s.IPPublic
-			if len(p) == 0 {
-				p = "-"
-			}
-			if len(s.MacPort0) > 0 {
-				if v, err := ipVLAN(s.IPInternal); err == nil {
-					fmt.Fprintf(w, "%s  %-15s %s  %-25s %-15s  %s\n", s.MacPort0, s.Hostname, strings.ToLower(s.DC()), v.Profile, s.IPInternal, p)
-				}
-			}
-		}
-	*/
+	dbStream(fn, "select * from mactable")
 }
 
 func pingPage(w http.ResponseWriter, r *http.Request) {
@@ -188,7 +94,7 @@ func loginFailHandler(w http.ResponseWriter, r *http.Request) {
 
 func logoutPage(w http.ResponseWriter, r *http.Request) {
 	user := currentUser(r)
-	auditLog(user.ID, RemoteHost(r), "Logout", user.Email)
+	auditLog(user.USR, RemoteHost(r), "Logout", user.Email)
 	Authorized(w, false)
 	Remember(w, nil)
 	redirect(w, r, "/", 302)
@@ -238,55 +144,6 @@ func APISearch(w http.ResponseWriter, r *http.Request) {
 	jsonError(w, "no search term specified", http.StatusBadRequest)
 }
 
-func APIAudit(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "POST" {
-		r.ParseForm()
-		var a Audit
-		objFromForm(&a, r.Form)
-		a.Hostname = strings.ToLower(a.Hostname)
-		a.FQDN = a.Hostname
-		i := strings.Index(a.Hostname, ".")
-		if i < 0 {
-			i = len(a.Hostname)
-		}
-		a.Hostname = a.Hostname[:i]
-		a.IP = RemoteHost(r)
-		log.Println(a.IP, a.Hostname)
-		err := dbReplace(&a)
-		if err != nil {
-			log.Println("AUDIT ERR:", err)
-		}
-	} else if r.Method == "GET" {
-		data := struct{ URL string }{baseURL + r.URL.Path}
-		renderTextTemplate(w, r, "audit.sh", data)
-	}
-}
-
-func APIUpload(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "POST" {
-		r.ParseForm()
-		file, header, err := r.FormFile("file")
-		if err != nil {
-			fmt.Fprintln(w, err)
-			return
-		}
-
-		name := r.Form.Get("name")
-		if len(name) == 0 {
-			fmt.Fprintln(w, "'name' not specified")
-			return
-		}
-		name = filepath.Join(uploadDir, name)
-		if err = saveMultipartFile(name, file); err != nil {
-			fmt.Fprintln(w, err)
-			return
-		}
-
-		fmt.Fprintf(w, "File uploaded successfully : ")
-		fmt.Fprintf(w, header.Filename)
-	}
-}
-
 func ServerDiscover(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	ipmi := r.URL.Path
@@ -305,58 +162,6 @@ func ServerDiscover(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, string(j))
 }
 
-func APIUpdate(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/plain")
-	/*
-		servers := serversByQuery("where ip_ipmi > '' and mac_eth0=''")
-		for i, server := range servers {
-			fmt.Fprintln(w, i, "S:", server.Hostname, "I:", server.IPIpmi, "M:", server.MacPort0)
-			go server.FixMac()
-			time.Sleep(1 * time.Second)
-		}
-	*/
-}
-
-// build query string
-func qstring(k []string) string {
-	switch len(k) {
-	case 0:
-		return ""
-	case 1:
-		return "where " + k[0] + "=?"
-	default:
-		var b bytes.Buffer
-		b.WriteString("where ")
-		b.WriteString(k[0])
-		b.WriteString("=? ")
-		for _, v := range k[1:] {
-
-			b.WriteString("and ")
-			b.WriteString(v)
-			b.WriteString("=? ")
-		}
-		return b.String()
-
-	}
-}
-
-func fullQuery(r *http.Request) (string, []interface{}, error) {
-	var val []interface{}
-	if err := r.ParseForm(); err != nil {
-		return "", val, err
-	}
-	keys := make([]string, 0, len(r.Form))
-	for k, _ := range r.Form {
-		keys = append(keys, k)
-	}
-	q := qstring(keys)
-	val = make([]interface{}, 0, len(keys))
-	for _, k := range keys {
-		val = append(val, r.Form[k][0])
-	}
-	return q, val, nil
-}
-
 // return the string after the last "/" of the url
 func urlSuffix(r *http.Request) string {
 	i := strings.LastIndex(r.URL.Path, "/")
@@ -373,43 +178,6 @@ func APIUnknown(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, msg, http.StatusBadRequest)
 	*/
 	jsonError(w, "Bad path: "+r.URL.Path, http.StatusBadRequest)
-}
-
-func APIAddPart(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("ADDPART METHOD:", r.Method)
-	part := &Part{}
-	if err := json.NewDecoder(r.Body).Decode(part); err != nil {
-		fmt.Println("***** ERR:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	fmt.Print("ADDPART PART:")
-	spew.Dump(part)
-	if err := dbAdd(part); err != nil {
-		fmt.Println("***** ERR:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
-
-func APIParts(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
-	for k, v := range r.Form {
-		log.Println("K:", k, "V:", v)
-	}
-	pn := strings.ToLower(r.Form.Get("q")) + "%"
-	const query = "select part_no from skus where part_no like ?"
-	dbDebug(true)
-	rows, err := dbRows(query, pn)
-	dbDebug(false)
-	if err != nil {
-		log.Println("db error:", err)
-		http.Error(w, err.Error(), http.StatusNotFound)
-		return
-	}
-	j, _ := json.MarshalIndent(rows, " ", " ")
-	w.Header().Set("Content-Type", "application/json")
-	fmt.Fprint(w, string(j))
 }
 
 func BulkPings(w http.ResponseWriter, r *http.Request) {
@@ -489,7 +257,7 @@ func APILogin(w http.ResponseWriter, r *http.Request) {
 			jsonError(w, err, http.StatusUnauthorized)
 			return
 		}
-		auditLog(user.ID, remoteAddr, "Login", "Login succeeded for "+obj.Username)
+		auditLog(user.USR, remoteAddr, "Login", "Login succeeded for "+obj.Username)
 		cors(w)
 		c := &http.Cookie{
 			Name:    "X-API-KEY",
@@ -551,22 +319,9 @@ type BackTalk struct {
 	Envy             []KV
 }
 
-/*
-var (
-	MyPart       = MakeREST(Part{})
-	MyPartView   = MakeREST(PartView{})
-	MyRack       = MakeREST(Rack{})
-	APIRMA       = MakeREST(RMA{})
-	MyServer     = MakeREST(Server{})
-	MyServerView = MakeREST(ServerView{})
-)
-*/
-
 var webHandlers = []HFunc{
 	//{"/favicon.ico", FaviconPage},
 	{"/static/", StaticPage},
-	//{"/api/audit/vm/", APIAuditVM},
-	{"/api/audit", APIAudit},
 	{"/api/credentials/get", IPMICredentialsGet},
 	{"/api/credentials/set", IPMICredentialsSet},
 	{"/api/db/pragmas", apiPragmas},
@@ -582,6 +337,10 @@ var webHandlers = []HFunc{
 	{"/api/part/view/", MakeREST(PartView{})},
 	{"/api/part/", MakeREST(Part{})},
 	{"/api/inventory/", MakeREST(Inventory{})},
+	{"/api/mfgr/", MakeREST(Manufacturer{})},
+	{"/api/network/circuit/view/", MakeREST(CircuitView{})},
+	{"/api/network/circuit/list/", MakeREST(CircuitList{})},
+	{"/api/network/circuit/", MakeREST(Circuit{})},
 	{"/api/network/ip/type/", MakeREST(IPType{})},
 	{"/api/network/ip/used/", MakeREST(IPsUsed{})},
 	{"/api/network/ip/", MakeREST(IPAddr{})},
@@ -595,8 +354,8 @@ var webHandlers = []HFunc{
 	{"/api/rma/", MakeREST(RMA{})},
 	{"/api/tag/", MakeREST(Tag{})},
 	{"/api/user/", MakeREST(User{})},
-	{"/api/upload", APIUpload},
-	{"/api/update", APIUpdate},
+	//{"/api/upload", APIUpload},
+	//{"/api/update", APIUpdate},
 	{"/api/vendor/", MakeREST(Vendor{})},
 	{"/api/vlan/view/", MakeREST(VLANView{})},
 	{"/api/vlan/", MakeREST(VLAN{})},

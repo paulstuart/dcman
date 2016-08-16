@@ -148,7 +148,7 @@ func objPost(r *http.Request, o dbutil.DBObject, validators ...Validator) error 
 	objFromForm(o, r.Form)
 	action := r.Form.Get("action")
 	user := currentUser(r)
-	o.ModifiedBy(user.ID, time.Now())
+	o.ModifiedBy(user.USR, time.Now())
 	//fmt.Println("POST OBJ:", o)
 	name := fmt.Sprintf("%v", reflect.TypeOf(o))
 	for _, v := range validators {
@@ -158,7 +158,7 @@ func objPost(r *http.Request, o dbutil.DBObject, validators ...Validator) error 
 		}
 	}
 	//dbDebug(true)
-	auditLog(user.ID, RemoteHost(r), action, name)
+	auditLog(user.USR, RemoteHost(r), action, name)
 	//dbDebug(false)
 	switch {
 	case action == "Add":
@@ -406,7 +406,7 @@ func StaticPage(w http.ResponseWriter, r *http.Request) {
 func ErrorLog(r *http.Request, msg string, args ...interface{}) {
 	user := currentUser(r)
 	remoteAddr := RemoteHost(r)
-	fmt.Fprintln(errorFile, time.Now().Format(logLayout), remoteAddr, user.ID, msg, args)
+	fmt.Fprintln(errorFile, time.Now().Format(logLayout), remoteAddr, user.USR, msg, args)
 }
 
 // allows logging to show user id
@@ -414,7 +414,7 @@ func userMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.User == nil {
 			user := currentUser(r)
-			if user.ID > 0 {
+			if user.USR > 0 {
 				r.URL.User = url.User(user.Login)
 			}
 		}
@@ -567,6 +567,45 @@ func whereParams(m map[string][]string) string {
 	return buf.String()
 }
 
+// build query string
+func qstring(k []string) string {
+	switch len(k) {
+	case 0:
+		return ""
+	case 1:
+		return "where " + k[0] + "=?"
+	default:
+		var b bytes.Buffer
+		b.WriteString("where ")
+		b.WriteString(k[0])
+		b.WriteString("=? ")
+		for _, v := range k[1:] {
+
+			b.WriteString("and ")
+			b.WriteString(v)
+			b.WriteString("=? ")
+		}
+		return b.String()
+
+	}
+}
+
+func fullQuery(r *http.Request) (string, []interface{}, error) {
+	var val []interface{}
+	if err := r.ParseForm(); err != nil {
+		return "", val, err
+	}
+	keys := make([]string, 0, len(r.Form))
+	for k, _ := range r.Form {
+		keys = append(keys, k)
+	}
+	q := qstring(keys)
+	val = make([]interface{}, 0, len(keys))
+	for _, k := range keys {
+		val = append(val, r.Form[k][0])
+	}
+	return q, val, nil
+}
 func MakeREST(gen dbutil.DBGen) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		newREST(gen.NewObj().(dbutil.DBObject), w, r)
@@ -642,18 +681,17 @@ func newREST(obj dbutil.DBObject, w http.ResponseWriter, r *http.Request) {
 	// Make the change
 	switch method {
 	case "GET":
-		//fmt.Println("*** GET ID:", id, "LEN:", len(id), "PATH:", r.URL.Path)
 		if len(id) == 0 {
-			//fmt.Println("GET LIST")
 			q, val, err := fullQuery(r)
 			if err != nil {
-				fmt.Println("query error:", err)
+				log.Println("query error:", err)
 				jsonError(w, err, http.StatusInternalServerError)
 				return
 			}
+			log.Println("Q VAL:", val)
 			list, err := db.ListQuery(obj, q, val...)
 			if err != nil {
-				fmt.Println("query error:", err)
+				log.Println("list error:", err)
 				jsonError(w, err, http.StatusInternalServerError)
 				return
 			}
