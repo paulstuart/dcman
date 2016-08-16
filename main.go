@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"code.google.com/p/gcfg"
+	gcfg "gopkg.in/gcfg.v1"
 	"github.com/kardianos/osext"
 	"github.com/paulstuart/secrets"
 )

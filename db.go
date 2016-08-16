@@ -86,7 +86,7 @@ func dbBackup(to string) error {
 	if datastore.DB == nil {
 		return ErrNoDB
 	}
-	return datastore.Backup(to)
+	return datastore.Backup(to, nil)
 }
 
 func dbChanged() {}
@@ -95,7 +95,7 @@ func dbClose() error {
 	if datastore.DB == nil {
 		return ErrNoDB
 	}
-	return datastore.Close()
+	return datastore.DB.Close()
 }
 
 func dbCmd() {}
@@ -108,14 +108,14 @@ func dbDelete(o dbutil.DBObject) error {
 }
 
 func dbDebug(enable bool) {
-	datastore.Debug = enable
+	dbutil.Debug(enable)
 }
 
 func dbExec(query string, args ...interface{}) error {
 	if err := writable(); err != nil {
 		return err
 	}
-	_, err := datastore.Exec(query, args...)
+	_, err := datastore.DB.Exec(query, args...)
 	return err
 }
 
