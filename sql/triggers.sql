@@ -71,10 +71,10 @@ CREATE TRIGGER devices_view_update INSTEAD OF UPDATE ON devices_view
 BEGIN
   update devices set 
 /*
+    */
 	rid = ifnull(NEW.rid,OLD.rid),
 	dti = ifnull(NEW.dti,OLD.dti),
 	kid = ifnull(NEW.kid,OLD.kid),
-    */
 	tid = ifnull(NEW.tid,OLD.tid),
     ru = ifnull(NEW.ru, OLD.ru),
     height = ifnull(NEW.height, OLD.height),
