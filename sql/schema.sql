@@ -327,14 +327,16 @@ CREATE TABLE "circuits" (
     a_side_xcon text,
     a_side_handoff text,
     z_side_location text,
-    z_side_xcon text
+    z_side_xcon text,
+    note text
 );
 
 DROP TABLE IF EXISTS "sub_circuits";
 CREATE TABLE "sub_circuits" (
     sci integer primary key,
     cid integer,
-    sub_circuit_id text
+    sub_circuit_id text,
+    note text
 );
 
 /*

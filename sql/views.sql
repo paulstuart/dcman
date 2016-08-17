@@ -156,6 +156,7 @@ CREATE VIEW rmas_view as
     ;
 
 
+/*
 DROP VIEW IF EXISTS rma_report;
 CREATE VIEW rma_report as 
   select r.*, u.login, s.site, s.hostname, s.sn as server_sn, s.rack, s.ru, v.name as vendor_name,
@@ -165,6 +166,7 @@ CREATE VIEW rma_report as
   left outer join devices_view s on r.did = s.did
   left outer join vendors v on r.vid = v.vid
 ;
+*/
 
 
 DROP VIEW IF EXISTS vms_view; 
@@ -172,7 +174,7 @@ CREATE VIEW vms_view as
   select ifnull(r.sti,0) as sti, s.name as site, r.rack as rack, d.rid, d.hostname as server, v.*
   from vms v
   left outer join devices d on v.did = d.did
-  left outer join racks r on s.rid = r.rid
+  left outer join racks r on d.rid = r.rid
   left outer join sites s on r.sti = s.sti
     ;
 
@@ -202,12 +204,13 @@ CREATE VIEW vlans_view as
     order by v.sti, v.name
     ;
 
+/*
 DROP VIEW IF EXISTS rack_vlans;
 CREATE VIEW rack_vlans as 
 select rid, vid, "start" as action, first_ip as ip from racknet
 union
 select rid, vid, "stop" as action, last_ip as ip from racknet;
-
+*/
 
 -- 
 -- totals for front page
@@ -323,15 +326,15 @@ CREATE VIEW ips_list as
 DROP VIEW IF EXISTS "circuits_view";
 CREATE VIEW "circuits_view" as
     select s.name as site, p.name as provider, c.*
-    from circuits
+    from circuits c
     left outer join providers p on c.pri = p.pri
     left outer join sites s on c.sti = s.sti
     ;
 
 DROP VIEW IF EXISTS "circuits_list";
 CREATE VIEW "circuits_list" as
-    select c.*, b.sub_circuit_id, b.note as sub_note
+    select c.*, s.sub_circuit_id, s.note as sub_note
     from circuits_view c
-    left outer join sub_circuit_id s on s.cid = c.cid
+    left outer join sub_circuits s on s.cid = c.cid
     ;
 
