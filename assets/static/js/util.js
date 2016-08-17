@@ -384,7 +384,7 @@ var vendorURL = "/dcman/api/vendor/" ;
 var RMA = function() {
     Maker(this, [
         'RMD',
-        'SID',
+        'DID',
         'STI',
         'VID',
         'OldPID',
@@ -405,7 +405,6 @@ var RMA = function() {
         'Received',
         'Closed',
         'Created',
-        'UID',
     ])
 }
 

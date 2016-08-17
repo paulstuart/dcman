@@ -565,7 +565,7 @@
                     <label for="RID" class="control-label col-xs-2"><a href="rack/view/{{Device.DC}}/{{Device.Rack}}">Rack Number</a></label>
                     <div class="col-xs-2">
                         <select id="RID" name="RID" v-model="Device.RID" number>
-                            <option v-for="rack in racks" v-bind:value="rack.RID">
+                            <option v-for="rack in Device.racks" v-bind:value="rack.RID">
                                 {{ rack.Label }}
                             </option>
                         </select>
@@ -1296,7 +1296,7 @@
             <label for="VID" class="control-label col-xs-2"><a v-link="{ path: '/vendor/list' }">Vendor</a></label>
             <div class="col-xs-2">
                 <select id="VID" name="VID" v-model="Part.VID" number>
-                <option v-for="vendor in vendors" v-bind:value="vendors.VID">
+                <option v-for="vendor in vendors" v-bind:value="vendor.VID">
                     {{ vendor.Name }}
                 </option>
                 </select>
@@ -1703,7 +1703,8 @@
 <script type="text/x-template" id="tmpl-user-login">
     <div id="login" class="layout">
         <div class="header">
-            <h3>Enter your Okta Login Credentials</h3>
+            <h1 class="login">Okta Login</h1>
+            <h2 class="login">Enter your Okta Login Credentials</h2>
         </div>
         <div class="invalid_login" v-if="errorMsg">{{errorMsg}}</div>
 
@@ -1712,20 +1713,20 @@
             <form class="form-horizontal">
                 <fieldset class="col-xs-12">
                     <div class="form-group">
-                        <label for="username" class="control-label col-xs-2">Username</label>
+                        <label for="username" class="control-label col-xs-3">Username</label>
                         <div class="col-xs-3">
                             <input type="text" class="form-control" id="username" v-model="username" placeholder="{{placeholder}}" required autofocus/>
                         </div>
                     </div>
                     <div class="form-group">
-                        <label for="password" class="control-label col-xs-2">Password</label>
-                        <div class="col-xs-2">
+                        <label for="password" class="control-label col-xs-3">Password</label>
+                        <div class="col-xs-3">
                             <input type="password" class="form-control" id="password" v-model="password"/>
                         </div>
                     </div>
                 </fieldset>
                 <div class="form-group">
-                    <div class="col-xs-offset-2 col-xs-1">
+                    <div class="col-xs-offset-3 col-xs-1">
                         <button class="btn" v-on:click.prevent="cancel">Cancel</button>
                     </div>
                     <div class="col-xs-1">

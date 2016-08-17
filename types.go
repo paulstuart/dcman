@@ -267,6 +267,7 @@ type PartView struct {
 	SKU         *string  `sql:"sku"`
 	Description *string  `sql:"description"`
 	Mfgr        *string  `sql:"mfgr"`
+	Vendor      *string  `sql:"vendor"`
 	Cents       *int     `sql:"cents"` // in cents
 	Price       *float32 `sql:"price"`
 	Unused      bool     `sql:"unused"`

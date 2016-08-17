@@ -40,12 +40,41 @@ BEGIN
         ;
 END;
 
+/*
+drop table if exists devices;
+CREATE TABLE "devices" (
+    did integer primary key,
+    rid integer,    -- rack ID
+    dti integer,    -- device type ID
+    kid integer,    -- vendor sku ID
+    tid integer,    -- tag ID
+    ru  integer default 0,
+    height    int default 1,
+    hostname  text not null COLLATE NOCASE,
+    alias     text,
+    asset_tag text,
+    sn        text,
+    profile   text,
+    assigned  text,
+    note      text,
+    usr integer default 0,
+    ts  date DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(rid) REFERENCES racks(rid)
+    FOREIGN KEY(dti) REFERENCES device_types(dti)
+    FOREIGN KEY(kid) REFERENCES skus(kid)
+    FOREIGN KEY(tid) REFERENCES tags(tid)
+);
+*/
+
 DROP TRIGGER IF EXISTS devices_view_update;
 CREATE TRIGGER devices_view_update INSTEAD OF UPDATE ON devices_view 
 BEGIN
   update devices set 
+/*
 	rid = ifnull(NEW.rid,OLD.rid),
 	dti = ifnull(NEW.dti,OLD.dti),
+	kid = ifnull(NEW.kid,OLD.kid),
+    */
 	tid = ifnull(NEW.tid,OLD.tid),
     ru = ifnull(NEW.ru, OLD.ru),
     height = ifnull(NEW.height, OLD.height),

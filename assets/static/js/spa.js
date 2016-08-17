@@ -109,6 +109,14 @@ function getInterfaces(device) {
    })
 }
 
+var deviceRacks = function(device) {
+    var url = rackURL + '?STI=' + device.STI; 
+    return get(url).then(function(racks) {
+        device.racks = racks
+        return device
+    })
+}
+
 /*
 function getRMA(RMD) {
   var url = rmaviewURL;
@@ -127,7 +135,7 @@ function getRMA(RMD) {
 
 // device info with associated interface / IPs
 var completeDevice = function(DID) {
-   return getDevice(DID).then(getInterfaces); 
+   return getDevice(DID).then(getInterfaces).then(deviceRacks); 
 }
 
 var getRack = getIt(rackURL, 'racks')
@@ -937,13 +945,9 @@ var deviceEditVue = {
   data: function() {
       return {
             sites: [],
-            racks: [],
             device_types: [],
-            //ports: [],
             tags: [],
             ipTypes: [],
-            ipRows: [],
-            interfaces: [],
             newIP: '',
             newIPD: 0,
             newIFD: 0,
@@ -976,20 +980,26 @@ var deviceEditVue = {
     },
     methods: {
         saveSelf: function(event) {
+            var device = this.Device;
+            delete device['racks'];
+            delete device['interfaces'];
+            delete device['ips'];
+
             if (this.Device.DID == 0) {
                 console.log('save new device');
-                postIt(deviceURL + "?debug=true", this.Device, this.showList)
+                postIt(deviceURL + "?debug=true", device, this.showList)
                 return
             }
             console.log('update device id: ' + this.Device.DID);
-            postIt(deviceURL + this.Device.DID + "?debug=true", this.Device, this.showList, 'PATCH')
+            postIt(deviceURL + this.Device.DID + "?debug=true", device, this.showList, 'PATCH')
         },
         deleteSelf: function(event) {
             console.log('delete event: ' + event)
             deleteIt(deviceURL + this.Device.DID, this.showList)
         },
         showList: function(ev) {
-            this.$route.router.go(window.history.back())
+            //this.$route.router.go(window.history.back())
+            router.go('/device/list')
         },
         loadRacks: function () {
              var self = this;
@@ -1962,6 +1972,7 @@ var partListVue = {
                "PartType",
                "PartNumber",
                "Description",
+               "Vendor",
                "Mfgr",
                "Price",
                "Bad",
@@ -2126,10 +2137,19 @@ var rmaListMIX = {
             this.sortOrders[key] = this.sortOrders[key] * -1
         },
         linkable: function(key) {
-            return (key == 'Description')
+            switch(key) {
+                case 'Description': return true;
+                case 'Hostname': return true;
+            }
+            return false;
+            //return (key == 'Description')
         },
         linkpath: function(entry, key) {
-            return '/rma/edit/' + entry['RMD']
+            //return '/rma/edit/' + entry['RMD']
+            switch(key) {
+                case 'Description': return '/rma/edit/' + entry['RMD']
+                case 'Hostname': return '/device/edit/' + entry['DID']
+            }
         },
         subFilter: function(a, b, c) {
             if (this.kfilter == 1) {
@@ -2158,7 +2178,7 @@ var rmaListVue = {
                 "RMD",
                 "Description",
                 "Hostname",
-                "ServerSN",
+                //"ServerSN",
                 "PartSN",
                 "VendorRMA",
                 "Jira",
@@ -2409,6 +2429,7 @@ var partEditVue = {
         part.DID = 0;
         part.STI = 0;
         part.PTI = 0;
+        part.VID = 0;
         part.Bad = false;
         part.Used = false;
        return {
@@ -2416,7 +2437,6 @@ var partEditVue = {
             sites: [],
             types: [],
             vendors: [],
-            STI: 4,
             Part: part,
        }
     },
@@ -2425,7 +2445,6 @@ var partEditVue = {
             console.log("part PTI:", this.Part.PTI)
             if (this.Part.PTI == 0) {
                 return (this.Part.STI == 0 || this.Part.PTI == 0 || this.Part.Description.length == 0)
-                //return (this.Part.Description.length == 0)
             }
         },
         badPrice: function() {
@@ -2450,7 +2469,7 @@ var partEditVue = {
     },
     methods: {
         showList: function(ev) {
-            router.go('/part/list')
+            router.go('/part/list/' + this.Part.STI)
         },
         validprice: function() {
         },
@@ -2592,9 +2611,13 @@ var rmaCreateVue = {
                         // TODO: this is goofy -- where to initialize RMA?
                         var rma = new(RMA);
                         rma.RMD = 0
-                        rma.SID = part.SID
+                        rma.DID = part.DID
+                        rma.VID = part.VID
+                        rma.STI = part.STI
                         rma.OldPID = part.PID
+                        rma.NewPID = 0
                         rma.Description = part.Description
+                        rma.PartNumber = part.PartNumber
                         rma.Hostname = part.Hostname
                         rma.PartSN = part.Serial
                         return(rma)
@@ -2630,7 +2653,7 @@ var partLoadVue = {
     },
     methods: {
         showList: function(ev) {
-            router.go('/part/list')
+            router.go('/part/list/' + this.STI)
         },
         saveParts: function() {
             var partCol = function(col) {

@@ -11,9 +11,9 @@ import (
 	//"sync"
 	"time"
 
-	"code.google.com/p/gcfg"
 	"github.com/kardianos/osext"
 	"github.com/paulstuart/secrets"
+	gcfg "gopkg.in/gcfg.v1"
 )
 
 var (

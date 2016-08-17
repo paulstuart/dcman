@@ -126,7 +126,7 @@ CREATE VIEW skus_view as
 DROP VIEW IF EXISTS parts_view;
 CREATE VIEW parts_view as 
    select p.pid, p.did, p.sti, ifnull(r.rmd, 0) as rmd, 
-        k.kid, p.vid, k.mid, k.pti, k.description, k.part_no, k.sku, k.part_type, k.vendor, k.vendor, k.mfgr,
+        k.kid, p.vid, k.mid, k.pti, k.description, k.part_no, k.sku, k.part_type, v.name as vendor, k.mfgr,
         s.name as site, d.hostname, p.serial_no, p.asset_tag, p.unused, p.bad, 
         p.location, p.cents, 
         round(p.cents/100.0,2) as price
@@ -135,6 +135,7 @@ CREATE VIEW parts_view as
    left outer join rmas r on p.pid = r.old_pid
    left outer join devices d on p.did = d.did
    left outer join sites s on p.sti = s.sti
+   left outer join vendors v on p.vid = v.vid
 ;
 
 drop view if exists inventory;
