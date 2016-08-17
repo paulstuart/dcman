@@ -2,14 +2,28 @@
 
 var pingURL = "http://10.100.182.16:8080/dcman/api/pings?debug=true";
 
-var deviceURL      = '/dcman/api/device/view/'
-var deviceListURL  = '/dcman/api/device/ips/'
-var deviceTypesURL = '/dcman/api/device/type/'
-var ipURL          = '/dcman/api/network/ip/'
-var iptypesURL     = '/dcman/api/network/ip/type/'
-var ifaceURL       = '/dcman/api/interface/'
-var ifaceViewURL   = '/dcman/api/interface/view/'
-var mfgrURL        = '/dcman/api/mfgr/'
+var deviceURL       = '/dcman/api/device/view/'
+var deviceListURL   = '/dcman/api/device/ips/'
+var deviceTypesURL  = '/dcman/api/device/type/'
+var ipURL           = '/dcman/api/network/ip/'
+var iptypesURL      = '/dcman/api/network/ip/type/'
+var ifaceURL        = '/dcman/api/interface/'
+var ifaceViewURL    = '/dcman/api/interface/view/'
+var mfgrURL         = '/dcman/api/mfgr/'
+var inURL           = "/dcman/api/inventory/";
+var vmURL           = "/dcman/api/vm/";
+var vmViewURL       = "/dcman/api/vm/view/";
+var partTypesURL    = "/dcman/api/part/type/";
+var partURL         = "/dcman/api/part/view/";
+var rackURL         = "/dcman/api/rack/view/";
+var rmaURL          = "/dcman/api/rma/";
+var rmaviewURL      = "/dcman/api/rma/view/";
+var tagURL          = "/dcman/api/tag/";
+var sitesURL        = "/dcman/api/site/" ; 
+var networkURL      = "/dcman/api/network/ip/used/";
+var userURL         = "/dcman/api/user/" ; 
+var vlanURL         = "/dcman/api/vlan/view/" ; 
+var vendorURL       = "/dcman/api/vendor/" ; 
 
 var userInfo = {};
 
@@ -76,36 +90,36 @@ var getDeviceLIST = getIt(deviceListURL, 'device list');
 var getTagList = getIt(tagURL, 'tags');
 var getDevice = getIt(deviceURL, 'device');
 var getMfgr = getIt(mfgrURL, 'mfgr');
+var getVM = getIt(vmViewURL, 'vm');
+var getRack = getIt(rackURL, 'racks')
+var getRMA = getIt(rmaviewURL, 'rma')
 
 
-function getInterfaces(device) {
-  //var device = data[0];
-  var url = ifaceViewURL + '?DID=' + device.DID; 
-  return get(url).then(function(iface) {
-      if (! iface) {
-          device.ips = []
-          device.interfaces = []
-          return device
-      }
-     var ips = []
-     var ports = {}
-     for (var i=0; i<iface.length; i++) {
-         var ip = iface[i]
-         if (! (ip.IFD in ports)) {
-            ports[ip.IFD] = ip
+
+var getInterfaces = function(device) {
+    var url = ifaceViewURL + '?DID=' + device.DID; 
+    return get(url).then(function(iface) {
+        if (! iface) {
+            device.ips = []
+            device.interfaces = []
+            return device
         }
-        if (ip.IP) ips.push(ip)
-    }
-    var good = [];
-    for (var ifd in ports) {
-        good.push(ports[ifd])
-    }
-    //console.log('PORTS ***********', ports, 'LEN:', ports.length)
-    device.ips = ips
-    device.interfaces = good
-    //self.netRows = uniqueInterfaces(data)
-    //console.log('net row cnt:', self.interfaces.length)
-    return device
+        var ips = []
+        var ports = {}
+        for (var i=0; i<iface.length; i++) {
+            var ip = iface[i]
+            if (! (ip.IFD in ports)) {
+                ports[ip.IFD] = ip
+            }
+            if (ip.IP) ips.push(ip)
+        }
+        var good = [];
+        for (var ifd in ports) {
+            good.push(ports[ifd])
+        }
+        device.ips = ips
+        device.interfaces = good
+        return device
    })
 }
 
@@ -117,29 +131,11 @@ var deviceRacks = function(device) {
     })
 }
 
-/*
-function getRMA(RMD) {
-  var url = rmaviewURL;
-  if (RMD && RMD > 0) {
-    url += RMD
-  }
-  return get(url).then(function(result) {
-       console.log('rma(s) fetched')
-       return result;
-    })
-    .catch(function(x) {
-      console.log('Could not load rma(s): ', x);
-    });
-}
-*/
 
 // device info with associated interface / IPs
 var completeDevice = function(DID) {
    return getDevice(DID).then(getInterfaces).then(deviceRacks); 
 }
-
-var getRack = getIt(rackURL, 'racks')
-var getRMA = getIt(rmaviewURL, 'rma')
 
 
 function remember() {
@@ -678,113 +674,6 @@ var uEdit = Vue.component('user-edit', {
 
 
 
-//
-// Server Add
-//
-/*
-var serverAddVue = {
-    data: function() {
-        return {
-            sites: [],
-            racks: [],
-            tags: [],
-            Description: '',
-            Server: new(Server),
-        }
-    },
-    created: function () {
-        this.Server.STI    = 0;
-        this.Server.Height = 1;
-        this.Server.ID     = 0;
-        this.Server.TID    = 0;
-        this.Server.Rack   = 0;
-        this.Server.RID    = parseInt(this.$route.params.RID);
-        this.Server.RU     = parseInt(this.$route.params.RU);
-        this.loadTags()
-        this.loadRacks()
-        this.sites = getSizeList()
-    },
-    methods: {
-        saveSelf: function(event) {
-            console.log('send update event: ' + event);
-            postIt(serverURL + "?debug=true", this.Server, this.showList)
-        },
-        Deleted: function() {
-            // stub necessary to use server-edit 
-        },
-        showList: function(ev) {
-            this.$route.router.go(window.history.back())
-        },
-        loadRacks: function () {
-            var self = this;
-            var url = rackURL;
-            if (this.Server.STI > 0) {
-                url += "?STI=" + self.Server.STI
-            }
-            fetchData(url, function(data) {
-                if (self.Server.STI > 0) {
-                    self.racks = data
-                    return
-                }
-                // find our site
-                for (var i=0; i<data.length; i++) {
-                    if (data[i].RID == self.Server.RID) {
-                        var sti = data[i].STI;
-                        // now delete all racks not with this site
-                        var keep = [];
-                        for (var k=0; k<data.length; k++) {
-                            if (data[k].STI == sti) {
-                                keep.push(data[k])
-                            }
-                        }
-                        self.Server.STI = sti
-                        self.racks = keep 
-                        break
-                    }
-                }
-            })
-        },
-        loadTags: function () {
-            var self = this;
-            fetchData(tagURL, function(data) {
-                self.tags = data
-            })
-        },
-        getMacAddr: function(ev) {
-            //var url = '/dcman/data/server/discover/' + this.Server.IPIpmi;
-            var url = 'http://10.100.182.16:8080/dcman/data/server/discover/' + this.Server.IPIpmi;
-            var self = this
-            fetchData(url, function(data) {
-                self.Server.MacPort0 = data.MacEth0
-                console.log("MAC DATA:", data)
-             })
-             ev.preventDefault();
-            return false;
-        },
-
-    },
-
-    watch: {
-        "Server.STI": function(older, newer) {
-            this.loadRacks()
-        },
-        "Server.ID": function(older, newer) {
-            console.log("new server id:", this.Server.ID)
-        },
-    },
-    events: {
-        'server-reload': function(x) {
-            var id = this.$route.params.SID;
-            console.log('* reload server ID:', id, 'current ID:', this.Server.ID, 'SID:', this.SID)
-            if (id != this.Server.ID) {
-                console.log('********************** NEW server ID:', id)
-                this.loadServer()
-            }
-        }
-    }
-}
-*/
-
 var ipMIX = {
     props: ['iptypes', 'ports'],
     data: function() {
@@ -815,12 +704,7 @@ var ipMIX = {
             var self = this;
             var iid = this.rows[i].IID
             console.log("IP id:", iid)
-            /*
-            postIt(ipURL + iid, null, null, 'DELETE')
-            return false
-            */
             deleteIt(ipURL + iid, function(xhr) {
-                //console.log('del state:', xhr.readyState, 'status:', xhr.status)                
                 if (xhr.readyState == 4 && (xhr.status == 200 || xhr.status == 201)) {
                     self.rows.splice(i, 1)
                 }
@@ -876,7 +760,6 @@ var interfaceMIX = {
             var self = this;
             var ifd = this.rows[i].IFD
             console.log("Iface id:", ifd)
-            //postIt(ifaceURL + ifd, null, null, 'DELETE')
             deleteIt(ifaceURL + ifd, function(xhr) {
                 //console.log('del state:', xhr.readyState, 'status:', xhr.status)                
                 if (xhr.readyState == 4) {
@@ -891,7 +774,6 @@ var interfaceMIX = {
             return false
         },
         addInterface: function(ev) {
-            //ev.preventDefault()
             var self = this
             var data = {
                 DID: this.DID,
@@ -1008,90 +890,6 @@ var deviceEditVue = {
                  self.racks = data
              })
         },
-            /*
-        loadDevice: function () {
-             var self = this;
-
-             var id = this.$route.params.DID;
-             //console.log('loading device ID:', id)
-             if (id > 0) {
-                 var url = deviceURL + id;
-
-                 fetchData(url, function(data) {
-                     self.Device.Load(data);
-                     self.loadRacks()
-
-                     var url = ifaceViewURL + '?DID=' + id
-                     fetchData(url, function(data) {
-                        if (! data) return
-                        
-                         var ips = []
-                         var ports = {}
-                         for (var i=0; i<data.length; i++) {
-                             var ip = data[i]
-                             if (! (ip.IFD in ports)) {
-                                ports[ip.IFD] = ip
-                            }
-                            if (ip.IP) ips.push(ip)
-                        }
-                        var good = [];
-                        for (var ifd in ports) {
-                            good.push(ports[ifd])
-                        }
-                        //console.log('PORTS ***********', ports, 'LEN:', ports.length)
-                        self.ipRows = ips
-                        self.interfaces = good
-                        //self.netRows = uniqueInterfaces(data)
-                        console.log('net row cnt:', self.interfaces.length)
-                     })
-                 })
-               }
-               fetchData(iptypesURL, function(data) {
-                 self.ipTypes = data
-               })
-        },
-        loadSelf: function () {
-             var self = this;
-
-             var id = this.$route.params.DID;
-             //console.log('loading device ID:', id)
-             if (id > 0) {
-                 var url = deviceURL + id;
-
-                 fetchData(url, function(data) {
-                     self.Device.Load(data);
-                     //self.loadRacks()
-
-                     var url = ifaceViewURL + '?DID=' + id
-                     fetchData(url, function(data) {
-                        if (! data) return
-                        
-                         var ips = []
-                         var ports = {}
-                         for (var i=0; i<data.length; i++) {
-                             var ip = data[i]
-                             if (! (ip.IFD in ports)) {
-                                ports[ip.IFD] = ip
-                            }
-                            if (ip.IP) ips.push(ip)
-                        }
-                        var good = [];
-                        for (var ifd in ports) {
-                            good.push(ports[ifd])
-                        }
-                        //console.log('PORTS ***********', ports, 'LEN:', ports.length)
-                        self.ipRows = ips
-                        self.interfaces = good
-                        //self.netRows = uniqueInterfaces(data)
-                        console.log('net row cnt:', self.interfaces.length)
-                     })
-                 })
-               }
-               fetchData(iptypesURL, function(data) {
-                 self.ipTypes = data
-               })
-        },
-        */
         loadTags: function () {
              var self = this;
              fetchData(tagURL, function(data) {
@@ -1117,18 +915,6 @@ var deviceEditVue = {
         },
 
     },
-
-        /*
-    watch: {
-        "Device.STI": function(older, newer) {
-            console.log("new device STI:", this.Device.STI)
-            this.loadRacks()
-        },
-        "Device.DID": function(older, newer) {
-            console.log("new device id:", this.Device.DID)
-        },
-    },
-    */
 }
 
 var deviceEdit = Vue.component('device-edit', {
@@ -1173,10 +959,6 @@ var vmIpMIX = {
             rows: [],
         }
     },
-    attached: function () {
-        console.log('ATTACHED VMI:', this.VMI)
-        //this.loadSelf()
-    },
     created: function () {
         console.log('CREATED VMI:', this.VMI)
         this.loadSelf()
@@ -1213,9 +995,7 @@ var vmIpMIX = {
             var self = this;
             var iid = this.rows[i].IID
             console.log("IP id:", iid)
-            //postIt(ipURL + iid, null, null, 'DELETE')
             deleteIt(ipURL + iid, function(xhr) {
-                //console.log('del state:', xhr.readyState, 'status:', xhr.status)                
                 if (xhr.readyState == 4 && (xhr.status == 200 || xhr.status == 201)) {
                     self.rows.splice(i, 1)
                 }
@@ -1225,7 +1005,6 @@ var vmIpMIX = {
         addIP: function() {
             var self = this;
             var data = {VMI: this.VMI, IPT: this.newIPT, IPv4: this.newIP}
-            console.log("we will add IP info:", data)
             postIt(ipURL + '?debug=true', data, function(xhr) {
                 if (xhr.readyState == 4 && (xhr.status == 200 || xhr.status == 201)) {
                     self.rows.push(data)
@@ -1235,15 +1014,19 @@ var vmIpMIX = {
             })
             return false
         }
+    },
+    watch: {
+        'VMI': function() {
+            this.loadSelf()
+        }
     }
 }
 
-//var netgrid = childTable("vm-ips", "#tmpl-vm-ips", [vmIpMIX])
-//var netgrid = vue.Component("vm-ips", "#tmpl-vm-ips", [vmIpMIX])
 var vmips = Vue.component('vm-ips', {
     template: '#tmpl-vm-ips',
     mixins: [vmIpMIX],
 })
+
 
 //
 // VM Edit
@@ -1263,17 +1046,13 @@ var vmEditVue = {
             VM: new(VM),
         }
     },
-    created: function () {
-        this.loadSelf()
+    route: { 
+          data: function (transition) {
+            return {
+                VM: getVM(this.$route.params.VMI)
+            }
+          },
     },
-    attached: function() {
-         console.log("VM ATTACHED:", this.$route.params.VMI)
-         var id = this.$route.params.VMI;
-         if (id && id != this.VM.VMI) {
-             this.loadSelf()
-         }
-    },
-
     methods: {
         saveSelf: function(event) {
             console.log('send update event: ' + event);
@@ -1286,29 +1065,7 @@ var vmEditVue = {
         showList: function(ev) {
             router.go('/vm/list')
         },
-        loadSelf: function () {
-             var self = this;
-             var id = this.$route.params.VMI;
-             console.log('loading vm ID:', id)
-             if (id > 0) {
-                 this.ID = id
-                 var url = this.url + id;
-
-                 fetchData(url, function(data) {
-                     self.VM.Load(data);
-                 })
-               }
-        },
     },
-    events: {
-        'vm-reload': function(x) {
-            var id = this.$route.params.VMI;
-            if (id != this.VM.VMI) {
-                console.log('********************** NEW server ID:', id)
-                this.loadVM()
-            }
-        }
-    }
 }
 
 var vmEdit = Vue.component('vm-edit', {
@@ -1633,11 +1390,18 @@ var ipReserveVue = {
         }
     },
     methods: {
+        showList: function() {
+            router.go('/ip/list')
+        },
         reserveIPs: function() {
-            var from = ip32(this.From)
-            var to = ip32(this.To)
-            for (var i = from; i <= to; i++) {
+            var url = '/dcman/api/network/ip/range';
+            var data = {
+                From: this.From,
+                To: this.To,
             }
+            posty(url, data).then(function(ips) {
+                console.log("IPS IN RANGE:", ips)
+            })
         },
         checkFrom: function() {
             if (! validIP(this.From)) {
@@ -2965,8 +2729,8 @@ var makeLumps = function(racks, units) {
     }
 
     for (var i=0; i<units.length; i++) {
-        var unit = units[i]
-        var rack = lookup[unit.RID]
+        var unit = units[i];
+        var rack = lookup[unit.RID];
         if (rack) {
             byRID[unit.RID][rack.RUs - unit.RU] = unit
         }
@@ -2985,9 +2749,10 @@ var makeLumps = function(racks, units) {
                 var x = k-j+1
                 these[x].Height = 0;
             }
+            these[k]['pingMgmt'] = ''
+            these[k]['pingIP'] = ''
         }
         lumps.push({rack: rack, units: these})
-        //console.log('lumpy rack:', rack.RID, 'len:', these.length)
     }
     return lumps
 }
@@ -3002,7 +2767,6 @@ var rackLayoutVue = {
             sites: [], 
             racks: [],
             site: '',
-            layouts: [],
             lumpy:[]
         }
     },
@@ -3013,16 +2777,14 @@ var rackLayoutVue = {
     route: { 
           data: function (transition) {
             var self = this;
-            console.log('rack layout promises starting for STI:', self.STI)
             return Promise.all([
                 getSiteLIST(), 
            ]).then(function (data) {
-              console.log('rack layout promises returning')
-             return {
-                sites: data[0],
-              }
-            })
-          }
+                return {
+                    sites: data[0],
+                }
+           })
+        }
     },
     methods: {
         rfilter: function(a, b, c) {
@@ -3045,8 +2807,6 @@ var rackLayoutVue = {
              }
 
              fetchData(url, function(units) {
-                 self.layouts = units
-
                  url = rackURL + "?STI=" + self.STI;
 
                  fetchData(url, function(racks) {
@@ -3054,7 +2814,6 @@ var rackLayoutVue = {
                          racks.unshift({RID:0, Label:''})
                          self.racks = racks
                          self.lumpy = makeLumps(racks, units)
-                         console.log("LUMPY STI:", self.STI)
                      }
                  })
              })
@@ -3062,27 +2821,34 @@ var rackLayoutVue = {
         ping: function() {
             var url = "http://10.100.182.16:8080/dcman/api/pings?debug=true";
             var ips = [];
-            for (var i=0; i < this.layouts.length; i++) {
-                var x = this.layouts[i];
-                if (validIP(x.Mgmt)) ips.push(x.IPMI);
-                if (validIP(x.IPs)) ips.push(x.IPs);
+            for (var i=0; i < this.lumpy.length; i++) {
+                var lump = this.lumpy[i];
+                if (this.RID > 0 && lump.rack.RID != this.RID) continue;
+                for (var k=0; k < lump.units.length; k++) {
+                    var x = lump.units[k];
+                    if (validIP(x.Mgmt)) ips.push(x.Mgmt);
+                    if (validIP(x.IPs)) ips.push(x.IPs);
+                }
             }
-            //postIt(url, {ips: ips}, function(data) {
             var list = ips.join(",");
-
+            var self = this
             postForm(url, {iplist: list}, function(xhr) {
                if (xhr.readyState == 4 && xhr.status == 200) {
                    var pinged = JSON.parse(xhr.responseText)
-                    for (ip in pinged) {
-                        var cell = document.getElementById("ip-" + ip);
-                        cell.innerHTML = (pinged[ip] ? "ok" : "-")
-                        
+                    for (var i=0; i < self.lumpy.length; i++) {
+                        for (var k=0; k < self.lumpy[i].units.length; k++) {
+                            var unit = self.lumpy[i].units[k]
+                            if (unit.Mgmt && unit.Mgmt.length > 0) { 
+                                self.lumpy[i].units[k].pingMgmt = pinged[unit.Mgmt] ? "ok" : "-"
+                            }
+                            if (unit.IPs && unit.IPs.length > 0) 
+                                self.lumpy[i].units[k].pingIP = pinged[unit.IPs] ? "ok" : "-"
+                        }
                     }
                }
              });
         }
   },
-
   watch: {
     'STI': function(val, oldVal) {
             this.RID = 0
@@ -3107,13 +2873,15 @@ var rackViewVue = {
     }
 }
 
-// LAYOUT
 var rackView = Vue.component('rack-view', {
     template: '#tmpl-rack-view',
     props: ['rack', 'layout', 'layouts', 'RID'],
     mixins: ['rackViewVue'],
 })
 
+//
+// RACK LAYOUT
+//
 var rackLayout = Vue.component('rack-layout', {
     template: '#tmpl-rack-layout',
     mixins: [rackLayoutVue],
@@ -3152,54 +2920,17 @@ var loginVue = {
                 }
             };
             postIt(url, data, results)
-            //router.go('/')
             ev.preventDefault()
         },
     },
 }
 
-            /*
-login resp:{
-  "ID": 1,
-  "RealID": 0,
-  "Login": "pstuart",
-  "First": "Paul",
-  "Last": "Stuart",
-  "Email": "paul.stuart@pubmatic.com",
-  "APIKey": "cc2c6a296f9f32017c30dd1b522d5532",
-  "Level": 2
- }
-xhr.status
-200
-            */
-    /*
-    attached: function() {
-        var baseUrl = 'https://pubmatic.okta.com/'
-        var oktaSignIn = new OktaSignIn({baseUrl: baseUrl});
-
-        oktaSignIn.renderEl(
-          { el: '#okta-login-container' },
-          function (res) {
-            if (res.status === 'SUCCESS') {
-              console.log('User %s successfully authenticated %o', res.user.profile.login, res.user);
-              res.session.setCookieAndRedirect('https://example.com/');
-            }
-          }
-        );
-    }
-    */
-
-/*
-var mLogin = Vue.component('okta-login', {
-    template: '#tmpl-okta-login',
-    mixins: [loginVue],
-})
-*/
 
 var mLogin = Vue.component('user-login', {
     template: '#tmpl-user-login',
     mixins: [loginVue],
 })
+
 
 var logoutVue = {
     methods: {
@@ -3217,8 +2948,7 @@ var mLogout = Vue.component('user-logout', {
     template: '#tmpl-user-logout',
     mixins: [logoutVue],
 })
-/*
-*/
+
 
 var homePageVue = {
     data: function() {
@@ -3269,9 +2999,6 @@ var router = new VueRouter()
 // Assign your routes
 router.map({
     '/auth/login': {
-    /*
-        component: Vue.component('okta-login')
-    */
         component: Vue.component('user-login')
     },
     '/auth/logout': {
@@ -3375,12 +3102,12 @@ router.map({
 })
 
 router.beforeEach(function (transition) {
-  if (window.user_apikey.length == 0 && transition.to.path !== '/auth/login') {
-    router.go('/auth/login')
-    //transition.abort()
-  } else {
-    transition.next()
-  }
+    if (window.user_apikey.length == 0 && transition.to.path !== '/auth/login') {
+        router.go('/auth/login')
+        //transition.abort()
+    } else {
+        transition.next()
+    }
 })
 
 

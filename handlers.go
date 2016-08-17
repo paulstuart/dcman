@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	//"github.com/davecgh/go-spew/spew"
 )
 
 type Common string
@@ -71,20 +70,12 @@ func MacTable(w http.ResponseWriter, r *http.Request) {
 	dbStream(fn, "select * from mactable")
 }
 
+// TODO add as /api/status
 func pingPage(w http.ResponseWriter, r *http.Request) {
 	status := "ok"
 	uptime := time.Since(startTime)
 	stats := strings.Join(dbStats(), "\n")
 	fmt.Fprintf(w, "status: %s\nversion: %s\nhostname: %s\nstarted:%s\nuptime: %s\ndb stats:\n%s\n", status, version, Hostname, startTime, uptime, stats)
-}
-
-func DebugPage(w http.ResponseWriter, r *http.Request) {
-	what := r.URL.Path
-	on, _ := strconv.ParseBool(what)
-	log.Println("DEBUG?", what, "ON:", on)
-	dbDebug(on)
-	w.Header().Set("Content-Type", "text/plain")
-	fmt.Fprintf(w, "db debug: %t\n", on)
 }
 
 func loginFailHandler(w http.ResponseWriter, r *http.Request) {
@@ -230,6 +221,38 @@ func IPMICredentialsSet(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func ipRange(w http.ResponseWriter, r *http.Request) {
+	method := strings.ToUpper(r.Method)
+	log.Println("IP RANGE METHOD:", method)
+	switch method {
+	case "POST":
+		obj := struct{ From, To string }{}
+		content := r.Header.Get("Content-Type")
+		log.Println("IP RANGE CONTENT:", content)
+		if strings.Contains(content, "application/json") {
+			if err := json.NewDecoder(r.Body).Decode(&obj); err != nil {
+				jsonError(w, err, http.StatusInternalServerError)
+				return
+			}
+		} else {
+			objFromForm(&obj, r.Form)
+		}
+		log.Println("RANGE OBJ:", obj)
+		from := ipFromString(obj.From)
+		to := ipFromString(obj.To)
+		log.Println("RANGE FROM:", from, "TO:", to)
+		dbDebug(true)
+		defer dbDebug(false)
+		list, err := dbObjectListQuery(IPAddr{}, "where ip32 >=? and ip32 <=?", from, to)
+		if err != nil {
+			log.Println("IP RANGE ERROR:", err)
+			jsonError(w, err, http.StatusInternalServerError)
+			return
+		}
+		sendJSON(w, list)
+	}
+}
+
 func fullURL(path ...string) string {
 	return "http://" + serverIP + httpServer + pathPrefix + strings.Join(path, "")
 }
@@ -310,15 +333,6 @@ func APILogout(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, c)
 }
 
-type KV struct {
-	Key, Value string
-}
-
-type BackTalk struct {
-	Script, Callback string
-	Envy             []KV
-}
-
 var webHandlers = []HFunc{
 	//{"/favicon.ico", FaviconPage},
 	{"/static/", StaticPage},
@@ -343,10 +357,10 @@ var webHandlers = []HFunc{
 	{"/api/network/circuit/", MakeREST(Circuit{})},
 	{"/api/network/ip/type/", MakeREST(IPType{})},
 	{"/api/network/ip/used/", MakeREST(IPsUsed{})},
+	{"/api/network/ip/range", ipRange},
 	{"/api/network/ip/", MakeREST(IPAddr{})},
 	{"/api/rack/view/", MakeREST(RackView{})},
 	{"/api/rack/", MakeREST(Rack{})},
-	//{"/api/rackunit/", MakeREST(RackUnit{})},
 	{"/api/site/", MakeREST(Site{})},
 	{"/api/summary/", MakeREST(Summary{})},
 	{"/api/pings", BulkPings},
@@ -354,8 +368,6 @@ var webHandlers = []HFunc{
 	{"/api/rma/", MakeREST(RMA{})},
 	{"/api/tag/", MakeREST(Tag{})},
 	{"/api/user/", MakeREST(User{})},
-	//{"/api/upload", APIUpload},
-	//{"/api/update", APIUpdate},
 	{"/api/vendor/", MakeREST(Vendor{})},
 	{"/api/vlan/view/", MakeREST(VLANView{})},
 	{"/api/vlan/", MakeREST(VLAN{})},
@@ -365,86 +377,5 @@ var webHandlers = []HFunc{
 	{"/api/", APIUnknown},
 	{"/data/server/discover/", ServerDiscover},
 	{"/data/mactable", MacTable},
-	/*
-		{"/data/upload", DataUpload},
-		{"/data/parts/load", PartsLoad},
-		{"/db/debug/", DebugPage},
-		{"/dc/all", ListingPage},
-		{"/dc/connections", ConnectionsPage},
-		{"/dc/edit/", DCEdit},
-		{"/dc/list", DCList},
-		{"/dc/racklist/", DCRackList},
-		{"/dc/racks/", DatacenterPage},
-		{"/ip/dc/", IPInternalDC},
-		{"/ip/internal/all", IPInternalAllPage},
-		{"/ip/internal/list", IPInternalList},
-		{"/ip/public/all", IPPublicAllPage},
-		{"/loginfail", loginFailHandler},
-		{"/login", LoginHandler},
-		{"/logout", logoutPage},
-		{"/mfgr/edit/", MfgrEdit},
-		{"/network/add/", NetworkAdd},
-		{"/network/audit/", NetworkAudit},
-		{"/network/devices", NetworkDevices},
-		{"/network/edit/", NetworkEdit},
-		{"/network/next/", NetworkNext},
-		{"/network/vlans", VlansPage},
-		{"/part/edit/", PartEdit},
-		{"/part/list/", PartList},
-		{"/part/replace/", PartReplace},
-		{"/part/use/", PartUse},
-		{"/part/totals", PartTotals},
-		{"/part/type/", TypeEdit},
-		{"/part/types", TypeList},
-		{"/partly/template", PartlyUsed},
-		{"/data/partly/page", PartlyPage},
-		{"/data/partly/json", PartlyJSON},
-		{"/pdu/edit", PDUEdit},
-		{"/ping", pingPage},
-		{"/profile/view", ProfileView},
-		{"/rack/add", RackEdit},
-		{"/rack/adjust", RackAdjust},
-		{"/rack/audit/", RackAudit},
-		{"/rack/edit/", RackEdit},
-		{"/rack/move", RackMoveUnit},
-		{"/rack/network", RackNetwork},
-		{"/rack/updates", RackUpdates},
-		{"/rack/view/", TheRackView},
-		{"/rack/zone/", RackZone},
-		{"/reload", reloadPage},
-		//{"/search", SearchPage},
-		{"/rma/list", RMAList},
-		{"/rma/add/", RMAAdd},
-		{"/rma/edit/", RMAEdit},
-		{"/rma/received/", RMAReceived},
-		{"/rma/return/add/", RMAReturnAdd},
-		{"/rma/return/", RMAReturn},
-		//{"/server/add/", ServerEdit},
-		{"/server/audit/", ServerAudit},
-		{"/server/checkfit", ServerCheckFit},
-		{"/server/dupes", ServerDupes},
-		//{"/server/edit/", ServerEdit},
-		//{"/device/edit/", deviceEdit},
-		//{"/server/find", ServerFind},
-		{"/server/parts/", ServerParts},
-		{"/server/replace/", ServerReplace},
-		{"/server/vms", VMListing},
-		{"/settings", SettingsHandler},
-		{"/sku/edit/", SKUEdit},
-		{"/sku/list", SKUList},
-		{"/tag/edit/", TagEdit},
-		{"/tag/list", TagList},
-		{"/user/add", UserEdit},
-		{"/user/edit/", UserEdit},
-		{"/user/list", usersListPage},
-		{"/user/run/", UserRun},
-		{"/vendor/edit/", VendorEdit},
-		{"/vendor/list", VendorList},
-		{"/vlan/edit/", VlanEdit},
-		//{"/vm/add/", VMAdd},
-		{"/vm/all", VMAllPage},
-		{"/vm/audit/", VMAudit},
-		//{"/vm/edit/", VMEdit},
-	*/
 	{"/", HomePage},
 }

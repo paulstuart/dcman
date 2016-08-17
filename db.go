@@ -67,6 +67,13 @@ func dbObjectList(kind interface{}) (interface{}, error) {
 	return datastore.ObjectList(kind)
 }
 
+func dbObjectListQuery(kind interface{}, extra string, args ...interface{}) (interface{}, error) {
+	if err := readable(); err != nil {
+		return nil, err
+	}
+	return datastore.ObjectListQuery(kind, extra, args...)
+}
+
 func dbStats() []string {
 	if err := readable(); err != nil {
 		return []string{}
@@ -247,13 +254,6 @@ func dbObjectDelete(obj interface{}) error {
 		return err
 	}
 	return datastore.ObjectDelete(obj)
-}
-
-func dbObjectListQuery(kind interface{}, extra string, args ...interface{}) (interface{}, error) {
-	if err := readable(); err != nil {
-		return nil, err
-	}
-	return datastore.ObjectListQuery(kind, extra, args...)
 }
 
 func dbReplace(o dbutil.DBObject) error {

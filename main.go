@@ -8,7 +8,6 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strings"
-	//"sync"
 	"time"
 
 	"github.com/kardianos/osext"
@@ -17,18 +16,16 @@ import (
 )
 
 var (
-	version           = "0.1.8"
-	sessionMinutes    = time.Duration(time.Minute * 120)
+	version           = "0.9.0"
+	sessionMinutes    = time.Duration(time.Minute * 240)
 	masterMode        = true
 	Hostname, _       = os.Hostname()
 	Basedir, _        = os.Getwd() // get abs path now, as we will be changing dirs
 	execDir, _        = osext.ExecutableFolder()
-	uploadDir         = filepath.Join(execDir, "uploads")
 	startTime         = time.Now()
 	sqlDir            = "sql" // dir containing sql schemas, etc
 	sqlSchema         = sqlDir + "/schema.sql"
 	dbFile            = execDir + "/data.db"
-	documentDir       = execDir + "/documents"
 	systemLocation, _ = time.LoadLocation("Local")
 	pathPrefix        string
 	bannerText        string
@@ -112,9 +109,6 @@ func init() {
 	if len(cfg.Main.Prefix) > 0 {
 		pathPrefix = cfg.Main.Prefix
 	}
-	if len(cfg.Main.Uploads) > 0 {
-		uploadDir = cfg.Main.Uploads
-	}
 	authCookie = cfg.SAML.OKTACookie
 	bannerText += cfg.Main.Banner
 
@@ -123,10 +117,6 @@ func init() {
 		key, _ = secrets.KeyGen()
 	}
 	secrets.SetKey(key)
-
-	if err := os.MkdirAll(documentDir, 0755); err != nil {
-		log.Panic(err)
-	}
 
 	if cfg.SAML.Timeout > 0 {
 		sessionMinutes = time.Duration(cfg.SAML.Timeout) * time.Minute
@@ -149,63 +139,6 @@ type Hit struct {
 	Name string `sql:"name"`
 }
 
-/*
-func doSearch(c chan Hit, q string, args ...string) {
-	err, found := datastore.LoadMany(q, Hit{}, args...)
-	if err != nil {
-		log.Printf("search error:", err)
-		return nil
-	}
-	for _, hit := range found.([]Hit) {
-		c <- hit
-	}
-}
-*/
-
-/*
-
-TODO: Fix this!!!
-
-// do parallel search for matches
-func searchDB(what string) []Hit {
-	hits := make([]Hit, 0, 16)
-	c := make(chan Hit, 64)
-	var wg, wg2 sync.WaitGroup
-
-	wg2.Add(1)
-	go func() {
-		for hit := range c {
-			log.Println("HIT:", hit)
-			hits = append(hits, hit)
-		}
-		wg.Done()
-	}()
-
-	search := func(q string, args ...interface{}) {
-		err, found := datastore.LoadMany(q, Hit{}, args...)
-		if err != nil {
-			log.Printf("search error:", err)
-		} else {
-			for _, hit := range found.([]Hit) {
-				c <- hit
-			}
-		}
-		wg.Done()
-	}
-
-	q := "select id, 'server' as kind, hostname from servers where hostname=? or sn=? or alias=? or asset_tag=?"
-	wg.Add(1)
-	go search(q, what, what, what, what)
-	if ip := net.ParseIP(what); ip != nil {
-		q = "select id, kind, hostname from ipmstr where ip=?"
-		wg.Add(1)
-		go search(q, what)
-	}
-	wg.Wait()
-	return hits
-}
-*/
-
 func dbHits(q string, args ...interface{}) []Hit {
 	err, found := datastore.LoadMany(q, Hit{}, args...)
 	if err != nil {
@@ -217,9 +150,10 @@ func dbHits(q string, args ...interface{}) []Hit {
 }
 
 func searchDB(what string) []Hit {
-	// TESTING ONLY!!!
-	dbDebug(true)
-	defer dbDebug(false)
+	/*
+		dbDebug(true)
+		defer dbDebug(false)
+	*/
 
 	q := "select distinct did as id, 'server' as kind, hostname from devices where hostname=? or sn=? or alias=? or asset_tag=? or profile=?"
 	hits := dbHits(q, what, what, what, what, what)
@@ -292,6 +226,8 @@ func init() {
 			}
 			if err := dbClose(); err != nil {
 				log.Println("close error:", err)
+			} else {
+				log.Println("db closed")
 			}
 			os.Exit(1)
 		}

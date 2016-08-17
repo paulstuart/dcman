@@ -9,7 +9,7 @@
     -->
     <link rel="stylesheet" type="text/css" href="/dcman/static/css/new.css">
     <script>
-// all changeable actions require this key
+    // all changeable actions require this key
     window.user_apikey = ''; 
     </script>
 
@@ -945,9 +945,9 @@
                 </td>
                 <td class="rcell"><a v-if="lay.Hostname" v-link="{ path: '/device/edit/' + lay.DID}">{{ lay.Hostname }}</a></td>
                 <td class="rcell">{{ lay.Mgmt }}</td>
-                <td class="rcell" id="ip-{{ lay.Mgmt }}"></td>
+                <td class="rcell">{{ lay.pingMgmt }}</td>
                 <td class="rcell">{{ lay.IPs }}</td>
-                <td class="rcell" id="ip-{{ lay.IPs }}"></td>
+                <td class="rcell">{{ lay.pingIP }}</td>
             </tr>
         </table>
     </div>
@@ -958,7 +958,6 @@
 <script type="text/x-template" id="tmpl-rack-layout">
     <div>
         <h1 class="mytitle">Rack View
-        <button class="btn" v-on:click.prevent="ping">Ping</button>
         </h1>
         <label for="STI">Site</label>
         <select id="STI" name="STI" v-model="STI" number>
@@ -973,6 +972,8 @@
                 {{ rack.Label }}
             </option>
         </select>
+
+        <button class="btn" v-on:click.prevent="ping">Ping</button>
 
         <div class="allracks">
             <rack-view 
@@ -1042,7 +1043,7 @@
 
             <fieldset class="col-xs-12">
                 <legend>IP Networking</legend>
-                <vm-ips :VMI="VMI">
+                <vm-ips :VMI="VM.VMI">
                 </vm-ips>
             </fieldset>
     </form>
@@ -1200,28 +1201,6 @@
                         <input class="form-control col-xs-3" type="text" id="Network" v-model="Network" readonly/>
                     </div>
                 </div>
-<!--
-                <div class="form-group">
-                    <label for="Network" class="control-label col-xs-2">Network</label>
-                    <div class="col-xs-2">
-                        <input type="text" id="Network" v-model="Network" readonly/>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="Max" class="control-label col-xs-2">Max</label>
-                    <div class="col-xs-2">
-                        <input type="text" id="Max" v-model="Max" readonly/>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="Netmask" class="control-label col-xs-2">Netmask</label>
-                    <div class="col-xs-2">
-                        <input type="text" id="Netmask" v-model="Netmask" readonly/>
-                    </div>
-                </div>
--->
                 <div class="form-group">
                     <label for="From" class="control-label col-xs-2">From</label>
                     <div class="col-xs-2">

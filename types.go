@@ -339,38 +339,6 @@ type RackView struct {
 	TS       *time.Time `sql:"ts" update:"false"`
 }
 
-/*
-type RackNet struct {
-	RID     int64  `sql:"rid" table:"racknet"`
-	VID     uint32 `sql:"vid"`
-	CIDR    string `sql:"cidr"`
-	Actual  string `sql:"actual"`
-	Subnet  int    `sql:"subnet"`
-	MinIP   uint32 `sql:"min_ip"`
-	MaxIP   uint32 `sql:"max_ip"`
-	FirstIP string `sql:"first_ip"`
-	LastIP  string `sql:"last_ip"`
-	next    uint32 // next free IP
-	used    bool
-}
-
-
-func (r RackNet) String() string {
-	return fmt.Sprintf("rid:%d vid:%d first:%s last:%s", r.RID, r.VID, r.FirstIP, r.LastIP)
-}
-
-func (r Rack) RackNets() []RackNet {
-	rn, _ := dbObjectListQuery(RackNet{}, "where rid=? order by vid", r.RID)
-	return rn.([]RackNet)
-}
-
-type RackNets []RackNet
-
-func (rn RackNets) Len() int           { return len(rn) }
-func (rn RackNets) Swap(i, j int)      { rn[i], rn[j] = rn[j], rn[i] }
-func (rn RackNets) Less(i, j int) bool { return rn[i].MinIP < rn[j].MinIP }
-*/
-
 type VM struct {
 	VMI      int64     `sql:"vmi" key:"true" table:"vms"`
 	DID      int64     `sql:"did"`
@@ -395,55 +363,6 @@ type VMView struct {
 	USR      int64     `sql:"usr"`
 	Modified time.Time `sql:"ts"`
 }
-
-/*
-func normalColumns(words []string) {
-	re := regexp.MustCompile("[^a-zA-Z0-9]")
-	for i, word := range words {
-		word = strings.TrimSpace(word)
-		word = strings.ToLower(word)
-		word = re.ReplaceAllString(word, "_")
-		words[i] = word
-	}
-}
-
-func PartsAdd(dcd int64, columns, words []string) error {
-	var item, mfgr, asset, partNo, sn string
-	qty := 1
-	log.Println("PARTS COLS:", columns)
-	var err error
-	for i, col := range columns {
-		word := strings.TrimSpace(words[i])
-		//	log.Println("COL:", col, "WORD:", word)
-		switch {
-		case col == "qty":
-			qty, err = strconv.Atoi(word)
-			if err != nil {
-				return err
-			}
-		case col == "asset_tag":
-			asset = word
-		case col == "item":
-			item = word
-		case col == "mfgr":
-			mfgr = word
-		case col == "part_no":
-			partNo = word
-		case col == "sn":
-			sn = word
-		default:
-			return fmt.Errorf("unknown column: " + col)
-		}
-	}
-	log.Println("ADDING MFGR:", mfgr, "PN:", partNo, "DESC:", item)
-	for i := 0; i < qty; i++ {
-		if _, err = AddPart(dcd, mfgr, partNo, item, sn, asset, ""); err != nil {
-			return err
-		}
-	}
-	return err
-}
-*/
 
 func getUser(where string, args ...interface{}) (User, error) {
 	u := User{}
@@ -475,99 +394,6 @@ func ipToString(in uint32) string {
 	return fmt.Sprintf("%d.%d.%d.%d", a, b, c, d)
 }
 
-type IPList []uint32
-
-func (a IPList) Len() int           { return len(a) }
-func (a IPList) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a IPList) Less(i, j int) bool { return a[i] < a[j] }
-
-/*
-func (rn RackNets) Used(ip uint32) {
-	for i, r := range rn {
-		if ip >= r.MinIP || ip <= r.MaxIP {
-			rn[i].used = true
-			return
-		}
-	}
-}
-
-func (rn RackNets) Done() bool {
-	for _, r := range rn {
-		if r.next == 0 {
-			return false
-		}
-	}
-	return true
-}
-
-func InternalIPs() IPList {
-	const query = "select * from ippool"
-	list, err := dbRows(query)
-	if err != nil {
-		fmt.Println("internal ips error", err)
-	}
-	sorted := make(IPList, 0, len(list))
-	for _, ipv4 := range list {
-		ip := ipFromString(ipv4)
-		if ip > 0 {
-			sorted = append(sorted, ip)
-		}
-	}
-	sort.Sort(sorted)
-	return sorted
-}
-
-func NextIPs(rid int64) (map[string]string, error) {
-	fmt.Println("NEXTIPS RID:", rid)
-	next := map[string]string{}
-
-	data, err := dbObjectListQuery(RackNet{}, "where rid=? order by min_ip", rid)
-	if err != nil {
-		fmt.Println("RACKNET ERR 1:", err)
-		return next, err
-	}
-	racknets := RackNets(data.([]RackNet))
-
-	var prior uint32
-	for _, ip := range InternalIPs() {
-		if prior == 0 {
-			prior = ip
-			continue
-		}
-		racknets.Used(ip)
-		// gap in IPs?
-		gap := prior + 1
-		if gap < ip {
-			for i, rn := range racknets {
-				if gap < rn.MinIP || gap > rn.MaxIP {
-					continue
-				}
-				if rn.next > 0 {
-					break
-				}
-				// is gap stating in the middle?
-				if prior < rn.MinIP || prior > rn.MaxIP {
-					racknets[i].next = rn.MinIP
-					//fmt.Println("SKIPPED:", rn.VID, "PRIOR:", ipToString(prior), "GAP:", ipToString(gap), "IP:", ipToString(ip))
-				} else {
-					//fmt.Println("NEXT   :", rn.VID, "PRIOR:", ipToString(prior), "GAP:", ipToString(gap), "IP:", ipToString(ip))
-					racknets[i].next = gap
-				}
-				break
-			}
-		}
-		prior = ip
-	}
-	for _, rn := range racknets {
-		if rn.next == 0 {
-			rn.next = rn.MinIP
-		}
-		next[strconv.Itoa(int(rn.VID))] = ipToString(rn.next)
-	}
-	return next, err
-}
-*/
-
 type Audit struct {
 	Hostname string `sql:"hostname" table:"auditing"`
 	IP       string `sql:"remote_addr"`
@@ -596,17 +422,6 @@ type PDU struct {
 	DNS      *string `sql:"dns"`
 	AssetTag *string `sql:"asset_tag"`
 }
-
-/*
-func typeID(name string) int64 {
-	pt := PartType{}
-	if err := dbObjectLoad(&pt, "where name=?", name); err != nil {
-		log.Println("type id lookup failed:", err)
-		return 0
-	}
-	return pt.TID
-}
-*/
 
 /*
 type DiskInfo struct {

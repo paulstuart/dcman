@@ -1,6 +1,5 @@
  
 var get = function(url) {
-  // Return a new promise.
   return new Promise(function(resolve, reject) {
     // Do the usual XHR stuff
     var req = new XMLHttpRequest();
@@ -30,6 +29,43 @@ var get = function(url) {
     req.onerror = function() {
       console.log('get network error');
       reject(Error("Network Error"));
+    };
+
+    // Make the request
+    req.send();
+  });
+}
+
+var posty = function(url, data, method) {
+    return new Promise(function(resolve, reject) {
+    // Do the usual XHR stuff
+    if (typeof method == "undefined") method = 'POST';
+    var req = new XMLHttpRequest();
+    req.open(method, url);
+    if (user_apikey && user_apikey.length > 0) {
+	    req.setRequestHeader("X-API-KEY", user_apikey)
+    }
+
+    req.onload = function() {
+        // This is called even on 404 etc
+        // so check the status
+        console.log('get status:', req.status, 'txt:', req.statusText)
+        if (req.status >= 200 && req.status < 300) {
+            var obj = JSON.parse(req.responseText)
+            resolve(obj)
+        }
+        else {
+            // Otherwise reject with the status text
+            // which will hopefully be a meaningful error
+            console.log('rejecting!!! ack:',req.status, 'txt:', req.statusText)
+            reject(Error(req.statusText));
+        }
+    };
+
+    // Handle network errors
+    req.onerror = function() {
+        console.log('posty network error');
+        reject(Error("Network Error"));
     };
 
     // Make the request
@@ -365,21 +401,6 @@ var menuMIX = {
     }
 }
 
-var inURL = "/dcman/api/inventory/";
-var serverURL = "/dcman/api/server/view/";
-var vmURL = "/dcman/api/vm/";
-var vmViewURL = "/dcman/api/vm/view/";
-var partTypesURL = "/dcman/api/part/type/";
-var partURL = "/dcman/api/part/view/";
-var rackURL = "/dcman/api/rack/view/";
-var rmaURL = "/dcman/api/rma/";
-var rmaviewURL = "/dcman/api/rma/view/";
-var tagURL = "/dcman/api/tag/";
-var sitesURL = "/dcman/api/site/" ; 
-var networkURL = "/dcman/api/network/ip/used/";
-var userURL = "/dcman/api/user/" ; 
-var vlanURL = "/dcman/api/vlan/view/" ; 
-var vendorURL = "/dcman/api/vendor/" ; 
 
 var RMA = function() {
     Maker(this, [
