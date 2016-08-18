@@ -1670,6 +1670,7 @@ var partUseVue = {
           postIt(partURL + pid, part, null, "PATCH")
           this.showList()
       },
+          /*
       findhost: function(ev) {
           var self = this;
           console.log("find hostname:",this.hostname);
@@ -1680,6 +1681,7 @@ var partUseVue = {
                 }
             })
       },
+      */
         findhost: function() {
             if (this.hostname.length === 0) {
                 this.badHost = false
@@ -2697,6 +2699,10 @@ var rackListVue = {
                  self.rows = data
              })
         },
+        moveUp: function(ev) {
+        },
+        moveDown: function(ev) {
+        },
   },
 
   watch: {
@@ -2724,12 +2730,35 @@ var makeLumps = function(racks, units) {
         // pre-populate empty rack
         var size = rack.RUs;
         var these = [];
-        while(size--) these.push({RU: size+1, Height: 1})
+        while(size--) these.push({
+            DID:0, 
+            RID:0, 
+            Hostname:'', 
+            Mgmt:'', 
+            IPs:'', 
+            RU: size+1, 
+            Height: 1,
+            badHeight: false,
+            badHostname: false,
+            badInternal: false,
+            badIPMI: false,
+        })
         byRID[rack.RID] = these
     }
 
     for (var i=0; i<units.length; i++) {
         var unit = units[i];
+        /*
+        if (unit.RID == 42 && unit.RU == 44) {
+            console.log('break here')
+        }
+        */
+        unit.newHostname = unit.Hostname
+        unit.newHeight = unit.Height
+        unit.badHeight = false
+        unit.badHostname = false
+        unit.badInternal = false
+        unit.badIPMI = false
         var rack = lookup[unit.RID];
         if (rack) {
             byRID[unit.RID][rack.RUs - unit.RU] = unit
@@ -2752,11 +2781,249 @@ var makeLumps = function(racks, units) {
             these[k]['pingMgmt'] = ''
             these[k]['pingIP'] = ''
         }
+        /*
+        var above = 0;
+        for (var k=0; k < these.length; k++) {
+            these[k].above = above
+            above++
+            if (these[k].Hostname.length > 0) {
+                above = 0;
+            }
+        }
+        */
         lumps.push({rack: rack, units: these})
     }
     return lumps
 }
 
+
+/*
+var rackViewVue = {
+    methods: {
+        rfilter: function(a, b, c) {
+            if (this.RID == 0) {
+                return a
+            }
+            if (this.RID == this.rack.RID) {
+                    return a
+            }
+        },
+        move: function(ev) {
+            console.log('move event:', ev)
+        },
+        moveUp: function(ev) {
+        },
+        moveDown: function(ev) {
+        },
+    }
+}
+*/
+
+// TODO: why you no like rackViewVue mixin?
+
+var rackView = Vue.component('rack-view', {
+    template: '#tmpl-rack-view',
+    props: ['layouts', 'RID', 'audit'],
+    //mixins: ['rackViewVue'],
+    methods: {
+        rfilter: function(a, b, c) {
+            if (this.RID == 0) {
+                return a
+            }
+            if (this.RID == this.rack.RID) {
+                    return a
+            }
+        },
+        move: function(ev) {
+            console.log('move event:', ev)
+        },
+        moveUp: function(lay) {
+            var did = lay.DID;
+            var rid = lay.RID;
+            var ru = lay.RU;
+            var self = this;
+            console.log('move up:', did, 'from:',ru);
+            var off = self.layouts.rack.RUs - ru;
+            var redux  = self.layouts.units[off-1];
+            var device = self.layouts.units[off];
+
+            ru++;
+            var url = '/dcman/api/device/adjust/' + did;
+            var adjust = {DID: device.DID, RID: device.RID, RU: ru, Height: device.Height};
+
+            var moved = function(adjusted) {
+                console.log('re adjusted:', adjusted);
+                if (adjust.RU != adjusted.RU) {
+                    console.log('fix me')
+                } else {
+                    redux.newHeight    = device.Height
+                    redux.newHostname  = device.Hostname
+                    redux.Height    = device.Height
+                    redux.Hostname  = device.Hostname
+                    redux.DID       = device.DID
+                    redux.RID       = device.RID
+                    redux.Mgmt      = device.Mgmt
+                    redux.IPs       = device.IPs
+
+                    device.newHeight    = 1
+                    device.newHostname  = ''
+                    device.Height    = 1
+                    device.Hostname  = ''
+                    device.DID       = 0
+                    device.RID       = 0
+                    device.Mgmt      = ''
+                    device.IPs       = ''
+                }
+
+            }
+            posty(url, adjust, 'PUT').then(moved);
+        },
+        moveDown: function(lay) {
+            console.log('move down:', lay)
+            var did = lay.DID;
+            var rid = lay.RID;
+            var ru = lay.RU;
+            var self = this;
+            console.log('move down:', did, 'from:',ru);
+            var off = self.layouts.rack.RUs - ru;
+            var redux  = self.layouts.units[off+1];
+            var device = self.layouts.units[off];
+
+            ru--;
+            var url = '/dcman/api/device/adjust/' + did;
+            var adjust = {DID: device.DID, RID: device.RID, RU: ru, Height: device.Height};
+
+            var moved = function(adjusted) {
+                console.log('re adjusted:', adjusted);
+                if (adjust.RU != adjusted.RU) {
+                    console.log('fix me')
+                } else {
+                    redux.newHeight    = device.Height
+                    redux.newHostname  = device.Hostname
+                    redux.Height    = device.Height
+                    redux.Hostname  = device.Hostname
+                    redux.DID       = device.DID
+                    redux.RID       = device.RID
+                    redux.Mgmt      = device.Mgmt
+                    redux.IPs       = device.IPs
+
+                    device.newHeight    = 1
+                    device.newHostname  = ''
+                    device.Height    = 1
+                    device.Hostname  = ''
+                    device.DID       = 0
+                    device.RID       = 0
+                    device.Mgmt      = ''
+                    device.IPs       = ''
+                }
+
+            }
+            posty(url, adjust, 'PUT').then(moved);
+        },
+        rackheight: function(lay) {
+            return 'rackheight' + lay.Height;
+        },
+        rename: function(lay) {
+            if (lay.newHostname.trim().length === 0) {
+                lay.badHostname = true
+                return
+            }
+            if (lay.newHostname.trim() === lay.Hostname.trim()) {
+                lay.badHostname = false
+                return
+            }
+            getDevice(lay.newHostname,'?hostname=').then(function(device) {
+                if (! device) {
+                    var newname = {DID: lay.DID, Hostname: lay.newHostname}
+                    posty(deviceURL + lay.DID, newname, 'PATCH').then(function(good) {
+                        lay.badHostname = false;
+                    }).catch(function(fail) {
+                        console.log('rename patch fail:', fail)
+                    })
+                } else {
+                    lay.badHostname = true;
+                }
+            }).catch(function(fail) {
+                    console.log('rename fail:', fail)
+            })
+        },
+        resize: function(lay) {
+            if (lay.newHeight < 1) {
+                lay.badHeight = true;
+                return
+            }
+            var self = this;
+            var url = '/dcman/api/device/adjust/' + lay.DID;
+            var newsize = {DID: lay.DID, RID: lay.RID, RU: lay.RU, Height: lay.newHeight}
+            var resized = function(adjusted) {
+                if (adjusted.Height == lay.Height) {
+                    lay.badHeight = true;
+                    return
+                }
+                if (lay.newHeight > lay.Height) {
+                    var to = self.layouts.rack.RUs - lay.RU;
+                    var from = to - lay.newHeight + 1;
+                    for (var i=from; i < to; i++ ) {
+                        self.layouts.units[i].Height = 0;
+                    }
+                } else if (lay.newHeight < lay.Height) {
+                    var from = self.layouts.rack.RUs - lay.RU - lay.Height;
+                    var to   = from + (lay.Height - lay.newHeight) + 1
+                    for (var i=from; i < to; i++ ) {
+                        self.layouts.units[i].Height = 1;
+                    }
+                }
+                lay.Height = lay.newHeight
+                lay.badHeight = false;
+            }
+            posty(url, newsize, 'PUT').then(resized);
+        },
+        okUp: function(lay) {
+            if (! lay) return false;
+            var ru = lay.RU
+            var off = this.layouts.rack.RUs - ru;
+            if (off < 1) return false;
+            var device = this.layouts.units[off];
+            if (! device || device.Hostname.length < 3) return false; // ignore empty units
+
+            var space = ru + device.Height
+            for (var i=device.RU +1 ; i <= space; i++) {
+                var inv = this.layouts.rack.RUs - i;
+                var unit = this.layouts.units[inv];
+                if (unit && unit.Hostname && unit.Hostname.length > 3) {
+                    return false
+                }
+            }
+            return true;
+        },
+        okDown: function(lay) {
+            if (! lay) return false;
+            var ru = lay.RU;
+            if (ru === 1) return false;
+            var off = this.layouts.rack.RUs - ru;
+            var device = this.layouts.units[off];
+            if (! device || device.Hostname.length < 3) return false; // ignore empty units
+            if (device.Hostname === 'hyp22020') {
+                console.log('test device:',device)
+            }
+
+            for (var i=ru-1 ; i > 0; i--) {
+                var inv = this.layouts.rack.RUs - i;
+                var unit = this.layouts.units[inv];
+                if (unit && unit.Hostname && unit.Hostname.length > 3) {
+                    //console log("RACK:", this.layouts.rack.Label, "RU:", unit.RU, "HT:", unit.Height, "ru:", ru)
+                    return (unit.RU + unit.Height) < ru;
+                    //continue
+                }
+            }
+            return true
+        }
+    }
+})
+
+//
+// RACK LAYOUT
+//
 
 var rackLayoutVue = {
     data: function() {
@@ -2767,7 +3034,8 @@ var rackLayoutVue = {
             sites: [], 
             racks: [],
             site: '',
-            lumpy:[]
+            audit: false,
+            lumpy:[],
         }
     },
 
@@ -2860,28 +3128,6 @@ var rackLayoutVue = {
     },
 }
 
-var rackViewVue = {
-    methods: {
-        rfilter: function(a, b, c) {
-            if (this.RID == 0) {
-                return a
-            }
-            if (this.RID == this.rack.RID) {
-                    return a
-            }
-        },
-    }
-}
-
-var rackView = Vue.component('rack-view', {
-    template: '#tmpl-rack-view',
-    props: ['rack', 'layout', 'layouts', 'RID'],
-    mixins: ['rackViewVue'],
-})
-
-//
-// RACK LAYOUT
-//
 var rackLayout = Vue.component('rack-layout', {
     template: '#tmpl-rack-layout',
     mixins: [rackLayoutVue],

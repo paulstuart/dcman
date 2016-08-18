@@ -339,6 +339,7 @@ var webHandlers = []HFunc{
 	{"/api/credentials/get", IPMICredentialsGet},
 	{"/api/credentials/set", IPMICredentialsSet},
 	{"/api/db/pragmas", apiPragmas},
+	{"/api/device/adjust/", MakeREST(DeviceAdjust{})},
 	{"/api/device/ips/", MakeREST(DeviceIPs{})},
 	{"/api/device/type/", MakeREST(DeviceType{})},
 	{"/api/device/view/", MakeREST(DeviceView{})},

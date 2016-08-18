@@ -338,3 +338,16 @@ CREATE VIEW "circuits_list" as
     left outer join sub_circuits s on s.cid = c.cid
     ;
 
+drop view if exists devices_adjust;
+create view devices_adjust as
+    select d.*, (d.ru + d.height - 1) as space 
+    from devices d
+    ;
+
+    /*
+drop view if exists devices_conflict;
+create view devices_adjust as
+    select d1.*, (d.ru + d.height - 1) as space 
+    from devices_adjust d1
+    ;
+    */

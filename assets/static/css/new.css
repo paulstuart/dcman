@@ -75,6 +75,11 @@ th {
     white-space: nowrap;
 }
 
+.sizecol {
+    width: 2em;
+    overflow: hidden;
+} 
+
 .mytitle {
     width: 100%;
     text-align: center;
@@ -97,9 +102,6 @@ tr {
 table.racked { 
     border-collapse: collapse; 
     border: none;
-    /*
-    width: 32em;
-    */
     table-layout: fixed;
 }
 

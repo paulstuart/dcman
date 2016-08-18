@@ -928,13 +928,19 @@
         <table class="racked">
             <tr>
                 <th class="rcell th-ru">RU</th>
+                <th class="rcell sizecol" v-if="audit">Size</th>
                 <th class="rcell">Hostname</th>
                 <th class="rcell">IPMI</th>
                 <th class="rcell cellok">ok</th>
                 <th class="rcell">Internal</th>
                 <th class="rcell cellok">ok</th>
+                <th class="rcell" v-if="audit">Up</th>
+                <th class="rcell" v-if="audit">Down</th>
             </tr>
-            <tr v-for="lay in layouts.units" class="rackrow rackheight{{lay.Height}}" v-if="lay.Height">
+            <!--
+            <tr v-for="lay in layouts.units" class="rackrow rackheight{{lay.Height}}" v-if="lay.Height || audit">
+            -->
+            <tr v-for="lay in layouts.units" class="rackrow rackheight{{lay.Height}}" v-if="lay.Height || audit">
                 <td class="rcell">
                     <template v-if="lay.Hostname">
                     {{ lay.RU }}
@@ -943,11 +949,29 @@
                     <a v-link="{ name: 'device-add', params: {STI: layouts.rack.STI, RID:layouts.rack.RID, RU:lay.RU}}">{{ lay.RU }}</a>
                     </template>
                 </td>
-                <td class="rcell"><a v-if="lay.Hostname" v-link="{ path: '/device/edit/' + lay.DID}">{{ lay.Hostname }}</a></td>
+                <td class="rcell sizecol" v-if="audit">
+                    <template v-if="lay.Hostname">
+                    <input type="text" class="sizecol" v-bind:class="{badentry: lay.badHeight}" v-model="lay.newHeight" @change="resize(lay)" number>
+                    </template>
+                </td>
+                <td class="rcell">
+                    <template v-if="audit">
+                    <input type="text" v-if="lay.Hostname" v-bind:class="{badentry: lay.badHostname}" v-model="lay.newHostname" @change="rename(lay)">
+                    </template>
+                    <template v-else>
+                    <a v-if="lay.Hostname" v-link="{ path: '/device/edit/' + lay.DID}">{{ lay.Hostname }}</a>
+                    </template>
+                </td>
                 <td class="rcell">{{ lay.Mgmt }}</td>
                 <td class="rcell">{{ lay.pingMgmt }}</td>
                 <td class="rcell">{{ lay.IPs }}</td>
                 <td class="rcell">{{ lay.pingIP }}</td>
+                <td class="rcell" v-if="audit">
+                    <button v-if="okUp(lay)" v-on:click.prevent="moveUp(lay)">&uarr;</button>
+                </td>
+                <td class="rcell" v-if="audit">
+                    <button v-if="okDown(lay)" v-on:click.prevent="moveDown(lay)">&darr;</button>
+                </td>
             </tr>
         </table>
     </div>
@@ -957,8 +981,7 @@
 
 <script type="text/x-template" id="tmpl-rack-layout">
     <div>
-        <h1 class="mytitle">Rack View
-        </h1>
+        <h1 class="mytitle">Rack View</h1>
         <label for="STI">Site</label>
         <select id="STI" name="STI" v-model="STI" number>
             <option v-for="dc in sites" v-bind:value="dc.STI">
@@ -975,10 +998,14 @@
 
         <button class="btn" v-on:click.prevent="ping">Ping</button>
 
+        <label for="audit">Audit</label>
+        <input type="checkbox" id="audit" name="audit" v-model="audit"/>
+
         <div class="allracks">
             <rack-view 
                 v-for="lump in lumpy | filterBy rfilter"
                 v-bind:RID="RID"
+                v-bind:audit="audit"
                 :layouts="lump">
             </rack-view>
         </div>
@@ -1219,6 +1246,10 @@
                     <label for="Note" class="control-label col-xs-2">Note</label>
                     <div class="col-xs-2">
                         <input type="text" id="Note" v-model="Note"/>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="col-xs-2">
                     </div>
                 </div>
 

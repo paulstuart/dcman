@@ -775,9 +775,13 @@ func newREST(obj dbutil.DBObject, w http.ResponseWriter, r *http.Request) {
 			return
 		*/
 	case "PUT":
+		log.Println("PUT OBJ:", obj)
 		if err := db.Save(obj); err != nil {
 			jsonError(w, err, http.StatusInternalServerError)
+			return
 		}
+		db.FindSelf(obj)
+		sendJSON(w, obj)
 	case "POST":
 		if err := db.Add(obj); err != nil {
 			log.Println("add error:", err)

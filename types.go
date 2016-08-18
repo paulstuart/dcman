@@ -540,6 +540,13 @@ type DeviceIPs struct {
 	Modified time.Time `sql:"ts"`
 }
 
+type DeviceAdjust struct {
+	DID    int64 `sql:"did" key:"true" table:"devices_adjust"`
+	RID    int64 `sql:"rid"`
+	RU     int   `sql:"ru"`
+	Height int   `sql:"height"`
+}
+
 /*
 type IPInfo struct {
 	DID        int64   `sql:"did" key:"true" table:"devnet"`

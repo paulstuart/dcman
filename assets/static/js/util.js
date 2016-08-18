@@ -45,14 +45,18 @@ var posty = function(url, data, method) {
     if (user_apikey && user_apikey.length > 0) {
 	    req.setRequestHeader("X-API-KEY", user_apikey)
     }
+	req.setRequestHeader("Content-Type", "application/json")
 
     req.onload = function() {
         // This is called even on 404 etc
         // so check the status
         console.log('get status:', req.status, 'txt:', req.statusText)
         if (req.status >= 200 && req.status < 300) {
-            var obj = JSON.parse(req.responseText)
-            resolve(obj)
+            if (req.responseText.length > 0) {
+                resolve(JSON.parse(req.responseText))
+            } else {
+                resolve(null)
+            }
         }
         else {
             // Otherwise reject with the status text
@@ -69,7 +73,7 @@ var posty = function(url, data, method) {
     };
 
     // Make the request
-    req.send();
+    req.send(JSON.stringify(data));
   });
 }
 

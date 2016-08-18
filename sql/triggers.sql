@@ -70,12 +70,10 @@ DROP TRIGGER IF EXISTS devices_view_update;
 CREATE TRIGGER devices_view_update INSTEAD OF UPDATE ON devices_view 
 BEGIN
   update devices set 
-/*
-    */
-	rid = ifnull(NEW.rid,OLD.rid),
-	dti = ifnull(NEW.dti,OLD.dti),
-	kid = ifnull(NEW.kid,OLD.kid),
-	tid = ifnull(NEW.tid,OLD.tid),
+	rid = nullif(ifnull(NEW.rid,OLD.rid),0),
+	dti = nullif(ifnull(NEW.dti,OLD.dti),0),
+	kid = nullif(ifnull(NEW.kid,OLD.kid),0),
+	tid = nullif(ifnull(NEW.tid,OLD.tid),0),
     ru = ifnull(NEW.ru, OLD.ru),
     height = ifnull(NEW.height, OLD.height),
     hostname = ifnull(NEW.hostname, OLD.hostname),
@@ -99,6 +97,36 @@ DROP TRIGGER IF EXISTS devices_delete;
 CREATE TRIGGER devices_delete AFTER DELETE ON devices 
 BEGIN
     delete from notes where id=OLD.did and kind='VM';
+END;
+
+drop trigger if exists devices_adjust_move;
+create trigger devices_adjust_move INSTEAD OF UPDATE on devices_adjust
+    when NEW.ru != OLD.ru
+    and NEW.height == OLD.height
+    and not exists (
+        select did from devices_adjust 
+        where rid = OLD.rid
+          and did != OLD.did
+          and (NEW.ru + NEW.height -1 ) between ru and space
+    )
+BEGIN
+    update devices set ru = NEW.ru where did = OLD.did;
+END;
+
+drop trigger if exists devices_adjust_resize;
+create trigger devices_adjust_resize INSTEAD OF UPDATE on devices_adjust
+    when NEW.height > 0
+     and NEW.height != OLD.height
+     and not exists (
+        select did from devices_adjust 
+        where rid = OLD.rid
+          and did != OLD.did
+          and (OLD.ru + NEW.height -1 ) between ru and space
+    )
+        /*
+    */
+BEGIN
+    update devices set height = NEW.height where did = OLD.did;
 END;
 
 --
