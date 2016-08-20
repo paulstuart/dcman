@@ -129,6 +129,26 @@ BEGIN
     update devices set height = NEW.height where did = OLD.did;
 END;
 
+/*
+sti|site|rack|did|rid|dti|kid|tid|ru|height|hostname|alias|asset_tag|sn|profile|assigned|note|usr|ts|devtype|tag|ifd|did:1|mgmt|port|mac|cable_tag|switch_port|iid|ipt|ip32|ipv4|iptype
+2|SFO|11|1418|26|1||0|7|2|sfo1cs01|||||||0|2016-08-17 20:16:34|Server||1|1418|1|IPMI|0c:c4:7a:1b:60:d4|||1|1|174339100|10.100.52.28|IPMI
+2|SFO|11|1418|26|1||0|7|2|sfo1cs01|||||||0|2016-08-17 20:16:34|Server||2355|1418|0|Eth0|0c:c4:7a:14:61:ee|||2277|2|174355467|10.100.116.11|Internal
+
+*/
+DROP TRIGGER IF EXISTS interfaces_view_update;
+CREATE TRIGGER interfaces_view_update INSTEAD OF UPDATE ON interfaces_view 
+    when NEW.ipv4 != OLD.ipv4
+     and NEW.ipv4 is not null
+     and NEW.did is not null
+     and NEW.iid is not null
+BEGIN
+    update ips 
+    set ipv4 = NEW.ipv4 
+    where iid=(select iid from devices_network where did=OLD.did and ipv4=OLD.ipv4)
+    ;
+END;
+
+
 --
 -- VMs
 --

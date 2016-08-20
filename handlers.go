@@ -341,6 +341,7 @@ var webHandlers = []HFunc{
 	{"/api/db/pragmas", apiPragmas},
 	{"/api/device/adjust/", MakeREST(DeviceAdjust{})},
 	{"/api/device/ips/", MakeREST(DeviceIPs{})},
+	//{"/api/device/network/", MakeREST(DeviceNetwork{})},
 	{"/api/device/type/", MakeREST(DeviceType{})},
 	{"/api/device/view/", MakeREST(DeviceView{})},
 	{"/api/device/", MakeREST(Device{})},

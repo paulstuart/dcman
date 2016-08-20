@@ -243,7 +243,8 @@ CREATE TABLE "interfaces" (
 drop table if exists ip_types;
 create table "ip_types" (
     ipt integer primary key,
-    name text
+    name text,
+    multi integer default 0 -- boolean: set true if multiple instances of ip address are ok
 );
 
 drop table if exists ips;

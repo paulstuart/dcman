@@ -4,6 +4,7 @@ var pingURL = "http://10.100.182.16:8080/dcman/api/pings?debug=true";
 
 var deviceURL       = '/dcman/api/device/view/'
 var deviceListURL   = '/dcman/api/device/ips/'
+var deviceNetworkURL = '/dcman/api/device/network/'
 var deviceTypesURL  = '/dcman/api/device/type/'
 var ipURL           = '/dcman/api/network/ip/'
 var iptypesURL      = '/dcman/api/network/ip/type/'
@@ -39,7 +40,10 @@ var getIt = function(geturl, what) {
     return function(id, query) {
         var url = geturl;
         if (query) {
-            url += query + id
+            url += query
+            if (id) {
+                url += id
+            }
         } else if (id && id > 0) {
             url += id
         }
@@ -85,7 +89,7 @@ var getPart = getIt(partURL, 'parts');
 var getPartTypes = getIt(partTypesURL, 'part typess');
 var getInventory = getIt(inURL, 'inventory');
 var getDeviceTypes = getIt(deviceTypesURL, 'device typess');
-var getIPTypes = getIt(iptypesURL, 'ip typess');
+var getIPTypes = getIt(iptypesURL, 'ip types');
 var getDeviceLIST = getIt(deviceListURL, 'device list');
 var getTagList = getIt(tagURL, 'tags');
 var getDevice = getIt(deviceURL, 'device');
@@ -173,7 +177,8 @@ var validIP = function(ip) {
     if (octs.length != 4) return false
     for (var i=0; i<4; i++) {
         if (octs[i].length == 0) return false
-        var val=parseInt(octs[i])
+        var val=parseInt(octs[i]);
+        if (val != octs[i]) return false
         if (val < 0 || val > 255) return false
     }
     return true 
@@ -579,6 +584,112 @@ var dg = childTable("ip-grid", "#tmpl-base-table", [ipgridMIX])
 var Netlist = Vue.component('ip-list', {
     template: '#tmpl-ip-list',
     mixins: [ipload, ippageMIX, commonListMIX],
+})
+
+
+//
+// IP TYPES
+//
+var ipTypesMIX = {
+    data: function() {
+        return {
+            rows: [],
+            columns: [
+                "Name",
+                "Multi"
+            ],
+            sortKey: '',
+            sortOrders: [],
+            searchQuery: '',
+        }
+    },
+    route: { 
+        data: function (transition) {
+            var self = this;
+            return Promise.all([
+                getIPTypes(), 
+            ]).then(function (data) {
+                return {
+                    rows: data[0],
+                }
+            })
+        }
+    },
+    events: {
+        'ip-reload': function(msg) {
+            console.log("reload those IPs!!!!!: ", msg)
+        }
+    },
+    watch: {
+        'STI': function(x) {
+            this.loadData()
+        }
+    },
+}
+
+var iptMIX = {
+    methods: {
+        linkable: function(key) {
+            return (key == 'Name')
+        },
+        linkpath: function(entry, key) {
+            return '/ip/type/edit/' + entry['IPT']
+        }
+    },
+}
+var dg = childTable("iptypes-grid", "#tmpl-base-table", [iptMIX])
+
+var ipTypesList = Vue.component('ip-types', {
+    template: '#tmpl-ip-types',
+    mixins: [ipTypesMIX],
+})
+
+
+var ipTypeEditVue = {
+    data: function() {
+        return {
+            IPType: new(IPType)
+        }
+    },
+    route: {
+        data: function (transition) {
+            if (transition.to.params.IPT > 0) {
+                return {
+                    IPType: getIPTypes(transition.to.params.IPT)
+                }
+            }
+            var ipType = new(IPType);
+            ipType.IPT = 0
+            return {
+                IPType: ipType
+            }
+        }
+    },
+    methods: {
+        newname: function() {
+            console.log('my name is:', this.IPType.Name)
+        },
+        saveSelf: function() {
+            var data = this.IPType;
+            var id = data.IPT;
+            var url = iptypesURL;
+            if (id > 0) {
+                postIt(url + id + "?debug=true", data, this.showList, 'PATCH')
+            } else {
+                postIt(url + id + "?debug=true", data, this.showList)
+            }
+        },
+        deleteSelf: function() {
+        },
+        showList: function() {
+            router.go('/ip/types')
+        },
+    },
+}
+
+var iptEdit = Vue.component('iptype-edit', {
+    template: '#tmpl-iptype-edit',
+    mixins: [ipTypeEditVue],
 })
 
 
@@ -2699,10 +2810,6 @@ var rackListVue = {
                  self.rows = data
              })
         },
-        moveUp: function(ev) {
-        },
-        moveDown: function(ev) {
-        },
   },
 
   watch: {
@@ -2741,7 +2848,8 @@ var makeLumps = function(racks, units) {
             badHeight: false,
             badHostname: false,
             badInternal: false,
-            badIPMI: false,
+            badMgmt: false,
+            badIP: false,
         })
         byRID[rack.RID] = these
     }
@@ -2755,10 +2863,13 @@ var makeLumps = function(racks, units) {
         */
         unit.newHostname = unit.Hostname
         unit.newHeight = unit.Height
+        unit.newMgmt = unit.Mgmt
+        unit.newIP = unit.IPs
         unit.badHeight = false
         unit.badHostname = false
         unit.badInternal = false
-        unit.badIPMI = false
+        unit.badMgmt = false
+        unit.badIP = false
         var rack = lookup[unit.RID];
         if (rack) {
             byRID[unit.RID][rack.RUs - unit.RU] = unit
@@ -2807,13 +2918,6 @@ var rackViewVue = {
             if (this.RID == this.rack.RID) {
                     return a
             }
-        },
-        move: function(ev) {
-            console.log('move event:', ev)
-        },
-        moveUp: function(ev) {
-        },
-        moveDown: function(ev) {
         },
     }
 }
@@ -2923,6 +3027,47 @@ var rackView = Vue.component('rack-view', {
         rackheight: function(lay) {
             return 'rackheight' + lay.Height;
         },
+        // TODO make common, pass in field of interest
+        changeIP: function(lay) {
+            if (! validIP(lay.newIP.trim())) {
+                lay.badIP = true;
+                return
+            }
+            var url = ifaceViewURL;
+            url += '?did=' + lay.DID + '&ipv4=' + lay.IPs;
+            get(url).then(function(data) {
+                // TODO add error handling
+                var ipinfo = data[0]
+                console.log("IPINFO:", ipinfo);
+                var ip = {IID: ipinfo.IID, IPv4: lay.newIP}
+                posty(ipURL + ipinfo.IID, ip, 'PATCH').then(function(updated) {
+                    console.log("UPDATED:",updated)
+                    lay.badIP = false;
+                    lay.IP = lay.newIP;
+                }) 
+            })
+
+        },
+        changeMgmt: function(lay) {
+            if (! validIP(lay.newMgmt.trim())) {
+                lay.badMgmt = true;
+                return
+            }
+            var url = ifaceViewURL;
+            url += '?did=' + lay.DID + '&ipv4=' + lay.Mgmt;
+            get(url).then(function(data) {
+                // TODO add error handling
+                var ipinfo = data[0]
+                console.log("IPINFO:", ipinfo);
+                var ip = {IID: ipinfo.IID, IPv4: lay.newMgmt}
+                posty(ipURL + ipinfo.IID, ip, 'PATCH').then(function(updated) {
+                    console.log("UPDATED:",updated)
+                    lay.badMgmt = false;
+                    lay.Mgmt = lay.newMgmt;
+                }) 
+            })
+
+        },
         rename: function(lay) {
             if (lay.newHostname.trim().length === 0) {
                 lay.badHostname = true
@@ -2932,6 +3077,7 @@ var rackView = Vue.component('rack-view', {
                 lay.badHostname = false
                 return
             }
+            // verify that new hostname doesn't already exist
             getDevice(lay.newHostname,'?hostname=').then(function(device) {
                 if (! device) {
                     var newname = {DID: lay.DID, Hostname: lay.newHostname}
@@ -3258,6 +3404,12 @@ router.map({
     },
     '/ip/reserve': {
         component:  Vue.component('ip-reserve')
+    },
+    '/ip/types': {
+        component:  Vue.component('ip-types')
+    },
+    '/ip/type/edit/:IPT': {
+        component:  Vue.component('iptype-edit')
     },
     '/vlan/edit/:VLID': {
         component:  Vue.component('vlan-edit')

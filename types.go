@@ -123,8 +123,9 @@ type Vendor struct {
 }
 
 type IPType struct {
-	IPT  int64   `sql:"ipt" key:"true" table:"ip_types"`
-	Name *string `sql:"name"`
+	IPT   int64   `sql:"ipt" key:"true" table:"ip_types"`
+	Name  *string `sql:"name"`
+	Multi bool    `sql:"multi"`
 }
 
 type RMA struct {
@@ -540,6 +541,42 @@ type DeviceIPs struct {
 	Modified time.Time `sql:"ts"`
 }
 
+/*
+// DeviceNetwork merges network info with DeviceView
+// It will usually result in multiple device "instances" due to
+// the one to many relationship of device and network data
+// sti|site|rack|did|rid|dti|kid|tid|ru|height|hostname|alias|asset_tag|sn|profile|assigned|note|usr|ts|devtype|tag|ifd|did:1|mgmt|port|mac|cable_tag|switch_port|iid|ipt|ip32|ipv4|iptype
+//2|SFO|11|1418|26|1||0|7|2|sfo1cs01|||||||0|2016-08-17 20:16:34|Server||1|1418|1|IPMI|0c:c4:7a:1b:60:d4|||1|1|174339100|10.100.52.28|IPMI
+
+type DeviceNetwork struct {
+	IID      int64     `sql:"iid" key:"true" table:"devices_network"`
+	STI      *int64    `sql:"sti"` // Site ID
+	RID      *int64    `sql:"rid"` // Rack ID
+	KID      *int64    `sql:"kid"` // SKU ID
+	DTI      *int64    `sql:"dti"` // Device type ID
+	TID      *int64    `sql:"tid"` // Tag ID
+	IFD      *int64    `sql:"ifd"` // Interface ID
+	DID      *int64    `sql:"did"` // Device ID
+	Rack     *int      `sql:"rack"`
+	RU       *int      `sql:"ru"`
+	Height   *int      `sql:"height"`
+	Hostname *string   `sql:"hostname"`
+	Alias    *string   `sql:"alias"`
+	Profile  *string   `sql:"profile"`
+	SerialNo *string   `sql:"sn"`
+	AssetTag *string   `sql:"asset_tag"`
+	Assigned *string   `sql:"assigned"`
+	Tag      *string   `sql:"tag"`
+	Note     *string   `sql:"note"`
+	DevType  *string   `sql:"devtype"`
+	Site     *string   `sql:"site"`
+	IPv4     *string   `sql:"ipv4"`
+	IP32     *int      `sql:"ip32"`
+	USR      int64     `sql:"usr"`
+	Modified time.Time `sql:"ts"`
+}
+*/
+
 type DeviceAdjust struct {
 	DID    int64 `sql:"did" key:"true" table:"devices_adjust"`
 	RID    int64 `sql:"rid"`
@@ -581,7 +618,7 @@ type IFaceView struct {
 	DID        int64   `sql:"did"`
 	IID        *int64  `sql:"iid"`
 	IPT        *int64  `sql:"ipt"`
-	IP32       *int32  `sql:"ip32"`
+	IP32       *uint32 `sql:"ip32"`
 	Mgmt       bool    `sql:"mgmt"`
 	Port       *string `sql:"port"`
 	IP         *string `sql:"ipv4"`
@@ -597,7 +634,7 @@ type IPAddr struct {
 	VMI  *int64  `sql:"vmi"`
 	VLI  *int64  `sql:"vli"` // reserved IPs link to their respective vlan
 	IPT  *int64  `sql:"ipt"`
-	IP32 *int32  `sql:"ip32"`
+	IP32 *uint32 `sql:"ip32"`
 	IPv4 *string `sql:"ipv4"`
 	Note *string `sql:"note"`
 }

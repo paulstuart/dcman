@@ -14,35 +14,6 @@ CREATE VIEW ips_view as
     left outer join ip_types t on i.ipt = t.ipt
     ;
 
-    /*
-DROP VIEW IF EXISTS ips_calc;
-CREATE VIEW ips_calc as
-    with oct1(ipv4, iid, o1, rem1) as (
-            select ipv4, iid, substr(ipv4,0,instr(ipv4,'.')) as o1, 
-                substr(ipv4,instr(ipv4,'.')+1) as rem1
-                from ips
-        ),
-        oct2(iid, o2, rem2) as (
-            select iid, substr(rem1,0,instr(rem1,'.')) as o2, 
-                substr(rem1,instr(rem1,'.')+1) as rem2
-                from oct1
-        ),
-        oct3(iid, o3, o4) as (
-            select iid, substr(rem2,0,instr(rem2,'.')) as o3, 
-                substr(rem2,instr(rem2,'.')+1) as o4
-                from oct2
-        ),
-        calculated(iid, ipv4, ipcalc) as (
-            select
-                oct1.iid, oct1.ipv4, ((o1 << 24) + (o2 << 16) + (o3 << 8) + o4) as ipcalc
-            from 
-            oct1, oct2, oct3
-            where oct1.iid = oct2.iid
-              and oct1.iid = oct3.iid
-        )
-    select * from calculated
-    ;
-*/
 
 DROP VIEW IF EXISTS ips_calc;
 CREATE VIEW ips_calc as

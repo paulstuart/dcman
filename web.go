@@ -757,30 +757,21 @@ func newREST(obj dbutil.DBObject, w http.ResponseWriter, r *http.Request) {
 			jsonError(w, err, http.StatusInternalServerError)
 			return
 		}
-		log.Println("SAVE OBJ:", obj)
+		spew.Println("SAVE OBJ:", obj)
 		if err := db.Save(obj); err != nil {
 			log.Println("PATCH ERR 3:", err)
 			jsonError(w, err, http.StatusInternalServerError)
 			return
 		}
-		/*
-			err := json.NewDecoder(r.Body).Decode(obj)
-			if err == nil {
-				err = db.Save(obj); err == nil {
-					return
-				}
-			}
-			w.WriteHeader(http.StatusInternalServerError)
-			jsonError(err)
-			return
-		*/
+		db.FindSelf(obj) // load what DB has for verification
+		sendJSON(w, obj)
 	case "PUT":
 		log.Println("PUT OBJ:", obj)
 		if err := db.Save(obj); err != nil {
 			jsonError(w, err, http.StatusInternalServerError)
 			return
 		}
-		db.FindSelf(obj)
+		db.FindSelf(obj) // load what DB has for verification
 		sendJSON(w, obj)
 	case "POST":
 		if err := db.Add(obj); err != nil {
@@ -789,6 +780,7 @@ func newREST(obj dbutil.DBObject, w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		w.WriteHeader(http.StatusCreated)
+		db.FindSelf(obj) // load what DB has for verification
 		sendJSON(w, obj)
 	}
 	spew.Dump(obj)

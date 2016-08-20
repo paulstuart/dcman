@@ -539,6 +539,14 @@ var Mfgr = function() {
     ])
 }
 
+var IPType = function() {
+    Maker(this, [
+        'IPT',
+        'Name',
+        'Multi',
+    ])
+}
+
 var Device = function() {
     Maker(this, [
         'Alias',

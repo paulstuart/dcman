@@ -62,9 +62,9 @@ insert into device_types (name) values('PDU');
 insert into ip_types (name) values('IPMI');
 insert into ip_types (name) values('Internal');
 insert into ip_types (name) values('Public');
-insert into ip_types (name) values('VIP');
 insert into ip_types (name) values('Mgmt');
 insert into ip_types (name) values('Reserved');
+insert into ip_types (name,multi) values('VIP',1);
 
 
 insert into racks 

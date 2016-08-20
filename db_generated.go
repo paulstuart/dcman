@@ -133,15 +133,15 @@ func (o User) NewObj() interface{} {
 // User DBObject interface functions
 //
 func (o *User) InsertValues() []interface{} {
-	return []interface{}{o.Last, o.Email, o.APIKey, o.Level, o.Login, o.First}
+	return []interface{}{o.APIKey, o.Level, o.Login, o.First, o.Last, o.Email}
 }
 
 func (o *User) UpdateValues() []interface{} {
-	return []interface{}{o.Last, o.Email, o.APIKey, o.Level, o.Login, o.First, o.USR}
+	return []interface{}{o.APIKey, o.Level, o.Login, o.First, o.Last, o.Email, o.USR}
 }
 
 func (o *User) MemberPointers() []interface{} {
-	return []interface{}{&o.USR, &o.Last, &o.Email, &o.APIKey, &o.Level, &o.Login, &o.First}
+	return []interface{}{&o.USR, &o.APIKey, &o.Level, &o.Login, &o.First, &o.Last, &o.Email}
 }
 
 func (o *User) Key() int64 {
@@ -157,11 +157,11 @@ func (o *User) TableName() string {
 }
 
 func (o *User) SelectFields() string {
-	return "usr,lastname,email,apikey,admin,login,firstname"
+	return "usr,apikey,admin,login,firstname,lastname,email"
 }
 
 func (o *User) InsertFields() string {
-	return "usr,lastname,email,apikey,admin,login,firstname"
+	return "usr,apikey,admin,login,firstname,lastname,email"
 }
 
 func (o *User) KeyField() string {
@@ -173,7 +173,7 @@ func (o *User) KeyName() string {
 }
 
 func (o *User) Names() []string {
-	return []string{"Last", "Email", "APIKey", "Level", "Login", "First"}
+	return []string{"APIKey", "Level", "Login", "First", "Last", "Email"}
 }
 
 func (o *User) ModifiedBy(user int64, t time.Time) {
@@ -191,15 +191,15 @@ func (o FullUser) NewObj() interface{} {
 // FullUser DBObject interface functions
 //
 func (o *FullUser) InsertValues() []interface{} {
-	return []interface{}{o.APIKey, o.Password, o.Salt, o.Level, o.Login, o.First, o.Last, o.Email}
+	return []interface{}{o.Level, o.Login, o.First, o.Last, o.Email, o.APIKey, o.Password, o.Salt}
 }
 
 func (o *FullUser) UpdateValues() []interface{} {
-	return []interface{}{o.APIKey, o.Password, o.Salt, o.Level, o.Login, o.First, o.Last, o.Email, o.USR}
+	return []interface{}{o.Level, o.Login, o.First, o.Last, o.Email, o.APIKey, o.Password, o.Salt, o.USR}
 }
 
 func (o *FullUser) MemberPointers() []interface{} {
-	return []interface{}{&o.USR, &o.APIKey, &o.Password, &o.Salt, &o.Level, &o.Login, &o.First, &o.Last, &o.Email}
+	return []interface{}{&o.USR, &o.Level, &o.Login, &o.First, &o.Last, &o.Email, &o.APIKey, &o.Password, &o.Salt}
 }
 
 func (o *FullUser) Key() int64 {
@@ -215,11 +215,11 @@ func (o *FullUser) TableName() string {
 }
 
 func (o *FullUser) SelectFields() string {
-	return "usr,apikey,pw_hash,pw_salt,admin,login,firstname,lastname,email"
+	return "usr,admin,login,firstname,lastname,email,apikey,pw_hash,pw_salt"
 }
 
 func (o *FullUser) InsertFields() string {
-	return "usr,apikey,pw_hash,pw_salt,admin,login,firstname,lastname,email"
+	return "usr,admin,login,firstname,lastname,email,apikey,pw_hash,pw_salt"
 }
 
 func (o *FullUser) KeyField() string {
@@ -231,7 +231,7 @@ func (o *FullUser) KeyName() string {
 }
 
 func (o *FullUser) Names() []string {
-	return []string{"APIKey", "Password", "Salt", "Level", "Login", "First", "Last", "Email"}
+	return []string{"Level", "Login", "First", "Last", "Email", "APIKey", "Password", "Salt"}
 }
 
 func (o *FullUser) ModifiedBy(user int64, t time.Time) {
@@ -249,15 +249,15 @@ func (o Vendor) NewObj() interface{} {
 // Vendor DBObject interface functions
 //
 func (o *Vendor) InsertValues() []interface{} {
-	return []interface{}{o.Note, o.USR, o.Address, o.State, o.Country, o.City, o.Postal, o.Modified, o.Name, o.WWW, o.Phone}
+	return []interface{}{o.Phone, o.Address, o.City, o.State, o.Note, o.Modified, o.Name, o.WWW, o.Country, o.Postal, o.USR}
 }
 
 func (o *Vendor) UpdateValues() []interface{} {
-	return []interface{}{o.Note, o.USR, o.Address, o.State, o.Country, o.City, o.Postal, o.Modified, o.Name, o.WWW, o.Phone, o.VID}
+	return []interface{}{o.Phone, o.Address, o.City, o.State, o.Note, o.Modified, o.Name, o.WWW, o.Country, o.Postal, o.USR, o.VID}
 }
 
 func (o *Vendor) MemberPointers() []interface{} {
-	return []interface{}{&o.VID, &o.Note, &o.USR, &o.Address, &o.State, &o.Country, &o.City, &o.Postal, &o.Modified, &o.Name, &o.WWW, &o.Phone}
+	return []interface{}{&o.VID, &o.Phone, &o.Address, &o.City, &o.State, &o.Note, &o.Modified, &o.Name, &o.WWW, &o.Country, &o.Postal, &o.USR}
 }
 
 func (o *Vendor) Key() int64 {
@@ -273,11 +273,11 @@ func (o *Vendor) TableName() string {
 }
 
 func (o *Vendor) SelectFields() string {
-	return "vid,note,usr,address,state,country,city,postal,ts,name,www,phone"
+	return "vid,phone,address,city,state,note,ts,name,www,country,postal,usr"
 }
 
 func (o *Vendor) InsertFields() string {
-	return "vid,note,usr,address,state,country,city,postal,ts,name,www,phone"
+	return "vid,phone,address,city,state,note,ts,name,www,country,postal,usr"
 }
 
 func (o *Vendor) KeyField() string {
@@ -289,7 +289,7 @@ func (o *Vendor) KeyName() string {
 }
 
 func (o *Vendor) Names() []string {
-	return []string{"Note", "USR", "Address", "State", "Country", "City", "Postal", "Modified", "Name", "WWW", "Phone"}
+	return []string{"Phone", "Address", "City", "State", "Note", "Modified", "Name", "WWW", "Country", "Postal", "USR"}
 }
 
 func (o *Vendor) ModifiedBy(user int64, t time.Time) {
@@ -309,15 +309,15 @@ func (o IPType) NewObj() interface{} {
 // IPType DBObject interface functions
 //
 func (o *IPType) InsertValues() []interface{} {
-	return []interface{}{o.Name}
+	return []interface{}{o.Name, o.Multi}
 }
 
 func (o *IPType) UpdateValues() []interface{} {
-	return []interface{}{o.Name, o.IPT}
+	return []interface{}{o.Name, o.Multi, o.IPT}
 }
 
 func (o *IPType) MemberPointers() []interface{} {
-	return []interface{}{&o.IPT, &o.Name}
+	return []interface{}{&o.IPT, &o.Name, &o.Multi}
 }
 
 func (o *IPType) Key() int64 {
@@ -333,11 +333,11 @@ func (o *IPType) TableName() string {
 }
 
 func (o *IPType) SelectFields() string {
-	return "ipt,name"
+	return "ipt,name,multi"
 }
 
 func (o *IPType) InsertFields() string {
-	return "ipt,name"
+	return "ipt,name,multi"
 }
 
 func (o *IPType) KeyField() string {
@@ -349,7 +349,7 @@ func (o *IPType) KeyName() string {
 }
 
 func (o *IPType) Names() []string {
-	return []string{"Name"}
+	return []string{"Name", "Multi"}
 }
 
 func (o *IPType) ModifiedBy(user int64, t time.Time) {
@@ -367,15 +367,15 @@ func (o RMA) NewObj() interface{} {
 // RMA DBObject interface functions
 //
 func (o *RMA) InsertValues() []interface{} {
-	return []interface{}{o.OldPID, o.VendorRMA, o.DCTicket, o.Receiving, o.Received, o.Created, o.USR, o.STI, o.DID, o.VID, o.ShipTrack, o.NewPID, o.Jira, o.RecvTrack, o.Note, o.Shipped, o.Closed}
+	return []interface{}{o.OldPID, o.Jira, o.DCTicket, o.Shipped, o.DID, o.RecvTrack, o.Received, o.USR, o.VendorRMA, o.ShipTrack, o.Receiving, o.Created, o.STI, o.VID, o.NewPID, o.Note, o.Closed}
 }
 
 func (o *RMA) UpdateValues() []interface{} {
-	return []interface{}{o.OldPID, o.VendorRMA, o.DCTicket, o.Receiving, o.Received, o.Created, o.USR, o.STI, o.DID, o.VID, o.ShipTrack, o.NewPID, o.Jira, o.RecvTrack, o.Note, o.Shipped, o.Closed, o.RMD}
+	return []interface{}{o.OldPID, o.Jira, o.DCTicket, o.Shipped, o.DID, o.RecvTrack, o.Received, o.USR, o.VendorRMA, o.ShipTrack, o.Receiving, o.Created, o.STI, o.VID, o.NewPID, o.Note, o.Closed, o.RMD}
 }
 
 func (o *RMA) MemberPointers() []interface{} {
-	return []interface{}{&o.RMD, &o.OldPID, &o.VendorRMA, &o.DCTicket, &o.Receiving, &o.Received, &o.Created, &o.USR, &o.STI, &o.DID, &o.VID, &o.ShipTrack, &o.NewPID, &o.Jira, &o.RecvTrack, &o.Note, &o.Shipped, &o.Closed}
+	return []interface{}{&o.RMD, &o.OldPID, &o.Jira, &o.DCTicket, &o.Shipped, &o.DID, &o.RecvTrack, &o.Received, &o.USR, &o.VendorRMA, &o.ShipTrack, &o.Receiving, &o.Created, &o.STI, &o.VID, &o.NewPID, &o.Note, &o.Closed}
 }
 
 func (o *RMA) Key() int64 {
@@ -391,11 +391,11 @@ func (o *RMA) TableName() string {
 }
 
 func (o *RMA) SelectFields() string {
-	return "rmd,old_pid,vendor_rma,dc_ticket,dc_receiving,date_received,date_created,usr,sti,did,vid,ship_tracking,new_pid,jira,recv_tracking,note,date_shipped,date_closed"
+	return "rmd,old_pid,jira,dc_ticket,date_shipped,did,recv_tracking,date_received,usr,vendor_rma,ship_tracking,dc_receiving,date_created,sti,vid,new_pid,note,date_closed"
 }
 
 func (o *RMA) InsertFields() string {
-	return "rmd,old_pid,vendor_rma,dc_ticket,dc_receiving,date_received,date_created,usr,sti,did,vid,ship_tracking,new_pid,jira,recv_tracking,note,date_shipped,date_closed"
+	return "rmd,old_pid,jira,dc_ticket,date_shipped,did,recv_tracking,date_received,usr,vendor_rma,ship_tracking,dc_receiving,date_created,sti,vid,new_pid,note,date_closed"
 }
 
 func (o *RMA) KeyField() string {
@@ -407,7 +407,7 @@ func (o *RMA) KeyName() string {
 }
 
 func (o *RMA) Names() []string {
-	return []string{"OldPID", "VendorRMA", "DCTicket", "Receiving", "Received", "Created", "USR", "STI", "DID", "VID", "ShipTrack", "NewPID", "Jira", "RecvTrack", "Note", "Shipped", "Closed"}
+	return []string{"OldPID", "Jira", "DCTicket", "Shipped", "DID", "RecvTrack", "Received", "USR", "VendorRMA", "ShipTrack", "Receiving", "Created", "STI", "VID", "NewPID", "Note", "Closed"}
 }
 
 func (o *RMA) ModifiedBy(user int64, t time.Time) {
@@ -425,15 +425,15 @@ func (o RMAView) NewObj() interface{} {
 // RMAView DBObject interface functions
 //
 func (o *RMAView) InsertValues() []interface{} {
-	return []interface{}{o.DID, o.Created, o.STI, o.Hostname, o.PartSN, o.PartNumber, o.Receiving, o.DCTicket, o.Received, o.NewPID, o.Site, o.Jira, o.ShipTrack, o.RecvTrack, o.Note, o.Shipped, o.Closed, o.VID, o.OldPID, o.DeviceSN, o.Description, o.VendorRMA, o.USR}
+	return []interface{}{o.VendorRMA, o.DCTicket, o.OldPID, o.PartNumber, o.RecvTrack, o.Note, o.USR, o.NewPID, o.Hostname, o.Site, o.DeviceSN, o.PartSN, o.ShipTrack, o.Receiving, o.Shipped, o.STI, o.DID, o.Jira, o.Received, o.Closed, o.Created, o.VID, o.Description}
 }
 
 func (o *RMAView) UpdateValues() []interface{} {
-	return []interface{}{o.DID, o.Created, o.STI, o.Hostname, o.PartSN, o.PartNumber, o.Receiving, o.DCTicket, o.Received, o.NewPID, o.Site, o.Jira, o.ShipTrack, o.RecvTrack, o.Note, o.Shipped, o.Closed, o.VID, o.OldPID, o.DeviceSN, o.Description, o.VendorRMA, o.USR, o.RMD}
+	return []interface{}{o.VendorRMA, o.DCTicket, o.OldPID, o.PartNumber, o.RecvTrack, o.Note, o.USR, o.NewPID, o.Hostname, o.Site, o.DeviceSN, o.PartSN, o.ShipTrack, o.Receiving, o.Shipped, o.STI, o.DID, o.Jira, o.Received, o.Closed, o.Created, o.VID, o.Description, o.RMD}
 }
 
 func (o *RMAView) MemberPointers() []interface{} {
-	return []interface{}{&o.RMD, &o.DID, &o.Created, &o.STI, &o.Hostname, &o.PartSN, &o.PartNumber, &o.Receiving, &o.DCTicket, &o.Received, &o.NewPID, &o.Site, &o.Jira, &o.ShipTrack, &o.RecvTrack, &o.Note, &o.Shipped, &o.Closed, &o.VID, &o.OldPID, &o.DeviceSN, &o.Description, &o.VendorRMA, &o.USR}
+	return []interface{}{&o.RMD, &o.VendorRMA, &o.DCTicket, &o.OldPID, &o.PartNumber, &o.RecvTrack, &o.Note, &o.USR, &o.NewPID, &o.Hostname, &o.Site, &o.DeviceSN, &o.PartSN, &o.ShipTrack, &o.Receiving, &o.Shipped, &o.STI, &o.DID, &o.Jira, &o.Received, &o.Closed, &o.Created, &o.VID, &o.Description}
 }
 
 func (o *RMAView) Key() int64 {
@@ -449,11 +449,11 @@ func (o *RMAView) TableName() string {
 }
 
 func (o *RMAView) SelectFields() string {
-	return "rmd,did,date_created,sti,hostname,part_sn,part_no,dc_receiving,dc_ticket,date_received,new_pid,site,jira,ship_tracking,recv_tracking,note,date_shipped,date_closed,vid,old_pid,device_sn,description,vendor_rma,usr"
+	return "rmd,vendor_rma,dc_ticket,old_pid,part_no,recv_tracking,note,usr,new_pid,hostname,site,device_sn,part_sn,ship_tracking,dc_receiving,date_shipped,sti,did,jira,date_received,date_closed,date_created,vid,description"
 }
 
 func (o *RMAView) InsertFields() string {
-	return "rmd,did,date_created,sti,hostname,part_sn,part_no,dc_receiving,dc_ticket,date_received,new_pid,site,jira,ship_tracking,recv_tracking,note,date_shipped,date_closed,vid,old_pid,device_sn,description,vendor_rma,usr"
+	return "rmd,vendor_rma,dc_ticket,old_pid,part_no,recv_tracking,note,usr,new_pid,hostname,site,device_sn,part_sn,ship_tracking,dc_receiving,date_shipped,sti,did,jira,date_received,date_closed,date_created,vid,description"
 }
 
 func (o *RMAView) KeyField() string {
@@ -465,7 +465,7 @@ func (o *RMAView) KeyName() string {
 }
 
 func (o *RMAView) Names() []string {
-	return []string{"DID", "Created", "STI", "Hostname", "PartSN", "PartNumber", "Receiving", "DCTicket", "Received", "NewPID", "Site", "Jira", "ShipTrack", "RecvTrack", "Note", "Shipped", "Closed", "VID", "OldPID", "DeviceSN", "Description", "VendorRMA", "USR"}
+	return []string{"VendorRMA", "DCTicket", "OldPID", "PartNumber", "RecvTrack", "Note", "USR", "NewPID", "Hostname", "Site", "DeviceSN", "PartSN", "ShipTrack", "Receiving", "Shipped", "STI", "DID", "Jira", "Received", "Closed", "Created", "VID", "Description"}
 }
 
 func (o *RMAView) ModifiedBy(user int64, t time.Time) {
@@ -483,15 +483,15 @@ func (o Manufacturer) NewObj() interface{} {
 // Manufacturer DBObject interface functions
 //
 func (o *Manufacturer) InsertValues() []interface{} {
-	return []interface{}{o.Name, o.Note, o.AKA, o.URL, o.USR, o.Modified}
+	return []interface{}{o.URL, o.USR, o.Modified, o.Name, o.Note, o.AKA}
 }
 
 func (o *Manufacturer) UpdateValues() []interface{} {
-	return []interface{}{o.Name, o.Note, o.AKA, o.URL, o.USR, o.Modified, o.MID}
+	return []interface{}{o.URL, o.USR, o.Modified, o.Name, o.Note, o.AKA, o.MID}
 }
 
 func (o *Manufacturer) MemberPointers() []interface{} {
-	return []interface{}{&o.MID, &o.Name, &o.Note, &o.AKA, &o.URL, &o.USR, &o.Modified}
+	return []interface{}{&o.MID, &o.URL, &o.USR, &o.Modified, &o.Name, &o.Note, &o.AKA}
 }
 
 func (o *Manufacturer) Key() int64 {
@@ -507,11 +507,11 @@ func (o *Manufacturer) TableName() string {
 }
 
 func (o *Manufacturer) SelectFields() string {
-	return "mid,name,note,aka,url,usr,ts"
+	return "mid,url,usr,ts,name,note,aka"
 }
 
 func (o *Manufacturer) InsertFields() string {
-	return "mid,name,note,aka,url,usr,ts"
+	return "mid,url,usr,ts,name,note,aka"
 }
 
 func (o *Manufacturer) KeyField() string {
@@ -523,7 +523,7 @@ func (o *Manufacturer) KeyName() string {
 }
 
 func (o *Manufacturer) Names() []string {
-	return []string{"Name", "Note", "AKA", "URL", "USR", "Modified"}
+	return []string{"URL", "USR", "Modified", "Name", "Note", "AKA"}
 }
 
 func (o *Manufacturer) ModifiedBy(user int64, t time.Time) {
@@ -603,15 +603,15 @@ func (o SKU) NewObj() interface{} {
 // SKU DBObject interface functions
 //
 func (o *SKU) InsertValues() []interface{} {
-	return []interface{}{o.Modified, o.MID, o.PTI, o.PartNumber, o.Description, o.SKU, o.USR}
+	return []interface{}{o.Description, o.SKU, o.USR, o.Modified, o.MID, o.PTI, o.PartNumber}
 }
 
 func (o *SKU) UpdateValues() []interface{} {
-	return []interface{}{o.Modified, o.MID, o.PTI, o.PartNumber, o.Description, o.SKU, o.USR, o.KID}
+	return []interface{}{o.Description, o.SKU, o.USR, o.Modified, o.MID, o.PTI, o.PartNumber, o.KID}
 }
 
 func (o *SKU) MemberPointers() []interface{} {
-	return []interface{}{&o.KID, &o.Modified, &o.MID, &o.PTI, &o.PartNumber, &o.Description, &o.SKU, &o.USR}
+	return []interface{}{&o.KID, &o.Description, &o.SKU, &o.USR, &o.Modified, &o.MID, &o.PTI, &o.PartNumber}
 }
 
 func (o *SKU) Key() int64 {
@@ -627,11 +627,11 @@ func (o *SKU) TableName() string {
 }
 
 func (o *SKU) SelectFields() string {
-	return "kid,ts,mid,pti,part_no,description,sku,usr"
+	return "kid,description,sku,usr,ts,mid,pti,part_no"
 }
 
 func (o *SKU) InsertFields() string {
-	return "kid,ts,mid,pti,part_no,description,sku,usr"
+	return "kid,description,sku,usr,ts,mid,pti,part_no"
 }
 
 func (o *SKU) KeyField() string {
@@ -643,7 +643,7 @@ func (o *SKU) KeyName() string {
 }
 
 func (o *SKU) Names() []string {
-	return []string{"Modified", "MID", "PTI", "PartNumber", "Description", "SKU", "USR"}
+	return []string{"Description", "SKU", "USR", "Modified", "MID", "PTI", "PartNumber"}
 }
 
 func (o *SKU) ModifiedBy(user int64, t time.Time) {
@@ -663,15 +663,15 @@ func (o Part) NewObj() interface{} {
 // Part DBObject interface functions
 //
 func (o *Part) InsertValues() []interface{} {
-	return []interface{}{o.DID, o.STI, o.Serial, o.AssetTag, o.USR, o.Modified, o.KID, o.VID, o.Location, o.Unused, o.Bad, o.Cents}
+	return []interface{}{o.KID, o.Location, o.Serial, o.AssetTag, o.Unused, o.Bad, o.VID, o.DID, o.STI, o.Cents, o.USR, o.Modified}
 }
 
 func (o *Part) UpdateValues() []interface{} {
-	return []interface{}{o.DID, o.STI, o.Serial, o.AssetTag, o.USR, o.Modified, o.KID, o.VID, o.Location, o.Unused, o.Bad, o.Cents, o.PID}
+	return []interface{}{o.KID, o.Location, o.Serial, o.AssetTag, o.Unused, o.Bad, o.VID, o.DID, o.STI, o.Cents, o.USR, o.Modified, o.PID}
 }
 
 func (o *Part) MemberPointers() []interface{} {
-	return []interface{}{&o.PID, &o.DID, &o.STI, &o.Serial, &o.AssetTag, &o.USR, &o.Modified, &o.KID, &o.VID, &o.Location, &o.Unused, &o.Bad, &o.Cents}
+	return []interface{}{&o.PID, &o.KID, &o.Location, &o.Serial, &o.AssetTag, &o.Unused, &o.Bad, &o.VID, &o.DID, &o.STI, &o.Cents, &o.USR, &o.Modified}
 }
 
 func (o *Part) Key() int64 {
@@ -687,11 +687,11 @@ func (o *Part) TableName() string {
 }
 
 func (o *Part) SelectFields() string {
-	return "pid,did,sti,serial_no,asset_tag,usr,ts,kid,vid,location,unused,bad,cents"
+	return "pid,kid,location,serial_no,asset_tag,unused,bad,vid,did,sti,cents,usr,ts"
 }
 
 func (o *Part) InsertFields() string {
-	return "pid,did,sti,serial_no,asset_tag,usr,ts,kid,vid,location,unused,bad,cents"
+	return "pid,kid,location,serial_no,asset_tag,unused,bad,vid,did,sti,cents,usr,ts"
 }
 
 func (o *Part) KeyField() string {
@@ -703,7 +703,7 @@ func (o *Part) KeyName() string {
 }
 
 func (o *Part) Names() []string {
-	return []string{"DID", "STI", "Serial", "AssetTag", "USR", "Modified", "KID", "VID", "Location", "Unused", "Bad", "Cents"}
+	return []string{"KID", "Location", "Serial", "AssetTag", "Unused", "Bad", "VID", "DID", "STI", "Cents", "USR", "Modified"}
 }
 
 func (o *Part) ModifiedBy(user int64, t time.Time) {
@@ -723,15 +723,15 @@ func (o PartView) NewObj() interface{} {
 // PartView DBObject interface functions
 //
 func (o *PartView) InsertValues() []interface{} {
-	return []interface{}{o.VID, o.DID, o.STI, o.RMD, o.Site, o.Bad, o.KID, o.Serial, o.Description, o.Mfgr, o.Cents, o.Vendor, o.Hostname, o.Location, o.AssetTag, o.PartNumber, o.SKU, o.PartType, o.Price, o.Unused}
+	return []interface{}{o.RMD, o.Cents, o.Bad, o.SKU, o.Description, o.Unused, o.STI, o.Location, o.AssetTag, o.Price, o.VID, o.DID, o.PartType, o.Serial, o.PartNumber, o.Mfgr, o.Vendor, o.KID, o.Site, o.Hostname}
 }
 
 func (o *PartView) UpdateValues() []interface{} {
-	return []interface{}{o.VID, o.DID, o.STI, o.RMD, o.Site, o.Bad, o.KID, o.Serial, o.Description, o.Mfgr, o.Cents, o.Vendor, o.Hostname, o.Location, o.AssetTag, o.PartNumber, o.SKU, o.PartType, o.Price, o.Unused, o.PID}
+	return []interface{}{o.RMD, o.Cents, o.Bad, o.SKU, o.Description, o.Unused, o.STI, o.Location, o.AssetTag, o.Price, o.VID, o.DID, o.PartType, o.Serial, o.PartNumber, o.Mfgr, o.Vendor, o.KID, o.Site, o.Hostname, o.PID}
 }
 
 func (o *PartView) MemberPointers() []interface{} {
-	return []interface{}{&o.PID, &o.VID, &o.DID, &o.STI, &o.RMD, &o.Site, &o.Bad, &o.KID, &o.Serial, &o.Description, &o.Mfgr, &o.Cents, &o.Vendor, &o.Hostname, &o.Location, &o.AssetTag, &o.PartNumber, &o.SKU, &o.PartType, &o.Price, &o.Unused}
+	return []interface{}{&o.PID, &o.RMD, &o.Cents, &o.Bad, &o.SKU, &o.Description, &o.Unused, &o.STI, &o.Location, &o.AssetTag, &o.Price, &o.VID, &o.DID, &o.PartType, &o.Serial, &o.PartNumber, &o.Mfgr, &o.Vendor, &o.KID, &o.Site, &o.Hostname}
 }
 
 func (o *PartView) Key() int64 {
@@ -747,11 +747,11 @@ func (o *PartView) TableName() string {
 }
 
 func (o *PartView) SelectFields() string {
-	return "pid,vid,did,sti,rmd,site,bad,kid,serial_no,description,mfgr,cents,vendor,hostname,location,asset_tag,part_no,sku,part_type,price,unused"
+	return "pid,rmd,cents,bad,sku,description,unused,sti,location,asset_tag,price,vid,did,part_type,serial_no,part_no,mfgr,vendor,kid,site,hostname"
 }
 
 func (o *PartView) InsertFields() string {
-	return "pid,vid,did,sti,rmd,site,bad,kid,serial_no,description,mfgr,cents,vendor,hostname,location,asset_tag,part_no,sku,part_type,price,unused"
+	return "pid,rmd,cents,bad,sku,description,unused,sti,location,asset_tag,price,vid,did,part_type,serial_no,part_no,mfgr,vendor,kid,site,hostname"
 }
 
 func (o *PartView) KeyField() string {
@@ -763,7 +763,7 @@ func (o *PartView) KeyName() string {
 }
 
 func (o *PartView) Names() []string {
-	return []string{"VID", "DID", "STI", "RMD", "Site", "Bad", "KID", "Serial", "Description", "Mfgr", "Cents", "Vendor", "Hostname", "Location", "AssetTag", "PartNumber", "SKU", "PartType", "Price", "Unused"}
+	return []string{"RMD", "Cents", "Bad", "SKU", "Description", "Unused", "STI", "Location", "AssetTag", "Price", "VID", "DID", "PartType", "Serial", "PartNumber", "Mfgr", "Vendor", "KID", "Site", "Hostname"}
 }
 
 func (o *PartView) ModifiedBy(user int64, t time.Time) {
@@ -781,15 +781,15 @@ func (o Site) NewObj() interface{} {
 // Site DBObject interface functions
 //
 func (o *Site) InsertValues() []interface{} {
-	return []interface{}{o.Name, o.Address, o.Country, o.Phone, o.City, o.State, o.Postal, o.Web, o.USR, o.Modified}
+	return []interface{}{o.Modified, o.Postal, o.Country, o.Web, o.State, o.Phone, o.USR, o.Name, o.Address, o.City}
 }
 
 func (o *Site) UpdateValues() []interface{} {
-	return []interface{}{o.Name, o.Address, o.Country, o.Phone, o.City, o.State, o.Postal, o.Web, o.USR, o.Modified, o.STI}
+	return []interface{}{o.Modified, o.Postal, o.Country, o.Web, o.State, o.Phone, o.USR, o.Name, o.Address, o.City, o.STI}
 }
 
 func (o *Site) MemberPointers() []interface{} {
-	return []interface{}{&o.STI, &o.Name, &o.Address, &o.Country, &o.Phone, &o.City, &o.State, &o.Postal, &o.Web, &o.USR, &o.Modified}
+	return []interface{}{&o.STI, &o.Modified, &o.Postal, &o.Country, &o.Web, &o.State, &o.Phone, &o.USR, &o.Name, &o.Address, &o.City}
 }
 
 func (o *Site) Key() int64 {
@@ -805,11 +805,11 @@ func (o *Site) TableName() string {
 }
 
 func (o *Site) SelectFields() string {
-	return "sti,name,address,country,phone,city,state,postal,web,usr,ts"
+	return "sti,ts,postal,country,web,state,phone,usr,name,address,city"
 }
 
 func (o *Site) InsertFields() string {
-	return "sti,name,address,country,phone,city,state,postal,web,usr,ts"
+	return "sti,ts,postal,country,web,state,phone,usr,name,address,city"
 }
 
 func (o *Site) KeyField() string {
@@ -821,7 +821,7 @@ func (o *Site) KeyName() string {
 }
 
 func (o *Site) Names() []string {
-	return []string{"Name", "Address", "Country", "Phone", "City", "State", "Postal", "Web", "USR", "Modified"}
+	return []string{"Modified", "Postal", "Country", "Web", "State", "Phone", "USR", "Name", "Address", "City"}
 }
 
 func (o *Site) ModifiedBy(user int64, t time.Time) {
@@ -899,15 +899,15 @@ func (o Rack) NewObj() interface{} {
 // Rack DBObject interface functions
 //
 func (o *Rack) InsertValues() []interface{} {
-	return []interface{}{o.STI, o.XPos, o.USR, o.TS, o.RUs, o.Label, o.VendorID, o.YPos, o.Note}
+	return []interface{}{o.YPos, o.TS, o.USR, o.STI, o.RUs, o.Label, o.VendorID, o.XPos, o.Note}
 }
 
 func (o *Rack) UpdateValues() []interface{} {
-	return []interface{}{o.STI, o.XPos, o.USR, o.TS, o.RUs, o.Label, o.VendorID, o.YPos, o.Note, o.RID}
+	return []interface{}{o.YPos, o.TS, o.USR, o.STI, o.RUs, o.Label, o.VendorID, o.XPos, o.Note, o.RID}
 }
 
 func (o *Rack) MemberPointers() []interface{} {
-	return []interface{}{&o.RID, &o.STI, &o.XPos, &o.USR, &o.TS, &o.RUs, &o.Label, &o.VendorID, &o.YPos, &o.Note}
+	return []interface{}{&o.RID, &o.YPos, &o.TS, &o.USR, &o.STI, &o.RUs, &o.Label, &o.VendorID, &o.XPos, &o.Note}
 }
 
 func (o *Rack) Key() int64 {
@@ -923,11 +923,11 @@ func (o *Rack) TableName() string {
 }
 
 func (o *Rack) SelectFields() string {
-	return "rid,sti,x_pos,usr,ts,rackunits,rack,vendor_id,y_pos,note"
+	return "rid,y_pos,ts,usr,sti,rackunits,rack,vendor_id,x_pos,note"
 }
 
 func (o *Rack) InsertFields() string {
-	return "rid,sti,x_pos,usr,ts,rackunits,rack,vendor_id,y_pos,note"
+	return "rid,y_pos,ts,usr,sti,rackunits,rack,vendor_id,x_pos,note"
 }
 
 func (o *Rack) KeyField() string {
@@ -939,7 +939,7 @@ func (o *Rack) KeyName() string {
 }
 
 func (o *Rack) Names() []string {
-	return []string{"STI", "XPos", "USR", "TS", "RUs", "Label", "VendorID", "YPos", "Note"}
+	return []string{"YPos", "TS", "USR", "STI", "RUs", "Label", "VendorID", "XPos", "Note"}
 }
 
 func (o *Rack) ModifiedBy(user int64, t time.Time) {
@@ -957,15 +957,15 @@ func (o RackView) NewObj() interface{} {
 // RackView DBObject interface functions
 //
 func (o *RackView) InsertValues() []interface{} {
-	return []interface{}{o.STI, o.VendorID, o.Note, o.USR, o.TS, o.RUs, o.Label, o.Site, o.XPos, o.YPos}
+	return []interface{}{o.Note, o.USR, o.TS, o.RUs, o.Label, o.Site, o.YPos, o.STI, o.VendorID, o.XPos}
 }
 
 func (o *RackView) UpdateValues() []interface{} {
-	return []interface{}{o.STI, o.VendorID, o.Note, o.USR, o.TS, o.RUs, o.Label, o.Site, o.XPos, o.YPos, o.RID}
+	return []interface{}{o.Note, o.USR, o.TS, o.RUs, o.Label, o.Site, o.YPos, o.STI, o.VendorID, o.XPos, o.RID}
 }
 
 func (o *RackView) MemberPointers() []interface{} {
-	return []interface{}{&o.RID, &o.STI, &o.VendorID, &o.Note, &o.USR, &o.TS, &o.RUs, &o.Label, &o.Site, &o.XPos, &o.YPos}
+	return []interface{}{&o.RID, &o.Note, &o.USR, &o.TS, &o.RUs, &o.Label, &o.Site, &o.YPos, &o.STI, &o.VendorID, &o.XPos}
 }
 
 func (o *RackView) Key() int64 {
@@ -981,11 +981,11 @@ func (o *RackView) TableName() string {
 }
 
 func (o *RackView) SelectFields() string {
-	return "rid,sti,vendor_id,note,usr,ts,rackunits,rack,site,x_pos,y_pos"
+	return "rid,note,usr,ts,rackunits,rack,site,y_pos,sti,vendor_id,x_pos"
 }
 
 func (o *RackView) InsertFields() string {
-	return "rid,sti,vendor_id,note,usr,ts,rackunits,rack,site,x_pos,y_pos"
+	return "rid,note,usr,ts,rackunits,rack,site,y_pos,sti,vendor_id,x_pos"
 }
 
 func (o *RackView) KeyField() string {
@@ -997,7 +997,7 @@ func (o *RackView) KeyName() string {
 }
 
 func (o *RackView) Names() []string {
-	return []string{"STI", "VendorID", "Note", "USR", "TS", "RUs", "Label", "Site", "XPos", "YPos"}
+	return []string{"Note", "USR", "TS", "RUs", "Label", "Site", "YPos", "STI", "VendorID", "XPos"}
 }
 
 func (o *RackView) ModifiedBy(user int64, t time.Time) {
@@ -1073,15 +1073,15 @@ func (o VMView) NewObj() interface{} {
 // VMView DBObject interface functions
 //
 func (o *VMView) InsertValues() []interface{} {
-	return []interface{}{o.DID, o.STI, o.Profile, o.USR, o.Modified, o.RID, o.Rack, o.Site, o.Server, o.Hostname, o.Note}
+	return []interface{}{o.RID, o.Rack, o.Site, o.Profile, o.DID, o.STI, o.Server, o.Hostname, o.Note, o.USR, o.Modified}
 }
 
 func (o *VMView) UpdateValues() []interface{} {
-	return []interface{}{o.DID, o.STI, o.Profile, o.USR, o.Modified, o.RID, o.Rack, o.Site, o.Server, o.Hostname, o.Note, o.VMI}
+	return []interface{}{o.RID, o.Rack, o.Site, o.Profile, o.DID, o.STI, o.Server, o.Hostname, o.Note, o.USR, o.Modified, o.VMI}
 }
 
 func (o *VMView) MemberPointers() []interface{} {
-	return []interface{}{&o.VMI, &o.DID, &o.STI, &o.Profile, &o.USR, &o.Modified, &o.RID, &o.Rack, &o.Site, &o.Server, &o.Hostname, &o.Note}
+	return []interface{}{&o.VMI, &o.RID, &o.Rack, &o.Site, &o.Profile, &o.DID, &o.STI, &o.Server, &o.Hostname, &o.Note, &o.USR, &o.Modified}
 }
 
 func (o *VMView) Key() int64 {
@@ -1097,11 +1097,11 @@ func (o *VMView) TableName() string {
 }
 
 func (o *VMView) SelectFields() string {
-	return "vmi,did,sti,profile,usr,ts,rid,rack,site,server,hostname,note"
+	return "vmi,rid,rack,site,profile,did,sti,server,hostname,note,usr,ts"
 }
 
 func (o *VMView) InsertFields() string {
-	return "vmi,did,sti,profile,usr,ts,rid,rack,site,server,hostname,note"
+	return "vmi,rid,rack,site,profile,did,sti,server,hostname,note,usr,ts"
 }
 
 func (o *VMView) KeyField() string {
@@ -1113,7 +1113,7 @@ func (o *VMView) KeyName() string {
 }
 
 func (o *VMView) Names() []string {
-	return []string{"DID", "STI", "Profile", "USR", "Modified", "RID", "Rack", "Site", "Server", "Hostname", "Note"}
+	return []string{"RID", "Rack", "Site", "Profile", "DID", "STI", "Server", "Hostname", "Note", "USR", "Modified"}
 }
 
 func (o *VMView) ModifiedBy(user int64, t time.Time) {
@@ -1131,15 +1131,15 @@ func (o Audit) NewObj() interface{} {
 // Audit DBObject interface functions
 //
 func (o *Audit) InsertValues() []interface{} {
-	return []interface{}{o.Asset, o.Mem, o.VMs, o.Hostname, o.FQDN, o.Eth1, o.IpmiIP, o.Kernel, o.IP, o.IPs, o.Eth0, o.IpmiMac, o.SN, o.CPU, o.Release}
+	return []interface{}{o.IpmiIP, o.VMs, o.Hostname, o.FQDN, o.Eth0, o.Kernel, o.CPU, o.Mem, o.IP, o.Eth1, o.IpmiMac, o.Release, o.IPs, o.SN, o.Asset}
 }
 
 func (o *Audit) UpdateValues() []interface{} {
-	return []interface{}{o.Asset, o.Mem, o.VMs, o.Hostname, o.FQDN, o.Eth1, o.IpmiIP, o.Kernel, o.IP, o.IPs, o.Eth0, o.IpmiMac, o.SN, o.CPU, o.Release}
+	return []interface{}{o.IpmiIP, o.VMs, o.Hostname, o.FQDN, o.Eth0, o.Kernel, o.CPU, o.Mem, o.IP, o.Eth1, o.IpmiMac, o.Release, o.IPs, o.SN, o.Asset}
 }
 
 func (o *Audit) MemberPointers() []interface{} {
-	return []interface{}{&o.Asset, &o.Mem, &o.VMs, &o.Hostname, &o.FQDN, &o.Eth1, &o.IpmiIP, &o.Kernel, &o.IP, &o.IPs, &o.Eth0, &o.IpmiMac, &o.SN, &o.CPU, &o.Release}
+	return []interface{}{&o.IpmiIP, &o.VMs, &o.Hostname, &o.FQDN, &o.Eth0, &o.Kernel, &o.CPU, &o.Mem, &o.IP, &o.Eth1, &o.IpmiMac, &o.Release, &o.IPs, &o.SN, &o.Asset}
 }
 
 func (o *Audit) Key() int64 {
@@ -1154,11 +1154,11 @@ func (o *Audit) TableName() string {
 }
 
 func (o *Audit) SelectFields() string {
-	return "asset,mem,vms,hostname,fqdn,eth1,ipmi_ip,kernel,remote_addr,ips,eth0,ipmi_mac,sn,cpu,release"
+	return "ipmi_ip,vms,hostname,fqdn,eth0,kernel,cpu,mem,remote_addr,eth1,ipmi_mac,release,ips,sn,asset"
 }
 
 func (o *Audit) InsertFields() string {
-	return "asset,mem,vms,hostname,fqdn,eth1,ipmi_ip,kernel,remote_addr,ips,eth0,ipmi_mac,sn,cpu,release"
+	return "ipmi_ip,vms,hostname,fqdn,eth0,kernel,cpu,mem,remote_addr,eth1,ipmi_mac,release,ips,sn,asset"
 }
 
 func (o *Audit) KeyField() string {
@@ -1170,7 +1170,7 @@ func (o *Audit) KeyName() string {
 }
 
 func (o *Audit) Names() []string {
-	return []string{"Asset", "Mem", "VMs", "Hostname", "FQDN", "Eth1", "IpmiIP", "Kernel", "IP", "IPs", "Eth0", "IpmiMac", "SN", "CPU", "Release"}
+	return []string{"IpmiIP", "VMs", "Hostname", "FQDN", "Eth0", "Kernel", "CPU", "Mem", "IP", "Eth1", "IpmiMac", "Release", "IPs", "SN", "Asset"}
 }
 
 func (o *Audit) ModifiedBy(user int64, t time.Time) {
@@ -1188,15 +1188,15 @@ func (o PDU) NewObj() interface{} {
 // PDU DBObject interface functions
 //
 func (o *PDU) InsertValues() []interface{} {
-	return []interface{}{o.RID, o.Hostname, o.IP, o.Netmask, o.Gateway, o.DNS, o.AssetTag}
+	return []interface{}{o.IP, o.Netmask, o.Gateway, o.DNS, o.AssetTag, o.RID, o.Hostname}
 }
 
 func (o *PDU) UpdateValues() []interface{} {
-	return []interface{}{o.RID, o.Hostname, o.IP, o.Netmask, o.Gateway, o.DNS, o.AssetTag, o.ID}
+	return []interface{}{o.IP, o.Netmask, o.Gateway, o.DNS, o.AssetTag, o.RID, o.Hostname, o.ID}
 }
 
 func (o *PDU) MemberPointers() []interface{} {
-	return []interface{}{&o.ID, &o.RID, &o.Hostname, &o.IP, &o.Netmask, &o.Gateway, &o.DNS, &o.AssetTag}
+	return []interface{}{&o.ID, &o.IP, &o.Netmask, &o.Gateway, &o.DNS, &o.AssetTag, &o.RID, &o.Hostname}
 }
 
 func (o *PDU) Key() int64 {
@@ -1212,11 +1212,11 @@ func (o *PDU) TableName() string {
 }
 
 func (o *PDU) SelectFields() string {
-	return "id,rid,hostname,ip_address,netmask,gateway,dns,asset_tag"
+	return "id,ip_address,netmask,gateway,dns,asset_tag,rid,hostname"
 }
 
 func (o *PDU) InsertFields() string {
-	return "id,rid,hostname,ip_address,netmask,gateway,dns,asset_tag"
+	return "id,ip_address,netmask,gateway,dns,asset_tag,rid,hostname"
 }
 
 func (o *PDU) KeyField() string {
@@ -1228,7 +1228,7 @@ func (o *PDU) KeyName() string {
 }
 
 func (o *PDU) Names() []string {
-	return []string{"RID", "Hostname", "IP", "Netmask", "Gateway", "DNS", "AssetTag"}
+	return []string{"IP", "Netmask", "Gateway", "DNS", "AssetTag", "RID", "Hostname"}
 }
 
 func (o *PDU) ModifiedBy(user int64, t time.Time) {
@@ -1246,15 +1246,15 @@ func (o Inventory) NewObj() interface{} {
 // Inventory DBObject interface functions
 //
 func (o *Inventory) InsertValues() []interface{} {
-	return []interface{}{o.Mfgr, o.PartNumber, o.KID, o.PTI, o.Qty, o.Site, o.PartType, o.Description, o.Cents, o.Price}
+	return []interface{}{o.Cents, o.Price, o.KID, o.Mfgr, o.PartNumber, o.PartType, o.Description, o.PTI, o.Qty, o.Site}
 }
 
 func (o *Inventory) UpdateValues() []interface{} {
-	return []interface{}{o.Mfgr, o.PartNumber, o.KID, o.PTI, o.Qty, o.Site, o.PartType, o.Description, o.Cents, o.Price, o.STI}
+	return []interface{}{o.Cents, o.Price, o.KID, o.Mfgr, o.PartNumber, o.PartType, o.Description, o.PTI, o.Qty, o.Site, o.STI}
 }
 
 func (o *Inventory) MemberPointers() []interface{} {
-	return []interface{}{&o.STI, &o.Mfgr, &o.PartNumber, &o.KID, &o.PTI, &o.Qty, &o.Site, &o.PartType, &o.Description, &o.Cents, &o.Price}
+	return []interface{}{&o.STI, &o.Cents, &o.Price, &o.KID, &o.Mfgr, &o.PartNumber, &o.PartType, &o.Description, &o.PTI, &o.Qty, &o.Site}
 }
 
 func (o *Inventory) Key() int64 {
@@ -1270,11 +1270,11 @@ func (o *Inventory) TableName() string {
 }
 
 func (o *Inventory) SelectFields() string {
-	return "sti,mfgr,part_no,kid,pti,qty,site,part_type,description,cents,price"
+	return "sti,cents,price,kid,mfgr,part_no,part_type,description,pti,qty,site"
 }
 
 func (o *Inventory) InsertFields() string {
-	return "sti,mfgr,part_no,kid,pti,qty,site,part_type,description,cents,price"
+	return "sti,cents,price,kid,mfgr,part_no,part_type,description,pti,qty,site"
 }
 
 func (o *Inventory) KeyField() string {
@@ -1286,7 +1286,7 @@ func (o *Inventory) KeyName() string {
 }
 
 func (o *Inventory) Names() []string {
-	return []string{"Mfgr", "PartNumber", "KID", "PTI", "Qty", "Site", "PartType", "Description", "Cents", "Price"}
+	return []string{"Cents", "Price", "KID", "Mfgr", "PartNumber", "PartType", "Description", "PTI", "Qty", "Site"}
 }
 
 func (o *Inventory) ModifiedBy(user int64, t time.Time) {
@@ -1420,15 +1420,15 @@ func (o Device) NewObj() interface{} {
 // Device DBObject interface functions
 //
 func (o *Device) InsertValues() []interface{} {
-	return []interface{}{o.KID, o.Note, o.USR, o.Height, o.Hostname, o.SerialNo, o.AssetTag, o.DTI, o.Alias, o.Profile, o.Assigned, o.Modified, o.RID, o.TID, o.RU}
+	return []interface{}{o.DTI, o.TID, o.RU, o.Hostname, o.SerialNo, o.USR, o.KID, o.Alias, o.AssetTag, o.Assigned, o.Profile, o.Note, o.Modified, o.RID, o.Height}
 }
 
 func (o *Device) UpdateValues() []interface{} {
-	return []interface{}{o.KID, o.Note, o.USR, o.Height, o.Hostname, o.SerialNo, o.AssetTag, o.DTI, o.Alias, o.Profile, o.Assigned, o.Modified, o.RID, o.TID, o.RU, o.DID}
+	return []interface{}{o.DTI, o.TID, o.RU, o.Hostname, o.SerialNo, o.USR, o.KID, o.Alias, o.AssetTag, o.Assigned, o.Profile, o.Note, o.Modified, o.RID, o.Height, o.DID}
 }
 
 func (o *Device) MemberPointers() []interface{} {
-	return []interface{}{&o.DID, &o.KID, &o.Note, &o.USR, &o.Height, &o.Hostname, &o.SerialNo, &o.AssetTag, &o.DTI, &o.Alias, &o.Profile, &o.Assigned, &o.Modified, &o.RID, &o.TID, &o.RU}
+	return []interface{}{&o.DID, &o.DTI, &o.TID, &o.RU, &o.Hostname, &o.SerialNo, &o.USR, &o.KID, &o.Alias, &o.AssetTag, &o.Assigned, &o.Profile, &o.Note, &o.Modified, &o.RID, &o.Height}
 }
 
 func (o *Device) Key() int64 {
@@ -1444,11 +1444,11 @@ func (o *Device) TableName() string {
 }
 
 func (o *Device) SelectFields() string {
-	return "did,kid,note,usr,height,hostname,sn,asset_tag,dti,alias,profile,assigned,ts,rid,tid,ru"
+	return "did,dti,tid,ru,hostname,sn,usr,kid,alias,asset_tag,assigned,profile,note,ts,rid,height"
 }
 
 func (o *Device) InsertFields() string {
-	return "did,kid,note,usr,height,hostname,sn,asset_tag,dti,alias,profile,assigned,ts,rid,tid,ru"
+	return "did,dti,tid,ru,hostname,sn,usr,kid,alias,asset_tag,assigned,profile,note,ts,rid,height"
 }
 
 func (o *Device) KeyField() string {
@@ -1460,7 +1460,7 @@ func (o *Device) KeyName() string {
 }
 
 func (o *Device) Names() []string {
-	return []string{"KID", "Note", "USR", "Height", "Hostname", "SerialNo", "AssetTag", "DTI", "Alias", "Profile", "Assigned", "Modified", "RID", "TID", "RU"}
+	return []string{"DTI", "TID", "RU", "Hostname", "SerialNo", "USR", "KID", "Alias", "AssetTag", "Assigned", "Profile", "Note", "Modified", "RID", "Height"}
 }
 
 func (o *Device) ModifiedBy(user int64, t time.Time) {
@@ -1478,15 +1478,15 @@ func (o DeviceView) NewObj() interface{} {
 // DeviceView DBObject interface functions
 //
 func (o *DeviceView) InsertValues() []interface{} {
-	return []interface{}{o.Alias, o.Note, o.STI, o.RU, o.Hostname, o.SerialNo, o.AssetTag, o.Site, o.USR, o.Modified, o.DTI, o.TID, o.Rack, o.Height, o.Tag, o.KID, o.RID, o.Profile, o.Assigned, o.DevType}
+	return []interface{}{o.AssetTag, o.USR, o.STI, o.Hostname, o.Alias, o.Site, o.DTI, o.RID, o.RU, o.Height, o.Profile, o.KID, o.Rack, o.SerialNo, o.Assigned, o.Note, o.DevType, o.Tag, o.Modified, o.TID}
 }
 
 func (o *DeviceView) UpdateValues() []interface{} {
-	return []interface{}{o.Alias, o.Note, o.STI, o.RU, o.Hostname, o.SerialNo, o.AssetTag, o.Site, o.USR, o.Modified, o.DTI, o.TID, o.Rack, o.Height, o.Tag, o.KID, o.RID, o.Profile, o.Assigned, o.DevType, o.DID}
+	return []interface{}{o.AssetTag, o.USR, o.STI, o.Hostname, o.Alias, o.Site, o.DTI, o.RID, o.RU, o.Height, o.Profile, o.KID, o.Rack, o.SerialNo, o.Assigned, o.Note, o.DevType, o.Tag, o.Modified, o.TID, o.DID}
 }
 
 func (o *DeviceView) MemberPointers() []interface{} {
-	return []interface{}{&o.DID, &o.Alias, &o.Note, &o.STI, &o.RU, &o.Hostname, &o.SerialNo, &o.AssetTag, &o.Site, &o.USR, &o.Modified, &o.DTI, &o.TID, &o.Rack, &o.Height, &o.Tag, &o.KID, &o.RID, &o.Profile, &o.Assigned, &o.DevType}
+	return []interface{}{&o.DID, &o.AssetTag, &o.USR, &o.STI, &o.Hostname, &o.Alias, &o.Site, &o.DTI, &o.RID, &o.RU, &o.Height, &o.Profile, &o.KID, &o.Rack, &o.SerialNo, &o.Assigned, &o.Note, &o.DevType, &o.Tag, &o.Modified, &o.TID}
 }
 
 func (o *DeviceView) Key() int64 {
@@ -1502,11 +1502,11 @@ func (o *DeviceView) TableName() string {
 }
 
 func (o *DeviceView) SelectFields() string {
-	return "did,alias,note,sti,ru,hostname,sn,asset_tag,site,usr,ts,dti,tid,rack,height,tag,kid,rid,profile,assigned,devtype"
+	return "did,asset_tag,usr,sti,hostname,alias,site,dti,rid,ru,height,profile,kid,rack,sn,assigned,note,devtype,tag,ts,tid"
 }
 
 func (o *DeviceView) InsertFields() string {
-	return "did,alias,note,sti,ru,hostname,sn,asset_tag,site,usr,ts,dti,tid,rack,height,tag,kid,rid,profile,assigned,devtype"
+	return "did,asset_tag,usr,sti,hostname,alias,site,dti,rid,ru,height,profile,kid,rack,sn,assigned,note,devtype,tag,ts,tid"
 }
 
 func (o *DeviceView) KeyField() string {
@@ -1518,7 +1518,7 @@ func (o *DeviceView) KeyName() string {
 }
 
 func (o *DeviceView) Names() []string {
-	return []string{"Alias", "Note", "STI", "RU", "Hostname", "SerialNo", "AssetTag", "Site", "USR", "Modified", "DTI", "TID", "Rack", "Height", "Tag", "KID", "RID", "Profile", "Assigned", "DevType"}
+	return []string{"AssetTag", "USR", "STI", "Hostname", "Alias", "Site", "DTI", "RID", "RU", "Height", "Profile", "KID", "Rack", "SerialNo", "Assigned", "Note", "DevType", "Tag", "Modified", "TID"}
 }
 
 func (o *DeviceView) ModifiedBy(user int64, t time.Time) {
@@ -1536,15 +1536,15 @@ func (o DeviceIPs) NewObj() interface{} {
 // DeviceIPs DBObject interface functions
 //
 func (o *DeviceIPs) InsertValues() []interface{} {
-	return []interface{}{o.Mgmt, o.AssetTag, o.Note, o.Site, o.Modified, o.IPs, o.Rack, o.RU, o.Profile, o.Tag, o.DTI, o.Hostname, o.Alias, o.SerialNo, o.Assigned, o.DevType, o.USR, o.Height, o.RID, o.KID, o.TID, o.STI}
+	return []interface{}{o.KID, o.TID, o.RU, o.Alias, o.Profile, o.AssetTag, o.Tag, o.Note, o.DevType, o.STI, o.Rack, o.Height, o.Hostname, o.Mgmt, o.SerialNo, o.Site, o.RID, o.DTI, o.Assigned, o.IPs, o.USR, o.Modified}
 }
 
 func (o *DeviceIPs) UpdateValues() []interface{} {
-	return []interface{}{o.Mgmt, o.AssetTag, o.Note, o.Site, o.Modified, o.IPs, o.Rack, o.RU, o.Profile, o.Tag, o.DTI, o.Hostname, o.Alias, o.SerialNo, o.Assigned, o.DevType, o.USR, o.Height, o.RID, o.KID, o.TID, o.STI, o.DID}
+	return []interface{}{o.KID, o.TID, o.RU, o.Alias, o.Profile, o.AssetTag, o.Tag, o.Note, o.DevType, o.STI, o.Rack, o.Height, o.Hostname, o.Mgmt, o.SerialNo, o.Site, o.RID, o.DTI, o.Assigned, o.IPs, o.USR, o.Modified, o.DID}
 }
 
 func (o *DeviceIPs) MemberPointers() []interface{} {
-	return []interface{}{&o.DID, &o.Mgmt, &o.AssetTag, &o.Note, &o.Site, &o.Modified, &o.IPs, &o.Rack, &o.RU, &o.Profile, &o.Tag, &o.DTI, &o.Hostname, &o.Alias, &o.SerialNo, &o.Assigned, &o.DevType, &o.USR, &o.Height, &o.RID, &o.KID, &o.TID, &o.STI}
+	return []interface{}{&o.DID, &o.KID, &o.TID, &o.RU, &o.Alias, &o.Profile, &o.AssetTag, &o.Tag, &o.Note, &o.DevType, &o.STI, &o.Rack, &o.Height, &o.Hostname, &o.Mgmt, &o.SerialNo, &o.Site, &o.RID, &o.DTI, &o.Assigned, &o.IPs, &o.USR, &o.Modified}
 }
 
 func (o *DeviceIPs) Key() int64 {
@@ -1560,11 +1560,11 @@ func (o *DeviceIPs) TableName() string {
 }
 
 func (o *DeviceIPs) SelectFields() string {
-	return "did,mgmt,asset_tag,note,site,ts,ips,rack,ru,profile,tag,dti,hostname,alias,sn,assigned,devtype,usr,height,rid,kid,tid,sti"
+	return "did,kid,tid,ru,alias,profile,asset_tag,tag,note,devtype,sti,rack,height,hostname,mgmt,sn,site,rid,dti,assigned,ips,usr,ts"
 }
 
 func (o *DeviceIPs) InsertFields() string {
-	return "did,mgmt,asset_tag,note,site,ts,ips,rack,ru,profile,tag,dti,hostname,alias,sn,assigned,devtype,usr,height,rid,kid,tid,sti"
+	return "did,kid,tid,ru,alias,profile,asset_tag,tag,note,devtype,sti,rack,height,hostname,mgmt,sn,site,rid,dti,assigned,ips,usr,ts"
 }
 
 func (o *DeviceIPs) KeyField() string {
@@ -1576,7 +1576,7 @@ func (o *DeviceIPs) KeyName() string {
 }
 
 func (o *DeviceIPs) Names() []string {
-	return []string{"Mgmt", "AssetTag", "Note", "Site", "Modified", "IPs", "Rack", "RU", "Profile", "Tag", "DTI", "Hostname", "Alias", "SerialNo", "Assigned", "DevType", "USR", "Height", "RID", "KID", "TID", "STI"}
+	return []string{"KID", "TID", "RU", "Alias", "Profile", "AssetTag", "Tag", "Note", "DevType", "STI", "Rack", "Height", "Hostname", "Mgmt", "SerialNo", "Site", "RID", "DTI", "Assigned", "IPs", "USR", "Modified"}
 }
 
 func (o *DeviceIPs) ModifiedBy(user int64, t time.Time) {
@@ -1594,15 +1594,15 @@ func (o DeviceAdjust) NewObj() interface{} {
 // DeviceAdjust DBObject interface functions
 //
 func (o *DeviceAdjust) InsertValues() []interface{} {
-	return []interface{}{o.Height, o.RID, o.RU}
+	return []interface{}{o.RU, o.Height, o.RID}
 }
 
 func (o *DeviceAdjust) UpdateValues() []interface{} {
-	return []interface{}{o.Height, o.RID, o.RU, o.DID}
+	return []interface{}{o.RU, o.Height, o.RID, o.DID}
 }
 
 func (o *DeviceAdjust) MemberPointers() []interface{} {
-	return []interface{}{&o.DID, &o.Height, &o.RID, &o.RU}
+	return []interface{}{&o.DID, &o.RU, &o.Height, &o.RID}
 }
 
 func (o *DeviceAdjust) Key() int64 {
@@ -1618,11 +1618,11 @@ func (o *DeviceAdjust) TableName() string {
 }
 
 func (o *DeviceAdjust) SelectFields() string {
-	return "did,height,rid,ru"
+	return "did,ru,height,rid"
 }
 
 func (o *DeviceAdjust) InsertFields() string {
-	return "did,height,rid,ru"
+	return "did,ru,height,rid"
 }
 
 func (o *DeviceAdjust) KeyField() string {
@@ -1634,7 +1634,7 @@ func (o *DeviceAdjust) KeyName() string {
 }
 
 func (o *DeviceAdjust) Names() []string {
-	return []string{"Height", "RID", "RU"}
+	return []string{"RU", "Height", "RID"}
 }
 
 func (o *DeviceAdjust) ModifiedBy(user int64, t time.Time) {
@@ -1652,15 +1652,15 @@ func (o IFace) NewObj() interface{} {
 // IFace DBObject interface functions
 //
 func (o *IFace) InsertValues() []interface{} {
-	return []interface{}{o.MAC, o.CableTag, o.SwitchPort, o.DID, o.Mgmt, o.Port}
+	return []interface{}{o.SwitchPort, o.DID, o.Mgmt, o.Port, o.MAC, o.CableTag}
 }
 
 func (o *IFace) UpdateValues() []interface{} {
-	return []interface{}{o.MAC, o.CableTag, o.SwitchPort, o.DID, o.Mgmt, o.Port, o.IFD}
+	return []interface{}{o.SwitchPort, o.DID, o.Mgmt, o.Port, o.MAC, o.CableTag, o.IFD}
 }
 
 func (o *IFace) MemberPointers() []interface{} {
-	return []interface{}{&o.IFD, &o.MAC, &o.CableTag, &o.SwitchPort, &o.DID, &o.Mgmt, &o.Port}
+	return []interface{}{&o.IFD, &o.SwitchPort, &o.DID, &o.Mgmt, &o.Port, &o.MAC, &o.CableTag}
 }
 
 func (o *IFace) Key() int64 {
@@ -1676,11 +1676,11 @@ func (o *IFace) TableName() string {
 }
 
 func (o *IFace) SelectFields() string {
-	return "ifd,mac,cable_tag,switch_port,did,mgmt,port"
+	return "ifd,switch_port,did,mgmt,port,mac,cable_tag"
 }
 
 func (o *IFace) InsertFields() string {
-	return "ifd,mac,cable_tag,switch_port,did,mgmt,port"
+	return "ifd,switch_port,did,mgmt,port,mac,cable_tag"
 }
 
 func (o *IFace) KeyField() string {
@@ -1692,7 +1692,7 @@ func (o *IFace) KeyName() string {
 }
 
 func (o *IFace) Names() []string {
-	return []string{"MAC", "CableTag", "SwitchPort", "DID", "Mgmt", "Port"}
+	return []string{"SwitchPort", "DID", "Mgmt", "Port", "MAC", "CableTag"}
 }
 
 func (o *IFace) ModifiedBy(user int64, t time.Time) {
@@ -1710,15 +1710,15 @@ func (o IFaceView) NewObj() interface{} {
 // IFaceView DBObject interface functions
 //
 func (o *IFaceView) InsertValues() []interface{} {
-	return []interface{}{o.SwitchPort, o.IPT, o.Port, o.IP, o.CableTag, o.IPType, o.MAC, o.DID, o.IID, o.IP32, o.Mgmt}
+	return []interface{}{o.IP, o.IPType, o.SwitchPort, o.IID, o.IPT, o.Mgmt, o.Port, o.MAC, o.CableTag, o.DID, o.IP32}
 }
 
 func (o *IFaceView) UpdateValues() []interface{} {
-	return []interface{}{o.SwitchPort, o.IPT, o.Port, o.IP, o.CableTag, o.IPType, o.MAC, o.DID, o.IID, o.IP32, o.Mgmt, o.IFD}
+	return []interface{}{o.IP, o.IPType, o.SwitchPort, o.IID, o.IPT, o.Mgmt, o.Port, o.MAC, o.CableTag, o.DID, o.IP32, o.IFD}
 }
 
 func (o *IFaceView) MemberPointers() []interface{} {
-	return []interface{}{&o.IFD, &o.SwitchPort, &o.IPT, &o.Port, &o.IP, &o.CableTag, &o.IPType, &o.MAC, &o.DID, &o.IID, &o.IP32, &o.Mgmt}
+	return []interface{}{&o.IFD, &o.IP, &o.IPType, &o.SwitchPort, &o.IID, &o.IPT, &o.Mgmt, &o.Port, &o.MAC, &o.CableTag, &o.DID, &o.IP32}
 }
 
 func (o *IFaceView) Key() int64 {
@@ -1734,11 +1734,11 @@ func (o *IFaceView) TableName() string {
 }
 
 func (o *IFaceView) SelectFields() string {
-	return "ifd,switch_port,ipt,port,ipv4,cable_tag,iptype,mac,did,iid,ip32,mgmt"
+	return "ifd,ipv4,iptype,switch_port,iid,ipt,mgmt,port,mac,cable_tag,did,ip32"
 }
 
 func (o *IFaceView) InsertFields() string {
-	return "ifd,switch_port,ipt,port,ipv4,cable_tag,iptype,mac,did,iid,ip32,mgmt"
+	return "ifd,ipv4,iptype,switch_port,iid,ipt,mgmt,port,mac,cable_tag,did,ip32"
 }
 
 func (o *IFaceView) KeyField() string {
@@ -1750,7 +1750,7 @@ func (o *IFaceView) KeyName() string {
 }
 
 func (o *IFaceView) Names() []string {
-	return []string{"SwitchPort", "IPT", "Port", "IP", "CableTag", "IPType", "MAC", "DID", "IID", "IP32", "Mgmt"}
+	return []string{"IP", "IPType", "SwitchPort", "IID", "IPT", "Mgmt", "Port", "MAC", "CableTag", "DID", "IP32"}
 }
 
 func (o *IFaceView) ModifiedBy(user int64, t time.Time) {
@@ -1826,15 +1826,15 @@ func (o IPsUsed) NewObj() interface{} {
 // IPsUsed DBObject interface functions
 //
 func (o *IPsUsed) InsertValues() []interface{} {
-	return []interface{}{o.Note, o.ID, o.RID, o.Rack, o.Host, o.Hostname, o.STI, o.IPT, o.Site, o.IP, o.Type}
+	return []interface{}{o.Note, o.RID, o.IPT, o.Type, o.Host, o.Hostname, o.ID, o.STI, o.Site, o.Rack, o.IP}
 }
 
 func (o *IPsUsed) UpdateValues() []interface{} {
-	return []interface{}{o.Note, o.ID, o.RID, o.Rack, o.Host, o.Hostname, o.STI, o.IPT, o.Site, o.IP, o.Type}
+	return []interface{}{o.Note, o.RID, o.IPT, o.Type, o.Host, o.Hostname, o.ID, o.STI, o.Site, o.Rack, o.IP}
 }
 
 func (o *IPsUsed) MemberPointers() []interface{} {
-	return []interface{}{&o.Note, &o.ID, &o.RID, &o.Rack, &o.Host, &o.Hostname, &o.STI, &o.IPT, &o.Site, &o.IP, &o.Type}
+	return []interface{}{&o.Note, &o.RID, &o.IPT, &o.Type, &o.Host, &o.Hostname, &o.ID, &o.STI, &o.Site, &o.Rack, &o.IP}
 }
 
 func (o *IPsUsed) Key() int64 {
@@ -1849,11 +1849,11 @@ func (o *IPsUsed) TableName() string {
 }
 
 func (o *IPsUsed) SelectFields() string {
-	return "note,id,rid,rack,host,hostname,sti,ipt,site,ip,iptype"
+	return "note,rid,ipt,iptype,host,hostname,id,sti,site,rack,ip"
 }
 
 func (o *IPsUsed) InsertFields() string {
-	return "note,id,rid,rack,host,hostname,sti,ipt,site,ip,iptype"
+	return "note,rid,ipt,iptype,host,hostname,id,sti,site,rack,ip"
 }
 
 func (o *IPsUsed) KeyField() string {
@@ -1865,7 +1865,7 @@ func (o *IPsUsed) KeyName() string {
 }
 
 func (o *IPsUsed) Names() []string {
-	return []string{"Note", "ID", "RID", "Rack", "Host", "Hostname", "STI", "IPT", "Site", "IP", "Type"}
+	return []string{"Note", "RID", "IPT", "Type", "Host", "Hostname", "ID", "STI", "Site", "Rack", "IP"}
 }
 
 func (o *IPsUsed) ModifiedBy(user int64, t time.Time) {
@@ -1883,15 +1883,15 @@ func (o Provider) NewObj() interface{} {
 // Provider DBObject interface functions
 //
 func (o *Provider) InsertValues() []interface{} {
-	return []interface{}{o.Contact, o.Phone, o.EMail, o.URL, o.Note, o.Name}
+	return []interface{}{o.Name, o.Contact, o.Phone, o.EMail, o.URL, o.Note}
 }
 
 func (o *Provider) UpdateValues() []interface{} {
-	return []interface{}{o.Contact, o.Phone, o.EMail, o.URL, o.Note, o.Name, o.PRI}
+	return []interface{}{o.Name, o.Contact, o.Phone, o.EMail, o.URL, o.Note, o.PRI}
 }
 
 func (o *Provider) MemberPointers() []interface{} {
-	return []interface{}{&o.PRI, &o.Contact, &o.Phone, &o.EMail, &o.URL, &o.Note, &o.Name}
+	return []interface{}{&o.PRI, &o.Name, &o.Contact, &o.Phone, &o.EMail, &o.URL, &o.Note}
 }
 
 func (o *Provider) Key() int64 {
@@ -1907,11 +1907,11 @@ func (o *Provider) TableName() string {
 }
 
 func (o *Provider) SelectFields() string {
-	return "pri,provider,a_side_xcon,a_side_handoff,z_side_xcon,note,name"
+	return "pri,name,provider,a_side_xcon,a_side_handoff,z_side_xcon,note"
 }
 
 func (o *Provider) InsertFields() string {
-	return "pri,provider,a_side_xcon,a_side_handoff,z_side_xcon,note,name"
+	return "pri,name,provider,a_side_xcon,a_side_handoff,z_side_xcon,note"
 }
 
 func (o *Provider) KeyField() string {
@@ -1923,7 +1923,7 @@ func (o *Provider) KeyName() string {
 }
 
 func (o *Provider) Names() []string {
-	return []string{"Contact", "Phone", "EMail", "URL", "Note", "Name"}
+	return []string{"Name", "Contact", "Phone", "EMail", "URL", "Note"}
 }
 
 func (o *Provider) ModifiedBy(user int64, t time.Time) {
@@ -1941,15 +1941,15 @@ func (o Circuit) NewObj() interface{} {
 // Circuit DBObject interface functions
 //
 func (o *Circuit) InsertValues() []interface{} {
-	return []interface{}{o.ZSideXConn, o.ZSideHandoff, o.Note, o.STI, o.PRI, o.CircuitID, o.ASideXConn, o.ASideHandoff}
+	return []interface{}{o.ASideXConn, o.ASideHandoff, o.ZSideXConn, o.ZSideHandoff, o.Note, o.STI, o.PRI, o.CircuitID}
 }
 
 func (o *Circuit) UpdateValues() []interface{} {
-	return []interface{}{o.ZSideXConn, o.ZSideHandoff, o.Note, o.STI, o.PRI, o.CircuitID, o.ASideXConn, o.ASideHandoff, o.CID}
+	return []interface{}{o.ASideXConn, o.ASideHandoff, o.ZSideXConn, o.ZSideHandoff, o.Note, o.STI, o.PRI, o.CircuitID, o.CID}
 }
 
 func (o *Circuit) MemberPointers() []interface{} {
-	return []interface{}{&o.CID, &o.ZSideXConn, &o.ZSideHandoff, &o.Note, &o.STI, &o.PRI, &o.CircuitID, &o.ASideXConn, &o.ASideHandoff}
+	return []interface{}{&o.CID, &o.ASideXConn, &o.ASideHandoff, &o.ZSideXConn, &o.ZSideHandoff, &o.Note, &o.STI, &o.PRI, &o.CircuitID}
 }
 
 func (o *Circuit) Key() int64 {
@@ -1965,11 +1965,11 @@ func (o *Circuit) TableName() string {
 }
 
 func (o *Circuit) SelectFields() string {
-	return "cid,z_side_xcon,z_side_handoff,note,site,pri,circuit_id,a_side_xcon,a_side_handoff"
+	return "cid,a_side_xcon,a_side_handoff,z_side_xcon,z_side_handoff,note,site,pri,circuit_id"
 }
 
 func (o *Circuit) InsertFields() string {
-	return "cid,z_side_xcon,z_side_handoff,note,site,pri,circuit_id,a_side_xcon,a_side_handoff"
+	return "cid,a_side_xcon,a_side_handoff,z_side_xcon,z_side_handoff,note,site,pri,circuit_id"
 }
 
 func (o *Circuit) KeyField() string {
@@ -1981,7 +1981,7 @@ func (o *Circuit) KeyName() string {
 }
 
 func (o *Circuit) Names() []string {
-	return []string{"ZSideXConn", "ZSideHandoff", "Note", "STI", "PRI", "CircuitID", "ASideXConn", "ASideHandoff"}
+	return []string{"ASideXConn", "ASideHandoff", "ZSideXConn", "ZSideHandoff", "Note", "STI", "PRI", "CircuitID"}
 }
 
 func (o *Circuit) ModifiedBy(user int64, t time.Time) {
@@ -1999,15 +1999,15 @@ func (o CircuitView) NewObj() interface{} {
 // CircuitView DBObject interface functions
 //
 func (o *CircuitView) InsertValues() []interface{} {
-	return []interface{}{o.CircuitID, o.ZSideXConn, o.ZSideHandoff, o.Note, o.PRI, o.Provider, o.ASideXConn, o.ASideHandoff, o.STI, o.Site}
+	return []interface{}{o.CircuitID, o.ASideXConn, o.ZSideXConn, o.ZSideHandoff, o.ASideHandoff, o.Note, o.STI, o.PRI, o.Site, o.Provider}
 }
 
 func (o *CircuitView) UpdateValues() []interface{} {
-	return []interface{}{o.CircuitID, o.ZSideXConn, o.ZSideHandoff, o.Note, o.PRI, o.Provider, o.ASideXConn, o.ASideHandoff, o.STI, o.Site, o.CID}
+	return []interface{}{o.CircuitID, o.ASideXConn, o.ZSideXConn, o.ZSideHandoff, o.ASideHandoff, o.Note, o.STI, o.PRI, o.Site, o.Provider, o.CID}
 }
 
 func (o *CircuitView) MemberPointers() []interface{} {
-	return []interface{}{&o.CID, &o.CircuitID, &o.ZSideXConn, &o.ZSideHandoff, &o.Note, &o.PRI, &o.Provider, &o.ASideXConn, &o.ASideHandoff, &o.STI, &o.Site}
+	return []interface{}{&o.CID, &o.CircuitID, &o.ASideXConn, &o.ZSideXConn, &o.ZSideHandoff, &o.ASideHandoff, &o.Note, &o.STI, &o.PRI, &o.Site, &o.Provider}
 }
 
 func (o *CircuitView) Key() int64 {
@@ -2023,11 +2023,11 @@ func (o *CircuitView) TableName() string {
 }
 
 func (o *CircuitView) SelectFields() string {
-	return "cid,circuit_id,z_side_xcon,z_side_handoff,note,pri,provider,a_side_xcon,a_side_handoff,site,site"
+	return "cid,circuit_id,a_side_xcon,z_side_xcon,z_side_handoff,a_side_handoff,note,site,pri,site,provider"
 }
 
 func (o *CircuitView) InsertFields() string {
-	return "cid,circuit_id,z_side_xcon,z_side_handoff,note,pri,provider,a_side_xcon,a_side_handoff,site,site"
+	return "cid,circuit_id,a_side_xcon,z_side_xcon,z_side_handoff,a_side_handoff,note,site,pri,site,provider"
 }
 
 func (o *CircuitView) KeyField() string {
@@ -2039,7 +2039,7 @@ func (o *CircuitView) KeyName() string {
 }
 
 func (o *CircuitView) Names() []string {
-	return []string{"CircuitID", "ZSideXConn", "ZSideHandoff", "Note", "PRI", "Provider", "ASideXConn", "ASideHandoff", "STI", "Site"}
+	return []string{"CircuitID", "ASideXConn", "ZSideXConn", "ZSideHandoff", "ASideHandoff", "Note", "STI", "PRI", "Site", "Provider"}
 }
 
 func (o *CircuitView) ModifiedBy(user int64, t time.Time) {
@@ -2115,15 +2115,15 @@ func (o CircuitList) NewObj() interface{} {
 // CircuitList DBObject interface functions
 //
 func (o *CircuitList) InsertValues() []interface{} {
-	return []interface{}{o.SubNote, o.PRI, o.ASideHandoff, o.Provider, o.CircuitID, o.SubID, o.ASideXConn, o.ZSideXConn, o.ZSideHandoff, o.STI, o.Site, o.Note}
+	return []interface{}{o.SubNote, o.PRI, o.Provider, o.CircuitID, o.ZSideHandoff, o.Note, o.ZSideXConn, o.STI, o.Site, o.SubID, o.ASideXConn, o.ASideHandoff}
 }
 
 func (o *CircuitList) UpdateValues() []interface{} {
-	return []interface{}{o.SubNote, o.PRI, o.ASideHandoff, o.Provider, o.CircuitID, o.SubID, o.ASideXConn, o.ZSideXConn, o.ZSideHandoff, o.STI, o.Site, o.Note, o.CID}
+	return []interface{}{o.SubNote, o.PRI, o.Provider, o.CircuitID, o.ZSideHandoff, o.Note, o.ZSideXConn, o.STI, o.Site, o.SubID, o.ASideXConn, o.ASideHandoff, o.CID}
 }
 
 func (o *CircuitList) MemberPointers() []interface{} {
-	return []interface{}{&o.CID, &o.SubNote, &o.PRI, &o.ASideHandoff, &o.Provider, &o.CircuitID, &o.SubID, &o.ASideXConn, &o.ZSideXConn, &o.ZSideHandoff, &o.STI, &o.Site, &o.Note}
+	return []interface{}{&o.CID, &o.SubNote, &o.PRI, &o.Provider, &o.CircuitID, &o.ZSideHandoff, &o.Note, &o.ZSideXConn, &o.STI, &o.Site, &o.SubID, &o.ASideXConn, &o.ASideHandoff}
 }
 
 func (o *CircuitList) Key() int64 {
@@ -2139,11 +2139,11 @@ func (o *CircuitList) TableName() string {
 }
 
 func (o *CircuitList) SelectFields() string {
-	return "cid,sub_note,pri,a_side_handoff,provider,circuit_id,sub_circuit_id,a_side_xcon,z_side_xcon,z_side_handoff,site,site,note"
+	return "cid,sub_note,pri,provider,circuit_id,z_side_handoff,note,z_side_xcon,site,site,sub_circuit_id,a_side_xcon,a_side_handoff"
 }
 
 func (o *CircuitList) InsertFields() string {
-	return "cid,sub_note,pri,a_side_handoff,provider,circuit_id,sub_circuit_id,a_side_xcon,z_side_xcon,z_side_handoff,site,site,note"
+	return "cid,sub_note,pri,provider,circuit_id,z_side_handoff,note,z_side_xcon,site,site,sub_circuit_id,a_side_xcon,a_side_handoff"
 }
 
 func (o *CircuitList) KeyField() string {
@@ -2155,7 +2155,7 @@ func (o *CircuitList) KeyName() string {
 }
 
 func (o *CircuitList) Names() []string {
-	return []string{"SubNote", "PRI", "ASideHandoff", "Provider", "CircuitID", "SubID", "ASideXConn", "ZSideXConn", "ZSideHandoff", "STI", "Site", "Note"}
+	return []string{"SubNote", "PRI", "Provider", "CircuitID", "ZSideHandoff", "Note", "ZSideXConn", "STI", "Site", "SubID", "ASideXConn", "ASideHandoff"}
 }
 
 func (o *CircuitList) ModifiedBy(user int64, t time.Time) {
@@ -2231,15 +2231,15 @@ func (o VLAN) NewObj() interface{} {
 // VLAN DBObject interface functions
 //
 func (o *VLAN) InsertValues() []interface{} {
-	return []interface{}{o.USR, o.Name, o.Gateway, o.Route, o.Netmask, o.Modified, o.STI, o.Profile, o.Note}
+	return []interface{}{o.STI, o.Route, o.Netmask, o.USR, o.Modified, o.Name, o.Profile, o.Gateway, o.Note}
 }
 
 func (o *VLAN) UpdateValues() []interface{} {
-	return []interface{}{o.USR, o.Name, o.Gateway, o.Route, o.Netmask, o.Modified, o.STI, o.Profile, o.Note, o.VLI}
+	return []interface{}{o.STI, o.Route, o.Netmask, o.USR, o.Modified, o.Name, o.Profile, o.Gateway, o.Note, o.VLI}
 }
 
 func (o *VLAN) MemberPointers() []interface{} {
-	return []interface{}{&o.VLI, &o.USR, &o.Name, &o.Gateway, &o.Route, &o.Netmask, &o.Modified, &o.STI, &o.Profile, &o.Note}
+	return []interface{}{&o.VLI, &o.STI, &o.Route, &o.Netmask, &o.USR, &o.Modified, &o.Name, &o.Profile, &o.Gateway, &o.Note}
 }
 
 func (o *VLAN) Key() int64 {
@@ -2255,11 +2255,11 @@ func (o *VLAN) TableName() string {
 }
 
 func (o *VLAN) SelectFields() string {
-	return "vli,usr,name,gateway,route,netmask,ts,sti,profile,note"
+	return "vli,sti,route,netmask,usr,ts,name,profile,gateway,note"
 }
 
 func (o *VLAN) InsertFields() string {
-	return "vli,usr,name,gateway,route,netmask,ts,sti,profile,note"
+	return "vli,sti,route,netmask,usr,ts,name,profile,gateway,note"
 }
 
 func (o *VLAN) KeyField() string {
@@ -2271,7 +2271,7 @@ func (o *VLAN) KeyName() string {
 }
 
 func (o *VLAN) Names() []string {
-	return []string{"USR", "Name", "Gateway", "Route", "Netmask", "Modified", "STI", "Profile", "Note"}
+	return []string{"STI", "Route", "Netmask", "USR", "Modified", "Name", "Profile", "Gateway", "Note"}
 }
 
 func (o *VLAN) ModifiedBy(user int64, t time.Time) {
@@ -2291,15 +2291,15 @@ func (o VLANView) NewObj() interface{} {
 // VLANView DBObject interface functions
 //
 func (o *VLANView) InsertValues() []interface{} {
-	return []interface{}{o.Route, o.Netmask, o.Note, o.USR, o.Site, o.Profile, o.Gateway, o.STI, o.Name, o.Modified}
+	return []interface{}{o.STI, o.Profile, o.Route, o.Netmask, o.Note, o.USR, o.Name, o.Site, o.Gateway, o.Modified}
 }
 
 func (o *VLANView) UpdateValues() []interface{} {
-	return []interface{}{o.Route, o.Netmask, o.Note, o.USR, o.Site, o.Profile, o.Gateway, o.STI, o.Name, o.Modified, o.VLI}
+	return []interface{}{o.STI, o.Profile, o.Route, o.Netmask, o.Note, o.USR, o.Name, o.Site, o.Gateway, o.Modified, o.VLI}
 }
 
 func (o *VLANView) MemberPointers() []interface{} {
-	return []interface{}{&o.VLI, &o.Route, &o.Netmask, &o.Note, &o.USR, &o.Site, &o.Profile, &o.Gateway, &o.STI, &o.Name, &o.Modified}
+	return []interface{}{&o.VLI, &o.STI, &o.Profile, &o.Route, &o.Netmask, &o.Note, &o.USR, &o.Name, &o.Site, &o.Gateway, &o.Modified}
 }
 
 func (o *VLANView) Key() int64 {
@@ -2315,11 +2315,11 @@ func (o *VLANView) TableName() string {
 }
 
 func (o *VLANView) SelectFields() string {
-	return "vli,route,netmask,note,usr,site,profile,gateway,sti,name,ts"
+	return "vli,sti,profile,route,netmask,note,usr,name,site,gateway,ts"
 }
 
 func (o *VLANView) InsertFields() string {
-	return "vli,route,netmask,note,usr,site,profile,gateway,sti,name,ts"
+	return "vli,sti,profile,route,netmask,note,usr,name,site,gateway,ts"
 }
 
 func (o *VLANView) KeyField() string {
@@ -2331,7 +2331,7 @@ func (o *VLANView) KeyName() string {
 }
 
 func (o *VLANView) Names() []string {
-	return []string{"Route", "Netmask", "Note", "USR", "Site", "Profile", "Gateway", "STI", "Name", "Modified"}
+	return []string{"STI", "Profile", "Route", "Netmask", "Note", "USR", "Name", "Site", "Gateway", "Modified"}
 }
 
 func (o *VLANView) ModifiedBy(user int64, t time.Time) {

@@ -19,12 +19,6 @@
     <script src="/dcman/static/js/vue-router.js"></script>
     <script src="/dcman/static/js/util.js"></script>
 
-    <!--
-  <script src="https://ok1static.oktacdn.com/assets/js/sdk/okta-signin-widget/1.4.0/js/okta-sign-in.min.js" type="text/javascript"></script>
-  <link href="https://ok1static.oktacdn.com/assets/js/sdk/okta-signin-widget/1.4.0/css/okta-sign-in.min.css" type="text/css" rel="stylesheet">
-  <link href="https://ok1static.oktacdn.com/assets/js/sdk/okta-signin-widget/1.4.0/css/okta-theme.css" type="text/css" rel="stylesheet">
-  -->
-
 </head>
 <body>
 
@@ -36,9 +30,6 @@
     </div>
 
     <div id="log"/>
-<!--
-    <button id="btn">Make a promise!</button>
--->
     
 </body>
 </html>
@@ -102,6 +93,8 @@
             <li><a v-link="{ path: '/vlan/list' }">VLANs</a></li>
             <li role="separator" class="divider"></li>
             <li><a v-link="{ path: '/ip/reserve' }">Reserve IPs</a></li>
+            <li role="separator" class="divider"></li>
+            <li><a v-link="{ path: '/ip/types' }">IP Types</a></li>
           </ul>
         </li>
       </ul>
@@ -937,9 +930,6 @@
                 <th class="rcell" v-if="audit">Up</th>
                 <th class="rcell" v-if="audit">Down</th>
             </tr>
-            <!--
-            <tr v-for="lay in layouts.units" class="rackrow rackheight{{lay.Height}}" v-if="lay.Height || audit">
-            -->
             <tr v-for="lay in layouts.units" class="rackrow rackheight{{lay.Height}}" v-if="lay.Height || audit">
                 <td class="rcell">
                     <template v-if="lay.Hostname">
@@ -962,9 +952,23 @@
                     <a v-if="lay.Hostname" v-link="{ path: '/device/edit/' + lay.DID}">{{ lay.Hostname }}</a>
                     </template>
                 </td>
-                <td class="rcell">{{ lay.Mgmt }}</td>
+                <td class="rcell">
+                    <template v-if="audit">
+                    <input type="text" v-if="lay.Hostname" v-bind:class="{badentry: lay.badMgmt}" v-model="lay.newMgmt" @change="changeMgmt(lay)">
+                    </template>
+                    <template v-else>
+                    {{ lay.Mgmt }}
+                    </template>
+                </td>
                 <td class="rcell">{{ lay.pingMgmt }}</td>
-                <td class="rcell">{{ lay.IPs }}</td>
+                <td class="rcell">
+                    <template v-if="audit">
+                    <input type="text" v-if="lay.Hostname" v-bind:class="{badentry: lay.badIP}" v-model="lay.newIP" @change="changeIP(lay)">
+                    </template>
+                    <template v-else>
+                    {{ lay.IPs }}
+                    </template>
+                </td>
                 <td class="rcell">{{ lay.pingIP }}</td>
                 <td class="rcell" v-if="audit">
                     <button v-if="okUp(lay)" v-on:click.prevent="moveUp(lay)">&uarr;</button>
@@ -1781,5 +1785,65 @@
     </tally-table>
 </div>
 </script>
+
+<script type="text/x-template" id="tmpl-ip-types">
+<div>
+    <h1 class="mytitle">IP Types</h1>
+<!--
+    <label for="query">Search</label>
+    <input id="query" name="query" v-model="searchQuery">
+-->
+    <iptypes-grid
+        :rows="rows"
+        :columns="columns"
+    >
+     ></iptypes-grid>
+</div>
+</script>
+
+<script type="text/x-template" id="tmpl-iptype-edit">
+    <div id="tagform">
+        <form class="form-horizontal">
+            <fieldset class="col-xs-12">
+                <div class="form-group">
+                    <label for="name" class="control-label col-xs-2">Name</label>
+                    <div class="col-xs-2">
+                        <input type="text" class="form-control" id="name" v-model="IPType.Name" @change="newname">
+                    </div>
+                </div>
+            </fieldset>
+            <fieldset class="col-xs-12">
+                <div class="form-group">
+                    <label for="multi" class="control-label col-xs-2">Multiple</label>
+                    <div class="col-xs-2">
+                        <input type="checkbox" class="form-control" id="multi" v-model="IPType.Multi">
+                    </div>
+                </div>
+            </fieldset>
+
+            <fieldset class="col-xs-12">
+                <div class="form-group">
+                    <div class="col-xs-offset-1 col-xs-1">
+                        <button class="btn" v-on:click.prevent="showList">Cancel</button>
+                    </div>
+                    <div class="col-xs-1">
+                        <button :disabled="! IPType.Name" class="btn" v-on:click.prevent="saveSelf">
+                        <template v-if="IPType.IPT">
+                        Update
+                        </template>
+                        <template v-else>
+                        Add
+                        </template>
+                        </button>
+                    </div>
+                    <div class="col-xs-1" v-if="IPType.IPT">
+                        <button class="btn" v-on:click.prevent="deleteSelf">Delete</button>
+                    </div>
+                </div>
+            </fieldset>
+        </form>
+    </div>
+</script>
+
 <!-- instantiate our components -->
 <script src="/dcman/static/js/spa.js"></script>
