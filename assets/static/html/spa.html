@@ -211,12 +211,21 @@
 
         <label for="query">Search</label>
         <input id="query" name="query" v-model="searchQuery">
-        <part-table
-            v-bind:kfilter="ktype"
-            :rows="rows"
-            :columns="columns"
-            :filter-key="searchQuery">
-        </part-table>
+        <label for="pagerows">page size</label>
+        <select id="pagerows" v-model="pagerows">
+            <option v-for="size in sizes" v-bind:value="size">
+                {{ size }}
+            </option>
+        </select>
+        <paged-grid 
+            :data="rows | partFilter | filterBy searchQuery" 
+            :columns="columns" 
+            :linkable="linkable"
+            :linkPath="linkpath"
+            :move-pages="movePages" 
+            :start-row="startRow" 
+            :rows-per-page="rowsPerPage">
+        </paged-grid>
     </div>
 </script>
 
@@ -225,11 +234,15 @@
         <h1 class="mytitle">Part Types</h1>
         <label for="query">Search</label>
         <input id="query" name="query" v-model="searchQuery">
-        <part-types-table
-            :rows="rows"
-            :columns="columns"
-            :filter-key="searchQuery">
-        </part-types-table>
+        <paged-grid 
+            :data="rows | filterBy searchQuery" 
+            :columns="columns" 
+            :linkable="linkable"
+            :linkPath="linkpath"
+            :move-pages="movePages" 
+            :start-row="startRow" 
+            :rows-per-page="rowsPerPage">
+        </paged-grid>
     </div>
 </script>
 
@@ -357,40 +370,50 @@
 
 
 <script type="text/x-template" id="tmpl-ip-list">
-<div>
-    <h1 class="mytitle">{{sitename}} Network IP Addresses</h1>
-    <label for="STI">Site</label>
-    <select id="STI" v-model="STI">
-        <option v-for="dc in sites" v-bind:value="dc.STI">
-            {{ dc.Name }}
-        </option>
-    </select>
+    <div>
+        <h1 class="mytitle">{{sitename}} Network IP Addresses</h1>
 
-    <label for="Type">Type</label>
-    <select id="Type" v-model="Type">
-        <option v-for="t in typelist" v-bind:value="t">
-            {{ t }}
-        </option>
-    </select>
+        <label for="STI">Site</label>
+        <select id="STI" v-model="STI">
+            <option v-for="dc in sites" v-bind:value="dc.STI">
+                {{ dc.Name }}
+            </option>
+        </select>
 
-    <label for="Host">Kind</label>
-    <select id="Host" v-model="Host">
-        <option v-for="h in hostlist" v-bind:value="h">
-            {{ h }}
-        </option>
-    </select>
+        <label for="Type">Type</label>
+        <select id="Type" v-model="IPT">
+            <option v-for="t in typelist" v-bind:value="t.IPT">
+                {{ t.Name }}
+            </option>
+        </select>
 
-    <label for="query">Search</label>
-    <input id="query" name="query" v-model="searchQuery">
-    <ip-grid
-        :rows="rows"
-        :columns="columns"
-        :iptypes="ipTypes"
-        :Host="Host"
-        :Type="Type"
-    >
-     ></ip-grid>
-</div>
+        <label for="Host">Kind</label>
+        <select id="Host" v-model="Host">
+            <option v-for="h in hostlist" v-bind:value="h">
+                {{ h }}
+            </option>
+        </select>
+
+        <label for="query">Search</label>
+        <input id="query" name="query" v-model="searchQuery">
+
+        <label for="pagerows">page size</label>
+        <select id="pagerows" v-model="pagerows">
+            <option v-for="size in sizes" v-bind:value="size">
+                {{ size }}
+            </option>
+        </select>
+
+        <paged-grid 
+            :data="rows | ipFilter | filterBy searchQuery" 
+            :columns="columns" 
+            :linkable="linkable"
+            :linkPath="linkpath"
+            :move-pages="movePages" 
+            :start-row="startRow" 
+            :rows-per-page="rowsPerPage">
+        </paged-grid>
+    </div>
 </script>
 
 <script type="text/x-template" id="tmpl-device-list">
@@ -412,14 +435,25 @@
                 </option>
             </select>
 
-            <label for="query">Search</label>
-            <input id="query" name="query" v-model="searchQuery">
-            <device-grid
-                v-bind:RID="RID"
-                :rows="gridData"
-                :columns="gridColumns"
-                :filter-key="searchQuery">
-            </device-grid>
+            <label for="query">Filter</label>
+            <input name="query" v-model="searchQuery" @keyup="resetStartRow">
+
+            <label for="pagerows">page size</label>
+            <select id="pagerows" v-model="pagerows">
+                <option v-for="size in sizes" v-bind:value="size">
+                    {{ size }}
+                </option>
+            </select>
+
+            <paged-grid 
+                :data="rows | rackFilter | filterBy searchQuery" 
+                :columns="columns" 
+                :linkable="canLink"
+                :linkPath="linkFN"
+                :move-pages="movePages" 
+                :start-row="startRow" 
+                :rows-per-page="rowsPerPage">
+            </paged-grid>
         </div>
     </div>
 </script>
@@ -483,14 +517,25 @@
             </option>
         </select>
 
-        <label for="query">Search</label>
+        <label for="query">Filter</label>
         <input id="query" name="query" v-model="searchQuery">
-        <vm-grid
-            v-bind:RID="RID"
-            :rows="gridData"
-            :columns="gridColumns"
-            :filter-key="searchQuery">
-        </vm-grid>
+
+        <label for="pagerows">page size</label>
+        <select id="pagerows" v-model="pagerows">
+            <option v-for="size in sizes" v-bind:value="size">
+                {{ size }}
+            </option>
+        </select>
+
+        <paged-grid 
+            :data="data | filterBy searchQuery" 
+            :columns="columns" 
+            :linkable="linkable"
+            :linkPath="linkpath"
+            :move-pages="movePages" 
+            :start-row="startRow" 
+            :rows-per-page="rowsPerPage">
+        </paged-grid>
     </div>
 </script>
 
@@ -870,13 +915,25 @@
             </option>
         </select>
 
-        <label for="query">Search</label>
+        <label for="query">Filter</label>
         <input id="query" v-model="searchQuery">
-        <rack-grid
-            :rows="rows"
-            :columns="columns"
-            :filter-key="searchQuery">
-        </rack-grid>
+
+        <label for="pagerows">page size</label>
+        <select id="pagerows" v-model="pagerows">
+            <option v-for="size in sizes" v-bind:value="size">
+                {{ size }}
+            </option>
+        </select>
+
+        <paged-grid 
+            :data="rows | filterBy searchQuery" 
+            :columns="columns" 
+            :linkable="linkable"
+            :linkPath="linkpath"
+            :move-pages="movePages" 
+            :start-row="startRow" 
+            :rows-per-page="rowsPerPage">
+        </paged-grid>
     </div>
 </script>
 
@@ -1091,27 +1148,39 @@
             {{ site.Name }}
         </option>
         </select>
-<!--
-        INV: {{ partData.length }}
--->
         <label for="query">Search</label>
         <input id="query" v-model="searchQuery">
-        <inventory-grid
-            :rows="partData"
-            :columns="gridColumns"
-            :filter-key="searchQuery">
-        </inventory-grid>
+
+        <label for="pagerows">page size</label>
+        <select id="pagerows" v-model="pagerows">
+            <option v-for="size in sizes" v-bind:value="size">
+                {{ size }}
+            </option>
+        </select>
+
+        <paged-grid 
+            :data="partData | filterBy searchQuery" 
+            :columns="columns" 
+            :linkable="linkable"
+            :linkPath="linkpath"
+            :start-row="startRow" 
+            :rows-per-page="rowsPerPage">
+        </paged-grid>
     </div>
 </script>
+
 
 <script type="text/x-template" id="tmpl-user-list">
     <div>
         <h1 class="mytitle">Our Users</h1>
-        <user-grid
-            :rows="rows"
-            :columns="columns"
-            :filter-key="searchQuery">
-        </user-grid>
+        <paged-grid 
+            :data="rows | filterBy searchQuery" 
+            :columns="columns" 
+            :linkable="linkable"
+            :linkPath="linkpath"
+            :start-row="startRow" 
+            :rows-per-page="rowsPerPage">
+        </paged-grid>
     </div>
 </script>
 
@@ -1119,11 +1188,29 @@
 <script type="text/x-template" id="tmpl-vlan-list">
     <div>
         <h1 class="mytitle">VLANs</h1>
-        <vlan-grid
-            :rows="rows"
-            :columns="columns"
-            :filter-key="searchQuery">
-        </vlan-grid>
+
+        <label for="STI">Site</label>
+        <select id="STI" name="STI" v-model="STI">
+        <option v-for="site in sites" v-bind:value="site.STI">
+            {{ site.Name }}
+        </option>
+        </select>
+
+        <label for="pagerows">page size</label>
+        <select id="pagerows" v-model="pagerows">
+            <option v-for="size in sizes" v-bind:value="size">
+                {{ size }}
+            </option>
+        </select>
+
+        <paged-grid 
+            :data="data | siteFilter" 
+            :columns="columns" 
+            :linkable="linkable"
+            :linkPath="linkpath"
+            :start-row="startRow" 
+            :rows-per-page="rowsPerPage">
+        </paged-grid>
     </div>
 </script>
 
@@ -1148,7 +1235,7 @@
                 <div class="form-group">
                     <label for="Name" class="control-label col-xs-2">Name</label>
                     <div class="col-xs-2">
-                        <input type="text" id="Name" v-model="VLAN.Name"/>
+                        <input type="text" id="Name" v-model="VLAN.Name" number/>
                     </div>
                 </div>
 
@@ -1197,6 +1284,7 @@
         </form>
     </div>
 </script>
+
 
 <script type="text/x-template" id="tmpl-ip-reserve">
     <div id="vlan-edit" class="col-xs-12">
@@ -1272,6 +1360,7 @@
         </form>
     </div>
 </script>
+
 
 <script type="text/x-template" id="tmpl-part-edit">
     <div id="part-edit">
@@ -1509,11 +1598,11 @@
                 <div class="col-xs-offset-1 col-xs-1">
                     <button class="btn" type="cancel" v-on:click.prevent="showList">Cancel</button>
                 </div>
-                <div class="col-xs-1" v-if="User.ID">
-                    <button class="btn btn-primary" v-on:click.prevent="saveSelf" v-if="User.ID">Update</button>
+                <div class="col-xs-1" v-if="User.USR">
+                    <button class="btn btn-primary" v-on:click.prevent="saveSelf" v-if="User.USR">Update</button>
                     <button class="btn btn-primary" v-on:click.prevent="addSelf" v-else>Add</button>
                 </div>
-                <div class="col-xs-1" v-if="User.ID">
+                <div class="col-xs-1" v-if="User.USR">
                     <button class="btn" v-on:click.prevent="deleteSelf">Delete</button>
                 </div>
             </div>
@@ -1787,18 +1876,24 @@
 </script>
 
 <script type="text/x-template" id="tmpl-ip-types">
-<div>
-    <h1 class="mytitle">IP Types</h1>
+    <div>
+        <h1 class="mytitle">IP Types</h1>
 <!--
-    <label for="query">Search</label>
-    <input id="query" name="query" v-model="searchQuery">
+        <iptypes-grid
+            :rows="rows"
+            :columns="columns">
+        </iptypes-grid>
 -->
-    <iptypes-grid
-        :rows="rows"
-        :columns="columns"
-    >
-     ></iptypes-grid>
-</div>
+        <paged-grid 
+            :data="data | filterBy searchQuery" 
+            :columns="columns" 
+            :linkable="linkable"
+            :linkPath="linkpath"
+            :move-pages="movePages" 
+            :start-row="startRow" 
+            :rows-per-page="rowsPerPage">
+        </paged-grid>
+    </div>
 </script>
 
 <script type="text/x-template" id="tmpl-iptype-edit">
@@ -1843,6 +1938,72 @@
             </fieldset>
         </form>
     </div>
+</script>
+
+
+<script type="text/x-template" id="tmpl-paged-grid">
+    <div>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th v-for="key in columns"
+                      @click.prevent="sortBy(key)"
+                      :class="{active: sortKey == key}">
+                      {{key | capitalize}}
+                      <span class="arrow"
+                        :class="sortOrders[key] > 0 ? 'asc' : 'dsc'">
+                      </span>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr id="rowid(entry)" 
+                    v-for="entry in data 
+                        | limitBy rowsPerPage startRow
+                        | orderBy sortKey sortOrders[sortKey]">
+                    <td v-for="key in columns">
+                       <template v-if="linkable(key)">
+                          <a v-link="{ path: linkpath(entry, key)}">{{ entry[key] }}</a>
+                       </template>
+                       <template v-else>
+                          {{* entry[key] }}
+                       </template>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <div id="page-navigation" v-if="data.length > rowsPerPage">
+            <button v-if="rowsPerPage" @click=movePages(-1)>Back</button>
+            {{rowStatus}}
+            <button v-if="rowsPerPage" @click=movePages(1)>Next</button>
+        </div>
+    </div>
+</script>
+
+<script type="text/x-template" id="tmpl-paged-test">
+    <div>
+    <div id="grid-paged-test">
+        <form id="search">
+            <label for="query">Search</label>
+            <input name="query" v-model="searchQuery" @keyup="resetStartRow">
+            <label for="pagerows">page size</label>
+            <select id="pagerows" v-model="pagerows">
+                <option v-for="size in sizes" v-bind:value="size">
+                    {{ size }}
+                </option>
+            </select>
+        </form>
+        <paged-grid 
+            :data="rows | filterBy searchQuery" 
+            :columns="columns" 
+            :linkable="canLink"
+            :linkPath="linkFN"
+            :move-pages="movePages" 
+            :start-row="startRow" 
+            :rows-per-page="rowsPerPage">
+        </paged-grid>
+    </div>
+    <div>
 </script>
 
 <!-- instantiate our components -->
