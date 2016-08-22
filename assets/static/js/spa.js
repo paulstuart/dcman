@@ -1248,12 +1248,11 @@ var deviceList = Vue.component('device-list', {
     filters: {
         rackFilter: function(data) {
             if (this.STI == 0) return data;
+            if (this.RID == 0) return data;
 
             var self = this;
             return data.map(function(obj) {
-                 if (obj.STI == self.STI) {
-                     if (self.RID == 0 || obj.RID == self.RID) return obj
-                 }
+                if (obj.RID == self.RID) return obj
             });
         }
     },
@@ -1263,8 +1262,7 @@ var deviceList = Vue.component('device-list', {
             console.log('device list promises starting for STI:', self.STI)
             return Promise.all([
                 getSiteLIST(true), 
-                //self.STI > 0 ? getDeviceLIST(self.STI, '?sti=') : getDeviceLIST(), 
-                getDeviceLIST(), 
+                self.STI > 0 ? getDeviceLIST(self.STI, '?sti=') : getDeviceLIST(), 
                 getRack(), // self.STI ? getRack(self.STI, '?sti=') : getRack(), 
            ]).then(function (data) {
                 console.log('device list promises returning')
