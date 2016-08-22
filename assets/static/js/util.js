@@ -547,6 +547,13 @@ var IPType = function() {
     ])
 }
 
+var DeviceType = function() {
+    Maker(this, [
+        'Name',
+        'DTI',
+    ])
+}
+
 var Device = function() {
     Maker(this, [
         'Alias',

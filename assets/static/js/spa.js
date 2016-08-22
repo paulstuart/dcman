@@ -1236,6 +1236,7 @@ var deviceList = Vue.component('device-list', {
                "Hostname",
                "IPs",
                "Mgmt",
+               "DevType",
                "Tag",
                "Profile",
                "SerialNo",
@@ -1304,6 +1305,91 @@ var deviceList = Vue.component('device-list', {
     'STI': function(val, oldVal){
             mySTI = val
             this.reload()
+        },
+    },
+})
+
+//
+// DEVICE TYPES
+//
+
+var deviceTypes = Vue.component('device-types', {
+    template: '#tmpl-device-types',
+    mixins: [pagedCommon, commonListMIX],
+    data: function() {
+      console.log('device types returning')
+      return {
+          searchQuery: '',
+          rows: [],
+          columns: [
+               "Name",
+            ],
+        }
+    },
+    route: { 
+          data: function (transition) {
+              return {
+                  rows: getDeviceTypes()
+              }
+          }
+    },
+    methods: {
+        addType: function() {
+            router.go('/device/type/edit/0')
+        },
+        linkable: function(column) {
+            return column === 'Name'
+        },
+        linkpath: function(entry, key) {
+            if (key == 'Name') return '/device/type/edit/' + entry['DTI']
+        }
+    },
+})
+
+var deviceTypeEdit = Vue.component('device-type-edit', {
+    template: '#tmpl-device-type-edit',
+    //mixins: [pagedCommon, commonListMIX],
+    data: function() {
+      //console.log('device types returning')
+        return {
+            DeviceType: new(DeviceType)
+        }
+    },
+    route: { 
+          data: function (transition) {
+              if (transition.to.params.DTI > 0) {
+                  return {
+                      DeviceType: getDeviceTypes(transition.to.params.DTI)
+                  }
+              }
+              var dtype = new(DeviceType);
+              dtype.DTI = 0;
+              return {
+                  DeviceType: dtype
+              }
+          }
+    },
+    methods: {
+        saveSelf: function() {
+            var self = this;
+            var url = deviceTypesURL;
+            if (this.DeviceType.DTI > 0) {
+                url += this.DeviceType.DTI
+                posty(url, this.DeviceType, 'PATCH').then(function() {
+                    self.showList()
+                });
+            } else {
+                posty(url, this.DeviceType).then(function() {
+                    self.showList()
+                })
+            }
+        },
+        showList: function() {
+            router.go('/device/types')
+        },
+        deleteSelf: function() {
+            var url = deviceTypesURL + this.DeviceType.DTI
+            deleteIt(url, this.showList);
         },
     },
 })
@@ -3183,6 +3269,12 @@ router.map({
     },
     '/device/list': {
         component:  Vue.component('device-list')
+    },
+    '/device/types': {
+        component:  Vue.component('device-types')
+    },
+    '/device/type/edit/:DTI': {
+        component:  Vue.component('device-type-edit')
     },
     '/vm/edit/:VMI': {
         component: Vue.component('vm-edit')

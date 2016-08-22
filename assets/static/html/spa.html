@@ -467,6 +467,58 @@
     </div>
 </script>
 
+<script type="text/x-template" id="tmpl-device-types">
+    <div class="view">
+        <div v-if="$loadingRouteData">Loading ...</div>
+        <div v-if="!$loadingRouteData">
+            <h1 class="mytitle">Device Types</h1>
+            <button class="btn" v-on:click.prevent="addType">Add Type</button>
+            <paged-grid 
+                :data="rows"
+                :columns="columns" 
+                :linkable="linkable"
+                :linkPath="linkpath"
+                :move-pages="movePages" 
+                :start-row="startRow" 
+                :rows-per-page="rowsPerPage">
+            </paged-grid>
+        </div>
+    </div>
+</script>
+
+<script type="text/x-template" id="tmpl-device-type-edit">
+    <form role="form" class="form-horizontal">
+        <fieldset class="col-xs-12">
+            <legend>Device Type</legend>
+            <div class="form-group">
+                <label for="name" class="control-label col-xs-2">Name</label>
+                <div class="col-xs-2">
+                    <input type="text" name="name" v-model="DeviceType.Name"/>
+                </div>
+            </div>
+        </fieldset>
+
+        <fieldset class="col-xs-12">
+            <div class="form-group">
+                <div class="col-xs-offset-1 col-xs-1">
+                    <button class="btn" v-on:click.prevent="showList">Cancel</button>
+                </div>
+                <div class="col-xs-1">
+                    <button class="btn" v-on:click.prevent="saveSelf">
+                    <template v-if="DeviceType.DTI">Update</template>
+                    <template v-else>Add</template>
+                    </button>
+                </div>
+                <div class="col-xs-1" v-if="DeviceType.DTI">
+                    <button class="btn" v-on:click.prevent="deleteSelf">Delete</button>
+                </div>
+            </div>
+        </fieldset>
+    </form>
+    </div>
+</script>
+
+
 <script type="text/x-template" id="tmpl-vm-ips">
   <div>
   <table class="table">
