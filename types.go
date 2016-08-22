@@ -125,6 +125,7 @@ type Vendor struct {
 type IPType struct {
 	IPT   int64   `sql:"ipt" key:"true" table:"ip_types"`
 	Name  *string `sql:"name"`
+	Mgmt  bool    `sql:"mgmt"`
 	Multi bool    `sql:"multi"`
 }
 
