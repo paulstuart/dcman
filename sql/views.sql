@@ -227,7 +227,7 @@ drop view if exists devices_mgmt;
 create view devices_mgmt as
     select did, group_concat(ipv4, ', ') as mgmt
     from devices_all_ips
-    where iptype in ('IPMI')
+    where ipt in (select ipt from ip_types where mgmt > 0)
     group by did
     ;
 

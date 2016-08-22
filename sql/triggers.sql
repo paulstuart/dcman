@@ -395,9 +395,21 @@ END;
 
 DROP TRIGGER IF EXISTS racks_view_insert;
 CREATE TRIGGER racks_view_insert INSTEAD OF INSERT ON racks_view 
+when NEW.sti > 0
+BEGIN
+  insert into racks (sti, rack, rackunits, vendor_id, note, usr) 
+        values (NEW.sti, NEW.rack, NEW.rackunits, NEW.vendor_id, NEW.note, NEW.usr)
+        ;
+END;
+
+/*
+DROP TRIGGER IF EXISTS racks_view_insert;
+CREATE TRIGGER racks_view_insert INSTEAD OF INSERT ON racks_view 
+where NEW.sid > 0
 BEGIN
   insert into racks (rack, sti) values (NEW.rack, (select sti from sites where name=NEW.site));
 END;
+*/
 
 DROP TRIGGER IF EXISTS rmas_view_insert;
 CREATE TRIGGER rmas_view_insert INSTEAD OF INSERT ON rmas_view 

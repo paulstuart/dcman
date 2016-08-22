@@ -125,30 +125,39 @@
 
 <script type="text/x-template" id="tmpl-rma-list">
     <div id="rma-list">
-        <h1 class="mytitle">All RMAs</h1>
+        <h1 class="mytitle">{{sitename}} RMAs</h1>
         <label for="STI">Site</label>
-        <select id="STI" v-model="STI">
-            <option v-for="dc in sites" v-bind:value="dc.STI">
-                {{ dc.Name }}
+        <select id="STI" v-model="STI" number>
+            <option v-for="site in sites" v-bind:value="site.STI">
+                {{ site.Name }}
             </option>
         </select>
 
-        <label for="pfilter">Filter</label>
-        <select id="pfilter" name="pfilter" v-model="ktype">
+        <label for="pfilter">Kind</label>
+        <select id="pfilter" name="pfilter" v-model="rmaType" number>
             <option v-for="kind in kinds" v-bind:value="kind.id">
                 {{ kind.name }}
             </option>
         </select>
 
-        <label for="query">Search</label>
+        <label for="query">Filter</label>
         <input id="query" name="query" v-model="searchQuery">
 
-        <rma-grid
-            v-bind:kfilter="ktype"
-            :rows="rmas"
-            :columns="gridColumns"
-            :filter-key="searchQuery">
-        </rma-grid>
+        <label for="pagerows">page size</label>
+        <select id="pagerows" v-model="pagerows">
+            <option v-for="size in sizes" v-bind:value="size">
+                {{ size }}
+            </option>
+        </select>
+
+        <paged-grid 
+            :data="rmas | rmaFilter" 
+            :columns="columns" 
+            :linkable="linkable"
+            :linkPath="linkpath"
+            :start-row="startRow" 
+            :rows-per-page="rowsPerPage">
+        </paged-grid>
     </div>
 </script>
 
@@ -422,14 +431,14 @@
         <div v-if="!$loadingRouteData">
             <h1 class="mytitle">{{sitename}} Servers</h1>
             <label for="STI">Site</label>
-            <select id="STI" v-model="STI">
+            <select id="STI" v-model="STI" number>
                 <option v-for="dc in sites" v-bind:value="dc.STI">
                     {{ dc.Name }}
                 </option>
             </select>
 
-            <label for="RID">Rack</label>
-            <select id="Rack" v-model="RID">
+            <label for="RID" v-show="STI">Rack</label>
+            <select id="RID" v-model="RID" v-show="STI" number>
                 <option v-for="rack in racks" v-bind:value="rack.RID">
                     {{ rack.Label }}
                 </option>
@@ -518,7 +527,7 @@
         </select>
 
         <label for="query">Filter</label>
-        <input id="query" name="query" v-model="searchQuery">
+        <input name="query" v-model="searchQuery" @keyup="resetStartRow">
 
         <label for="pagerows">page size</label>
         <select id="pagerows" v-model="pagerows">
@@ -854,7 +863,7 @@
             <div class="form-group">
                 <label for="Label" class="control-label col-xs-2">Rack Number</label>
                 <div class="col-xs-2">
-                    <input type="text" name="Label" v-model="Rack.Label" required/>
+                    <input type="text" name="Label" v-model="Rack.Label" required number/>
                 </div>
             </div>
 
@@ -893,9 +902,12 @@
                     <button class="btn" v-on:click.prevent="showList">Cancel</button>
                 </div>
                 <div class="col-xs-1">
-                    <button class="btn" v-on:click.prevent="saveSelf">Update</button>
+                    <button class="btn btn-primary" :disabled="notReady" v-on:click.prevent="saveSelf">
+                        <template v-if="Rack.RID">Update</template>
+                        <template v-else>Add</template>
+                    </button>
                 </div>
-                <div class="col-xs-1">
+                <div class="col-xs-1" v-if="Rack.RID">
                     <button class="btn" v-on:click.prevent="deleteSelf">Delete</button>
                 </div>
             </div>
@@ -906,7 +918,7 @@
 
 <script type="text/x-template" id="tmpl-rack-list">
     <div>
-        <h1 class="mytitle">{{site}} Rack Inventory</h1>
+        <h1 class="mytitle">{{sitename}} Rack Inventory</h1>
         <h3 class="mytitle">({{rows.length}} racks)</h3>
         <label for="STI">Site</label>
         <select id="STI" name="STI" v-model="STI">
@@ -942,11 +954,23 @@
         <h1 class="mytitle">Vendors</h1>
         <label for="query">Search</label>
         <input id="query" v-model="searchQuery">
-        <vendor-grid
-            :rows="rows"
-            :columns="columns"
-            :filter-key="searchQuery">
-        </vendor-grid>
+
+        <label for="pagerows">page size</label>
+        <select id="pagerows" v-model="pagerows">
+            <option v-for="size in sizes" v-bind:value="size">
+                {{ size }}
+            </option>
+        </select>
+
+        <paged-grid 
+            :data="rows | filterBy searchQuery" 
+            :columns="columns" 
+            :linkable="linkable"
+            :linkPath="linkpath"
+            :move-pages="movePages" 
+            :start-row="startRow" 
+            :rows-per-page="rowsPerPage">
+        </paged-grid>
     </div>
 </script>
 
@@ -956,11 +980,15 @@
         <h1 class="mytitle">Manufacturers</h1>
         <label for="query">Search</label>
         <input id="query" v-model="searchQuery">
-        <mfgr-grid
-            :rows="rows"
-            :columns="columns"
-            :filter-key="searchQuery">
-        </mfgr-grid>
+        <paged-grid 
+            :data="rows | filterBy searchQuery" 
+            :columns="columns" 
+            :linkable="linkable"
+            :linkPath="linkpath"
+            :move-pages="movePages" 
+            :start-row="startRow" 
+            :rows-per-page="rowsPerPage">
+        </paged-grid>
     </div>
 </script>
 
@@ -989,7 +1017,7 @@
             </tr>
             <tr v-for="lay in layouts.units" class="rackrow rackheight{{lay.Height}}" v-if="lay.Height || audit">
                 <td class="rcell">
-                    <template v-if="lay.Hostname">
+                    <template v-if="lay.DID">
                     {{ lay.RU }}
                     </template>
                     <template v-else>
@@ -997,21 +1025,21 @@
                     </template>
                 </td>
                 <td class="rcell sizecol" v-if="audit">
-                    <template v-if="lay.Hostname">
+                    <template v-if="lay.DID">
                     <input type="text" class="sizecol" v-bind:class="{badentry: lay.badHeight}" v-model="lay.newHeight" @change="resize(lay)" number>
                     </template>
                 </td>
                 <td class="rcell">
                     <template v-if="audit">
-                    <input type="text" v-if="lay.Hostname" v-bind:class="{badentry: lay.badHostname}" v-model="lay.newHostname" @change="rename(lay)">
+                    <input type="text" v-if="lay.DID" v-bind:class="{badentry: lay.badHostname}" v-model="lay.Hostname" @change="rename(lay)">
                     </template>
                     <template v-else>
-                    <a v-if="lay.Hostname" v-link="{ path: '/device/edit/' + lay.DID}">{{ lay.Hostname }}</a>
+                    <a v-if="lay.DID" v-link="{ path: '/device/edit/' + lay.DID}">{{ lay.Hostname }}</a>
                     </template>
                 </td>
                 <td class="rcell">
                     <template v-if="audit">
-                    <input type="text" v-if="lay.Hostname" v-bind:class="{badentry: lay.badMgmt}" v-model="lay.newMgmt" @change="changeMgmt(lay)">
+                    <input type="text" v-if="lay.DID" v-bind:class="{badentry: lay.badMgmt}" v-model="lay.newMgmt" @change="changeMgmt(lay)">
                     </template>
                     <template v-else>
                     {{ lay.Mgmt }}
@@ -1020,7 +1048,7 @@
                 <td class="rcell">{{ lay.pingMgmt }}</td>
                 <td class="rcell">
                     <template v-if="audit">
-                    <input type="text" v-if="lay.Hostname" v-bind:class="{badentry: lay.badIP}" v-model="lay.newIP" @change="changeIP(lay)">
+                    <input type="text" v-if="lay.DID" v-bind:class="{badentry: lay.badIP}" v-model="lay.newIP" @change="changeIP(lay)">
                     </template>
                     <template v-else>
                     {{ lay.IPs }}
@@ -1042,7 +1070,7 @@
 
 <script type="text/x-template" id="tmpl-rack-layout">
     <div>
-        <h1 class="mytitle">Rack View</h1>
+        <h1 class="mytitle">{{sitename}} Rack View</h1>
         <label for="STI">Site</label>
         <select id="STI" name="STI" v-model="STI" number>
             <option v-for="dc in sites" v-bind:value="dc.STI">
@@ -1878,12 +1906,6 @@
 <script type="text/x-template" id="tmpl-ip-types">
     <div>
         <h1 class="mytitle">IP Types</h1>
-<!--
-        <iptypes-grid
-            :rows="rows"
-            :columns="columns">
-        </iptypes-grid>
--->
         <paged-grid 
             :data="data | filterBy searchQuery" 
             :columns="columns" 
@@ -1980,31 +2002,7 @@
     </div>
 </script>
 
-<script type="text/x-template" id="tmpl-paged-test">
-    <div>
-    <div id="grid-paged-test">
-        <form id="search">
-            <label for="query">Search</label>
-            <input name="query" v-model="searchQuery" @keyup="resetStartRow">
-            <label for="pagerows">page size</label>
-            <select id="pagerows" v-model="pagerows">
-                <option v-for="size in sizes" v-bind:value="size">
-                    {{ size }}
-                </option>
-            </select>
-        </form>
-        <paged-grid 
-            :data="rows | filterBy searchQuery" 
-            :columns="columns" 
-            :linkable="canLink"
-            :linkPath="linkFN"
-            :move-pages="movePages" 
-            :start-row="startRow" 
-            :rows-per-page="rowsPerPage">
-        </paged-grid>
-    </div>
-    <div>
-</script>
 
 <!-- instantiate our components -->
+
 <script src="/dcman/static/js/spa.js"></script>

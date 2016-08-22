@@ -244,7 +244,8 @@ drop table if exists ip_types;
 create table "ip_types" (
     ipt integer primary key,
     name text,
-    multi integer default 0 -- boolean: set true if multiple instances of ip address are ok
+    mgmt integer default 0, -- boolean: set true if is mgmt class of IP
+    multi integer default 0 -- boolean: set true if multiple instances of IP address are ok
 );
 
 drop table if exists ips;
