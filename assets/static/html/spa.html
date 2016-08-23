@@ -3,14 +3,10 @@
 <head>
     <title>DCMan Beta</title>
     <link rel="stylesheet" type="text/css" href="/dcman/static/css/bootstrap.css">
-    <!--
-    <link rel="stylesheet" type="text/css" href="/dcman/static/css/base.css">
-    <link rel="stylesheet" type="text/css" href="/dcman/static/css/style.css">
-    -->
     <link rel="stylesheet" type="text/css" href="/dcman/static/css/new.css">
+
     <script>
-    // all changeable actions require this key
-    window.user_apikey = ''; 
+    window.user_apikey = ''; // all changeable actions require this key
     </script>
 
     <script src="/dcman/static/js/jquery-2.0.3.js"></script>
@@ -34,11 +30,6 @@
 </body>
 </html>
 
-<script type="text/x-template" id="tmpl-main-menu-BARE">
-    <div>
-    <hr class=menubar"/>
-    </div>
-</script>
 
 <script type="text/x-template" id="tmpl-main-menu">
     <div>
@@ -122,6 +113,7 @@
     <hr class=menubar"/>
     </div>
 </script>
+
 
 <script type="text/x-template" id="tmpl-rma-list">
     <div id="rma-list">
@@ -1641,6 +1633,7 @@
     </div>
 </script>
 
+
 <script type="text/x-template" id="tmpl-user-edit">
     <div id="user-edit">
 
@@ -1795,6 +1788,7 @@
     </div>
 </script>
 
+
 <script type="text/x-template" id="tmpl-part-use">
     <div id="use-part">
         <form class="form-horizontal">
@@ -1883,10 +1877,10 @@
     </div>
 </script>
 
+
 <script type="text/x-template" id="tmpl-user-login">
     <div id="login" class="layout">
         <div class="header">
-            <h1 class="login">Okta Login</h1>
             <h2 class="login">Enter your Okta Login Credentials</h2>
         </div>
         <div class="invalid_login" v-if="errorMsg">{{errorMsg}}</div>
@@ -1921,6 +1915,7 @@
     </div>
 </script>
 
+
 <script type="text/x-template" id="tmpl-user-logout">
     <div id="logout">
         <h3>Really log out?</h3>
@@ -1936,15 +1931,6 @@
 </script>
 
 
-<script type="text/x-template" id="tmpl-okta-login">
-<div id="login">
-    OKTA LOGIN
-  <!-- Render the login widget here -->
-  <div id="okta-login-container"></div>
-
-</div>
-</script>
-
 <script type="text/x-template" id="tmpl-home-page">
 <div id="homepage">
     <h1 class="mytitle" v-if="title.length">{{title}}</h1>
@@ -1954,6 +1940,7 @@
     </tally-table>
 </div>
 </script>
+
 
 <script type="text/x-template" id="tmpl-ip-types">
     <div>

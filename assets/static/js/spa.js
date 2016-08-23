@@ -124,7 +124,13 @@ var getInterfaces = function(device) {
         }
         var good = [];
         for (var ifd in ports) {
-            good.push(ports[ifd])
+            var port = ports[ifd]
+            if (port.Mgmt > 0) {
+                port.Port = 'IPMI'
+            } else {
+                port.Port = 'Eth' + port.Port
+            }
+            good.push(port)
         }
         device.ips = ips
         device.interfaces = good
@@ -291,21 +297,6 @@ var tableTmpl = {
 }
 
 
-
-var noLinks = {
-    methods: {
-        sortBy: function (key) {
-            this.sortKey = key
-            this.sortOrders[key] = this.sortOrders[key] * -1
-        },
-        linkable: function(key) {
-            return false
-        },
-        linkpath: function(entry, key) {
-        }
-    },
-}
-
 var foundVue = {
     props: ['columns', 'rows'],
     data: function () {
@@ -424,10 +415,6 @@ Vue.component('my-nav', {
     data: function() {
        return {
            searchText: '',
-            /*
-           found: [],
-           columns: ['Kind', 'Name'],
-            */
        }
     },
     created: function() {
@@ -436,17 +423,13 @@ Vue.component('my-nav', {
     methods: {
         'doSearch': function(ev) {
             var text = cleanText(this.searchText);
-            //if (this.searchText.length > 0) {
             if (text.length > 0) {
-               // console.log('search for:',this.searchText)
                 console.log('initiate search for:',text)
                 if (this.$route.name == 'search') {
                     // already on search page
-                    //this.$dispatch('search-again', this.searchText)
                     this.$dispatch('search-again', text)
                     return
                 }
-                //router.go({name: 'search', params: { searchText: this.searchText }})
                 router.go({name: 'search', params: { searchText: text }})
             }
         },
@@ -457,8 +440,6 @@ Vue.component('my-nav', {
                 if (tuple[0] != 'userinfo') continue;
                 if (tuple[1].length == 0) break; // no cookie value so don't bother
                 var user = JSON.parse(atob(tuple[1]));
-                //console.log("***** PRE:", tuple[1])
-                //console.log("***** USER:", user)
                 this.$dispatch('user-info', user)
                 break
             }
@@ -835,15 +816,26 @@ var interfaceMIX = {
         updateInterface(i) {
             var row = this.rows[i]
             var ifd = row.IFD
-            postIt(ifaceURL + ifd, row, null, 'PATCH')
-            return false
+
+            var port = row.Port.replace(/[^\d]*/g, '');
+            port = (port.length) ? parseInt(port) : 0
+
+            var data = {
+                IFD: ifd,
+                Port: port,
+                Mgmt: row.Mgmt,
+                MAC: row.MAC,
+                SwitchPort: row.SwitchPort,
+                CableTag: row.CableTag,
+            }
+
+            postIt(ifaceURL + ifd, data, null, 'PATCH')
         },
         deleteInterface(i) {
             var self = this;
             var ifd = this.rows[i].IFD
             console.log("Iface id:", ifd)
             deleteIt(ifaceURL + ifd, function(xhr) {
-                //console.log('del state:', xhr.readyState, 'status:', xhr.status)                
                 if (xhr.readyState == 4) {
                     if (xhr.status == 200 || xhr.status == 201) {
                         self.rows.splice(i, 1)
@@ -853,13 +845,14 @@ var interfaceMIX = {
                     }
                 }
             })
-            return false
         },
         addInterface: function(ev) {
             var self = this
+            var port = this.newPort.replace(/[^\d]*/g, '');
+            port = (port.length) ? parseInt(port) : 0
             var data = {
                 DID: this.DID,
-                Port: this.newPort,
+                Port: port,
                 Mgmt: this.newMgmt,
                 MAC: this.newMAC,
                 SwitchPort: this.newSwitchPort,
@@ -868,7 +861,10 @@ var interfaceMIX = {
             console.log("we will add interface info:", data)
             postIt(ifaceURL + '?debug=true', data, function(xhr) {
                 if (xhr.readyState == 4 && (xhr.status == 200 || xhr.status == 201)) {
-                    var iface = JSON.parse(xhr.responseText)
+                    var iface = JSON.parse(xhr.responseText);
+                    if (! iface.Mgmt) {
+                        iface.Port = 'Eth' + iface.Port
+                    }
                     self.rows.push(iface)
 
                     self.newPort = ''
@@ -884,23 +880,6 @@ var interfaceMIX = {
 }
 
 var ifacegrid = childTable("interface-grid", "#tmpl-interface-grid", [interfaceMIX])
-
-var uniqueInterfaces = function(data) {
-    var ports = {}
-    for (var i=0; i<data.length; i++) {
-        var port = data[i]
-        if (! (port.IFD in ports)) {
-            console.log('IFD:', port.IFD)
-            ports[port.IFD] = port
-
-        }
-    }
-    var rep = [];
-    for (var ifd in ports) {
-        rep.push(ports[ifd])
-    }
-    return rep
-}
 
 //
 // Device Edit
@@ -962,7 +941,6 @@ var deviceEditVue = {
             deleteIt(deviceURL + this.Device.DID, this.showList)
         },
         showList: function(ev) {
-            //this.$route.router.go(window.history.back())
             router.go('/device/list')
         },
         loadRacks: function () {
@@ -985,7 +963,6 @@ var deviceEditVue = {
             return (ipinfo.Mgmt ? 'Mgmt' : 'Port') + ipinfo.Port
         },
         getMacAddr: function(ev) {
-            //var url = '/dcman/data/server/discover/' + this.Server.IPIpmi;
             var url = 'http://10.100.182.16:8080/dcman/data/server/discover/' + this.Server.IPIpmi;
             var self = this
             fetchData(url, function(data) {
@@ -1155,6 +1132,7 @@ var vmEdit = Vue.component('vm-edit', {
     mixins: [vmEditVue, siteMIX],
 })
 
+
 // Base APP component, this is the root of the app
 var App = Vue.extend({
     data: function(){
@@ -1182,7 +1160,6 @@ var App = Vue.extend({
             this.$broadcast('server-reload', 'gotcha!')
         },
         'user-info': function (user) {
-            //console.log('*** user-info event:', user)
             this.myapp.auth.user.name = user.username;
             this.myapp.auth.loggedIn = true;
         },
@@ -1193,7 +1170,6 @@ var App = Vue.extend({
             window.user_apikey = user.APIKey
             userInfo = user;
             this.myapp.auth.loggedIn = true;
-            //user_apikey = user.apikey;
         },
         'logged-out': function () {
             console.log('*** logged out event')
@@ -1225,7 +1201,6 @@ var deviceList = Vue.component('device-list', {
           RID: 0,
           sites: [],
           racks: [],
-          site: 'blah',
           searchQuery: '',
           pagerows: 10,
           rows: [],
@@ -1348,9 +1323,7 @@ var deviceTypes = Vue.component('device-types', {
 
 var deviceTypeEdit = Vue.component('device-type-edit', {
     template: '#tmpl-device-type-edit',
-    //mixins: [pagedCommon, commonListMIX],
     data: function() {
-      //console.log('device types returning')
         return {
             DeviceType: new(DeviceType)
         }
@@ -1758,7 +1731,7 @@ var partUse = Vue.component('part-use', {
           }
           postIt(partURL + pid, part, null, "PATCH")
           this.showList()
-      },
+        },
         findhost: function() {
             if (this.hostname.length === 0) {
                 this.badHost = false
@@ -2187,7 +2160,6 @@ var partEdit = Vue.component('part-edit', {
     },
     computed: {
         disableSave: function() {
-            console.log("part PTI:", this.Part.PTI)
             if (this.Part.PTI == 0) {
                 return (this.Part.STI == 0 || this.Part.PTI == 0 || this.Part.Description.length == 0)
             }
@@ -2421,17 +2393,12 @@ var partLoad = Vue.component('part-load', {
                     var col = cols[j];
                     part[col] = line[j];
                 }
-                //console.log("PART:",part)
                 var qty = parseInt(part["Qty"]);
                 if (qty === 0) qty = 1;
-                //console.log("Price was:", part.Price)
                 if (part.Price) {
                     part.Price = part.Price.replace(/[^0-9.]*/g,'')
-                    //console.log("Price fix:", part.Price)
                     part.Price = parseFloat(part.Price)
-                    //console.log("Price now:", part.Price)
                     part.Cents = Math.round(part.Price * 100)
-                    //console.log("Cents now:", part.Cents)
                 } else {
                     part.Price = 0.0
                     part.Cents = 0
@@ -2497,7 +2464,6 @@ var tagEdit = Vue.component('tag-edit', {
                 console.log("i:",i,"tid:",this.tags[i].TID)
                 if (this.tags[i].TID == this.tag.TID) {
                     console.log("deleting tag:", i, "of", this.tags.length)
-                    //delete(this.tags[i])
                     this.tags.splice(i, 1)
                     break
                 }
@@ -2953,9 +2919,7 @@ var rackView = Vue.component('rack-view', {
                 var inv = this.layouts.rack.RUs - i;
                 var unit = this.layouts.units[inv];
                 if (unit && unit.Hostname && unit.Hostname.length > 3) {
-                    //console log("RACK:", this.layouts.rack.Label, "RU:", unit.RU, "HT:", unit.Height, "ru:", ru)
                     return (unit.RU + unit.Height) < ru;
-                    //continue
                 }
             }
             return true
@@ -3061,15 +3025,15 @@ var rackLayout = Vue.component('rack-layout', {
                }
              });
         }
-  },
-  watch: {
-    'STI': function(val, oldVal) {
-            this.RID = 0;
-            this.audit = false;
-            this.loadSelf()
+    },
+    watch: {
+        'STI': function(val, oldVal) {
+                this.RID = 0;
+                this.audit = false;
+                this.loadSelf()
         },
-    'RID': function(val, oldVal) {
-            console.log('RID is now:', val)
+        'RID': function(val, oldVal) {
+                console.log('RID is now:', val)
         },
     },
 })
@@ -3115,7 +3079,8 @@ var userLogin = Vue.component('user-login', {
 })
 
 
-var logoutVue = {
+var userLogout = Vue.component('user-logout', {
+    template: '#tmpl-user-logout',
     methods: {
         cancel: function() {
             router.go('/')
@@ -3125,11 +3090,6 @@ var logoutVue = {
             router.go('/')
         },
     }
-}
-
-var mLogout = Vue.component('user-logout', {
-    template: '#tmpl-user-logout',
-    mixins: [logoutVue],
 })
 
 
@@ -3183,7 +3143,8 @@ var pagedGrid = Vue.component('paged-grid', {
 });
 
 
-var homePageVue = {
+var homePage = Vue.component('home-page', {
+    template: '#tmpl-home-page',
     data: function() {
         return {
             title: "PubMatic Datacenters",
@@ -3203,7 +3164,7 @@ var homePageVue = {
             })
         },
     },
-}
+})
 
 var tallyMIX = {
     methods: {
@@ -3220,11 +3181,6 @@ var tallyMIX = {
 }
 
 var tallyho = childTable("tally-table", "#tmpl-base-table", [tallyMIX])
-
-var mHome = Vue.component('home-page', {
-    template: '#tmpl-home-page',
-    mixins: [homePageVue],
-})
 
 
 // Assign the new router
@@ -3358,20 +3314,4 @@ router.beforeEach(function (transition) {
 })
 
 
-
-    router.start(App, '#app')
-/*
-var baseUrl = 'https://pubmatic.okta.com/'
-var oktaSignIn = new OktaSignIn({baseUrl: baseUrl});
-
-oktaSignIn.renderEl(
-  { el: '#okta-login-container' },
-  function (res) {
-    if (res.status === 'SUCCESS') {
-      console.log('User %s successfully authenticated %o', res.user.profile.login, res.user);
-      res.session.setCookieAndRedirect('https://example.com/');
-    }
-  }
-);
-*/
-
+router.start(App, '#app')

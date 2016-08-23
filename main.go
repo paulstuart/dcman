@@ -19,8 +19,8 @@ var (
 	version           = "0.9.0"
 	sessionMinutes    = time.Duration(time.Minute * 240)
 	masterMode        = true
-	Hostname, _       = os.Hostname()
-	Basedir, _        = os.Getwd() // get abs path now, as we will be changing dirs
+	hostname, _       = os.Hostname()
+	basedir, _        = os.Getwd() // get abs path now, as we will be changing dirs
 	execDir, _        = osext.ExecutableFolder()
 	startTime         = time.Now()
 	sqlDir            = "sql" // dir containing sql schemas, etc
@@ -30,14 +30,14 @@ var (
 	pathPrefix        string
 	bannerText        string
 	cfg               = struct {
-		Main    Config
-		Backups BackupConfig
-		Jira    JiraConfig
-		SAML    SAMLConfig
+		Main    config
+		Backups backupConfig
+		Jira    jiraConfig
+		SAML    samlConfig
 	}{}
 )
 
-type Config struct {
+type config struct {
 	Name     string `gcfg:"name"`
 	Port     int    `gcfg:"port"`
 	Prefix   string `gcfg:"prefix"`
@@ -49,12 +49,12 @@ type Config struct {
 	PXEBoot  bool   `gcfg:"pxeboot"`
 }
 
-type BackupConfig struct {
+type backupConfig struct {
 	Dir  string `gcfg:"dir"`
 	Freq int    `gcfg:"freq"`
 }
 
-type SAMLConfig struct {
+type samlConfig struct {
 	URL         string `gcfg:"samlURL"`
 	Cookie      string `gcfg:"cookie"`
 	Login       string `gcfg:"loginURL"`
@@ -66,7 +66,7 @@ type SAMLConfig struct {
 	Timeout     int    `gcfg:"timeout"`
 }
 
-type JiraConfig struct {
+type jiraConfig struct {
 	Username string `gcfg:"username"`
 	Password string `gcfg:"password"`
 	URL      string `gcfg:"url"`
@@ -123,7 +123,7 @@ func init() {
 	}
 }
 
-func MyIP() string {
+func myIP() string {
 	addrs, _ := net.InterfaceAddrs()
 	for _, addr := range addrs {
 		if ipnet, ok := addr.(*net.IPNet); ok && !strings.HasPrefix(ipnet.String(), "127.") && strings.Index(ipnet.String(), ":") == -1 {
@@ -133,27 +133,22 @@ func MyIP() string {
 	return ""
 }
 
-type Hit struct {
+type found struct {
 	ID   int64  `sql:"id"`
 	Kind string `sql:"kind"`
 	Name string `sql:"name"`
 }
 
-func dbHits(q string, args ...interface{}) []Hit {
-	err, found := datastore.LoadMany(q, Hit{}, args...)
+func dbHits(q string, args ...interface{}) []found {
+	err, recs := datastore.LoadMany(q, found{}, args...)
 	if err != nil {
 		log.Println("search error:", err)
 		return nil
 	}
-	//log.Println("CNT:", len(found.([]Hit)))
-	return found.([]Hit)
+	return recs.([]found)
 }
 
-func searchDB(what string) []Hit {
-	/*
-		dbDebug(true)
-		defer dbDebug(false)
-	*/
+func searchDB(what string) []found {
 
 	q := "select distinct did as id, 'server' as kind, hostname from devices where hostname=? or sn=? or alias=? or asset_tag=? or profile=?"
 	hits := dbHits(q, what, what, what, what, what)
@@ -242,7 +237,7 @@ func main() {
 		log.Fatalln(err)
 	}
 	if cfg.Backups.Freq > 0 {
-		go Backups(cfg.Backups.Freq, cfg.Backups.Dir)
+		go backups(cfg.Backups.Freq, cfg.Backups.Dir)
 	}
 
 	webServer(webHandlers)

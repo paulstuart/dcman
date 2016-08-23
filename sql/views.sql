@@ -252,8 +252,23 @@ CREATE VIEW mactable as
         from devices_network a
         left outer join devices_public_ips b on a.did = b.did
         where a.iptype = 'Internal'
-        and a.mac is not null
         and a.mac > ''
+        and a.port == 0
+    ;
+
+-- data needed to pxeboot a server (some is just for confirmation)
+DROP VIEW IF EXISTS pxedevice;
+CREATE VIEW pxedevice as
+    select d.sti, d.did, d.rid, d.site, d.rack, d.ru, d.hostname, d.profile, 
+            i.mac, i.ipv4 as ip, m.ipv4 as ipmi, d.note
+    from devices_view d
+    left outer join interfaces_view i on d.did = i.did
+    left outer join interfaces_view m on d.did = m.did
+    where i.ip32 > 0 and i.ip32 < 184549375 -- 10.255.255.255
+      and i.port=0
+      and i.mgmt=0
+      and m.port=0
+      and m.mgmt=1
     ;
 
 DROP VIEW IF EXISTS ips_vms;

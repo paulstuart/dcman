@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	ErrEmptyCookie = fmt.Errorf("user cookie is empty")
+	errEmptyCookie = fmt.Errorf("user cookie is empty")
 )
 
 type userLevel struct {
@@ -19,7 +19,7 @@ type userLevel struct {
 
 var userLevels = []userLevel{{0, "User"}, {1, "Editor"}, {2, "Admin"}}
 
-func UserByID(id interface{}) (User, error) {
+func userByID(id interface{}) (user, error) {
 	return getUser("where usr=?", id)
 }
 
@@ -30,22 +30,22 @@ func userLogin(id string) string {
 	if id == "0" {
 		return ""
 	}
-	u, err := UserByID(id)
+	u, err := userByID(id)
 	if err != nil {
 		return err.Error()
 	}
 	return u.Login
 }
 
-func UserByLogin(login string) (User, error) {
+func userByLogin(login string) (user, error) {
 	return getUser("where login=?", login)
 }
 
-func UserByEmail(email string) (User, error) {
+func userByEmail(email string) (user, error) {
 	return getUser("where email=?", email)
 }
 
-func (user *User) Cookie() string {
+func (user *user) Cookie() string {
 	text, e1 := json.Marshal(user)
 	if e1 != nil {
 		fmt.Println("Marshal user", user, "Error", e1)
@@ -59,9 +59,9 @@ func (user *User) Cookie() string {
 	return secret
 }
 
-func (user *User) FromCookie(cookie string) error {
+func (user *user) FromCookie(cookie string) error {
 	if len(cookie) == 0 {
-		return ErrEmptyCookie
+		return errEmptyCookie
 	}
 	plain, err := secrets.DecryptString(cookie)
 	if err != nil {
@@ -74,7 +74,7 @@ func (user *User) FromCookie(cookie string) error {
 }
 
 func userCookie(username string) string {
-	u, err := UserByEmail(username)
+	u, err := userByEmail(username)
 	if err != nil {
 		fmt.Println("User error:", err)
 		return ""
@@ -82,8 +82,8 @@ func userCookie(username string) string {
 	return u.Cookie()
 }
 
-func userFromCookie(cookie string) User {
-	u := &User{}
+func userFromCookie(cookie string) user {
+	u := &user{}
 	// ignore errors -- just return blank user if no cookie set
 	u.FromCookie(cookie)
 	return *u
@@ -93,19 +93,19 @@ type credentials struct {
 	Username, Password string
 }
 
-func userAuth(username, password string) (*User, error) {
-	user, err := UserByEmail(username)
+func userAuth(username, password string) (*user, error) {
+	user, err := userByEmail(username)
 	if err != nil {
 		log.Println("user error:", err)
 		return nil, fmt.Errorf("%s is not authorized for access", username)
 	}
-	if Authenticate(username, password) {
+	if authenticate(username, password) {
 		return &user, nil
 	}
 	return nil, fmt.Errorf("invalid credentials for %s", username)
 }
 
 // TODO: should probably cache results in a safe map
-func userFromAPIKey(key string) (User, error) {
+func userFromAPIKey(key string) (user, error) {
 	return getUser("where apikey=?", key)
 }

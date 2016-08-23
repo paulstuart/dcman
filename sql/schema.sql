@@ -233,7 +233,7 @@ CREATE TABLE "interfaces" (
     ifd integer primary key,
     did integer,
     mgmt integer default 0,   -- boolean (1 if mgmt port, 0 otherwise)
-    port text,    -- eth0, eth1, etc
+    port integer default 0,    -- 0,1 == eth0, eth1, etc
     mac text default '', 
     cable_tag text default '', 
     switch_port text default '',

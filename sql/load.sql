@@ -6,48 +6,8 @@ insert into users (usr, login, firstname, lastname, email, admin)
     select id, login, firstname, lastname, email, admin from olddb.users
     ;
 
-/*
-CREATE TABLE "datacenters" (
-    id integer primary key AUTOINCREMENT,
-    name text not null,
-    address text not null,
-    city text not null,
-    state text not null,
-    phone text not null,
-    web text not null,
-    dcman text not null,
-    pxehost text not null,
-    pxeuser text not null,
-    pxepass text not null,
-    pxekey text not null,
-    remote_addr text not null default '', 
-    modified timestamp, 
-    user_id int default 0
-    );
-
-INSERT INTO "sites" VALUES(1,'AMS','','Amsterdam','','','','','','2015-07-24 23:04:09',0);
-INSERT INTO "sites" VALUES(2,'SFO','','San Francisco','','','','','','2015-07-24 23:04:09',0);
-INSERT INTO "sites" VALUES(3,'NYC','','New York City','','','','','','2015-07-24 23:04:09',0);
-INSERT INTO "sites" VALUES(4,'NY7','','New Jersey','','','','','10.100.2.224','2016-03-22 17:54:01.770503649',1);
-INSERT INTO "sites" VALUES(5,'SV3','1735 Lundy Avenue','San Jose','CA','','','','10.100.2.248','2015-09-22 20:37:58.755598077',1);
-DROP TABLE IF EXISTS sites;
-CREATE TABLE "sites" (
-    sti integer primary key,
-    name text not null,
-    address text,
-    city text,
-    state text,
-    phone text,
-    web text,
-    dcman text,
-    usr integer default 0, 
-    modified timestamp
-);
-*/
-
 INSERT INTO sites (sti,name,address,city,state,phone,web,usr)
    select id,name,address,city,state,phone,web,user_id from olddb.datacenters;
-
 
 INSERT INTO "vendors" (name) values('SuperMicro');
 INSERT INTO "vendors" (name) values('Amax');
@@ -142,8 +102,8 @@ create temp view switch_ips as
     ;
 
 -- add IPMI
-insert into interfaces (did, port, mgmt, mac, cable_tag, switch_port)
-    select id, 'IPMI', 1, mac_ipmi, cable_ipmi, port_ipmi
+insert into interfaces (did, mgmt, mac, cable_tag, switch_port)
+    select id, 1, mac_ipmi, cable_ipmi, port_ipmi
     from olddb.servers;
 
 insert into ips
@@ -154,8 +114,8 @@ insert into ips
 ;
 
 -- add internal
-insert into interfaces (did, port, mac, cable_tag, switch_port)
-    select id, 'Eth0', mac_eth0, cable_eth0, port_eth0
+insert into interfaces (did, mac, cable_tag, switch_port)
+    select id, mac_eth0, cable_eth0, port_eth0
     from olddb.servers
     ;
 
@@ -178,12 +138,12 @@ insert into ips
 
 -- add eth1
 insert into interfaces (did, port, mac, cable_tag, switch_port)
-    select id, 'Eth1', mac_eth1, cable_eth1, port_eth1
+    select id, 1, mac_eth1, cable_eth1, port_eth1
     from olddb.servers
     ;
 
-insert into interfaces (did, port, mgmt)
-    select did, 'Mgmt', 1
+insert into interfaces (did, mgmt)
+    select did, 1
     from devices_view where devtype = 'Switch'
     ;
 

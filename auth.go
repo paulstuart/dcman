@@ -14,10 +14,9 @@ import (
 )
 
 var (
-	domain   string
-	fromURI  string
-	remember = "true"
-	login    = "Sign+In"
+	domain  string
+	fromURI string
+	login   = "Sign+In"
 )
 
 func saveToFile(name string, text []byte) {
@@ -28,7 +27,7 @@ func b64(s string) string {
 	return base64.StdEncoding.EncodeToString([]byte(s))
 }
 
-func SAMLSession(body io.Reader) string {
+func samlSession(body io.Reader) string {
 	doc, err := html.Parse(body)
 	if err != nil {
 		log.Fatal(err)
@@ -67,7 +66,7 @@ func SAMLSession(body io.Reader) string {
 	return found
 }
 
-func OktaAuth(username, password string) string {
+func oktaAuth(username, password string) string {
 	data := url.Values{
 		"username":   {username},
 		"password":   {password},
@@ -101,13 +100,13 @@ func OktaAuth(username, password string) string {
 	}
 	if resp != nil {
 		defer resp.Body.Close()
-		return SAMLSession(resp.Body)
+		return samlSession(resp.Body)
 	}
 	return ""
 }
 
-func Authenticate(username, password string) bool {
-	reply := OktaAuth(username, password)
+func authenticate(username, password string) bool {
+	reply := oktaAuth(username, password)
 	//ioutil.WriteFile("saml.xml", []byte(reply), 0644)
 	return len(reply) > 0
 }

@@ -13,23 +13,23 @@ import (
 
 var (
 	datastore   dbutil.DBU
-	ErrNoDB     = fmt.Errorf("no database")
-	ErrReadOnly = fmt.Errorf("database is read only")
+	errNoDB     = fmt.Errorf("no database")
+	errReadOnly = fmt.Errorf("database is read only")
 )
 
 func readable() error {
 	if datastore.DB == nil {
-		return ErrNoDB
+		return errNoDB
 	}
 	return nil
 }
 
 func writable() error {
 	if datastore.DB == nil {
-		return ErrNoDB
+		return errNoDB
 	}
 	if cfg.Main.ReadOnly {
-		return ErrReadOnly
+		return errReadOnly
 	}
 	return nil
 }
@@ -107,7 +107,7 @@ func dbPrep() {
 	}
 }
 
-func Backups(freq int, to string) {
+func backups(freq int, to string) {
 	if _, err := os.Stat(to); err != nil {
 		to = filepath.Join(execDir, to)
 		if _, err := os.Stat(to); err != nil {
@@ -128,7 +128,7 @@ func Backups(freq int, to string) {
 
 func dbBackup(to string) error {
 	if datastore.DB == nil {
-		return ErrNoDB
+		return errNoDB
 	}
 	return datastore.Backup(to, nil)
 }
@@ -142,14 +142,14 @@ func dbAdd(o dbutil.DBObject) error {
 
 func dbClose() error {
 	if datastore.DB == nil {
-		return ErrNoDB
+		return errNoDB
 	}
 	return datastore.DB.Close()
 }
 
 func dbObjectLoad(obj interface{}, extra string, args ...interface{}) error {
 	if datastore.DB == nil {
-		return ErrNoDB
+		return errNoDB
 	}
 	return datastore.ObjectLoad(obj, extra, args...)
 }

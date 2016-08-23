@@ -37,7 +37,7 @@ const (
 var (
 	assetDir   = "assets"
 	tdir       string
-	serverIP   = MyIP()
+	serverIP   = myIP()
 	htmlTmpl   map[string]*template.Template
 	textTmpl   map[string]*ttext.Template
 	httpServer string
@@ -46,7 +46,7 @@ var (
 	authCookie string
 )
 
-type HFunc struct {
+type hFunc struct {
 	Path string
 	Func http.HandlerFunc
 }
@@ -63,7 +63,7 @@ func bodyCopy(r *http.Request) string {
 	return string(bodyBytes)
 }
 
-func RemoteHost(r *http.Request) string {
+func remoteHost(r *http.Request) string {
 	if remoteAddr := r.Header.Get("X-Forwarded-For"); len(remoteAddr) > 0 {
 		return remoteAddr
 	}
@@ -141,6 +141,7 @@ func sendJSON(w http.ResponseWriter, obj interface{}) {
 	fmt.Fprint(w, string(j))
 }
 
+// Validator is a custom function for object validation
 type Validator func(string) error
 
 func objPost(r *http.Request, o dbutil.DBObject, validators ...Validator) error {
@@ -158,7 +159,7 @@ func objPost(r *http.Request, o dbutil.DBObject, validators ...Validator) error 
 		}
 	}
 	//dbDebug(true)
-	auditLog(user.USR, RemoteHost(r), action, name)
+	auditLog(user.USR, remoteHost(r), action, name)
 	//dbDebug(false)
 	switch {
 	case action == "Add":
@@ -260,13 +261,13 @@ func isBlank(s string) string {
 	return " * blank * "
 }
 
-func tagList() []Tag {
-	t, err := dbObjectList(Tag{})
+func tagList() []tag {
+	t, err := dbObjectList(tag{})
 	if err == nil {
-		return t.([]Tag)
+		return t.([]tag)
 	}
 	fmt.Println("TAGS ERR:", err)
-	return []Tag{}
+	return []tag{}
 }
 
 func plusOne(in interface{}) string {
@@ -317,10 +318,10 @@ func renderTextTemplate(w http.ResponseWriter, r *http.Request, tname string, da
 	}
 }
 
-func currentUser(r *http.Request) User {
+func currentUser(r *http.Request) user {
 	cookie, err := r.Cookie(cookieID)
 	if err != nil {
-		return User{}
+		return user{}
 	}
 	return userFromCookie(cookie.Value)
 }
@@ -335,7 +336,7 @@ func internalLoginPage(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
 		login := r.Form["login"][0]
 		password := r.Form["password"][0]
-		if !Authenticate(login, password) {
+		if !authenticate(login, password) {
 			http.Redirect(w, r, "/loginfail", http.StatusFound)
 		} else {
 			expires := time.Now()
@@ -352,12 +353,12 @@ func internalLoginPage(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func FaviconPage(w http.ResponseWriter, r *http.Request) {
+func faviconPage(w http.ResponseWriter, r *http.Request) {
 	fav := filepath.Join(assetDir, "static/images/favicon.ico")
 	http.ServeFile(w, r, fav)
 }
 
-func InvalidPage(w http.ResponseWriter, r *http.Request) {
+func invalidPage(w http.ResponseWriter, r *http.Request) {
 	http.NotFound(w, r)
 }
 
@@ -389,6 +390,7 @@ func (w *statusLoggingResponseWriter) WriteHeader(code int) {
 }
 */
 
+// StaticPage returns a static file
 func StaticPage(w http.ResponseWriter, r *http.Request) {
 	name := filepath.Join(assetDir, r.URL.Path)
 	file, err := os.Open(name)
@@ -403,9 +405,10 @@ func StaticPage(w http.ResponseWriter, r *http.Request) {
 	http.ServeContent(w, r, name, fi.ModTime(), file)
 }
 
+// ErrorLog logs errors
 func ErrorLog(r *http.Request, msg string, args ...interface{}) {
 	user := currentUser(r)
-	remoteAddr := RemoteHost(r)
+	remoteAddr := remoteHost(r)
 	fmt.Fprintln(errorFile, time.Now().Format(logLayout), remoteAddr, user.USR, msg, args)
 }
 
@@ -485,7 +488,7 @@ func badRequest(w http.ResponseWriter, err error) {
 	http.Error(w, err.Error(), http.StatusBadRequest)
 }
 
-func webServer(handlers []HFunc) {
+func webServer(handlers []hFunc) {
 	loadTemplates()
 
 	// mux all the handlers
@@ -508,7 +511,7 @@ func webServer(handlers []HFunc) {
 	if len(pathPrefix) > 0 {
 		http.HandleFunc("/", goHome)
 	}
-	http.HandleFunc("/favicon.ico", FaviconPage)
+	http.HandleFunc("/favicon.ico", faviconPage)
 
 	logDir := cfg.Main.LogDir
 	if len(logDir) == 0 {
@@ -596,7 +599,7 @@ func fullQuery(r *http.Request) (string, []interface{}, error) {
 		return "", val, err
 	}
 	keys := make([]string, 0, len(r.Form))
-	for k, _ := range r.Form {
+	for k := range r.Form {
 		keys = append(keys, k)
 	}
 	q := qstring(keys)
@@ -606,16 +609,18 @@ func fullQuery(r *http.Request) (string, []interface{}, error) {
 	}
 	return q, val, nil
 }
-func MakeREST(gen dbutil.DBGen) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		newREST(gen.NewObj().(dbutil.DBObject), w, r)
-	}
-}
 
 func jsonError(w http.ResponseWriter, what interface{}, code int) {
 	msg := fmt.Sprintf(`{"Error": "%v"}`, what)
 	w.Header().Set("Content-Type", "application/json")
 	http.Error(w, msg, code)
+}
+
+// MakeREST will generate a REST handler for a DBObject
+func MakeREST(gen dbutil.DBGen) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		newREST(gen.NewObj().(dbutil.DBObject), w, r)
+	}
 }
 
 func newREST(obj dbutil.DBObject, w http.ResponseWriter, r *http.Request) {

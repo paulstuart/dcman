@@ -14,19 +14,19 @@ var (
 	ws    = regexp.MustCompile("[\t ]+")
 )
 
-type MemoryDevice struct {
+type memoryDevice struct {
 	Size                 string
 	Locator              string
 	Speed                string
-	Manufacturer         string
+	manufacturer         string
 	SerialNumber         string
 	AssetTag             string
 	PartNumber           string
 	ConfiguredClockSpeed string
 }
 
-type BaseBoardInformation struct {
-	Manufacturer      string
+type baseBoardInformation struct {
+	manufacturer      string
 	ProductName       string
 	Version           string
 	SerialNumber      string
@@ -36,21 +36,21 @@ type BaseBoardInformation struct {
 	Type              string
 }
 
-type SystemPowerSupply struct {
+type systemPowerSupply struct {
 	Location        string
-	Manufacturer    string
+	manufacturer    string
 	SerialNumber    string
 	AssetTag        string
 	ModelPartNumber string
 }
 
-type System struct {
-	Motherboard BaseBoardInformation
-	Memory      []*MemoryDevice
-	Power       []*SystemPowerSupply
+type systemInfo struct {
+	Motherboard baseBoardInformation
+	Memory      []*memoryDevice
+	Power       []*systemPowerSupply
 }
 
-func (sys *System) AddLine(part interface{}, line string) {
+func (sys *systemInfo) AddLine(part interface{}, line string) {
 	colon := strings.Index(line, ":")
 	if colon < 0 {
 		return
@@ -66,8 +66,8 @@ func (sys *System) AddLine(part interface{}, line string) {
 	}
 }
 
-func ParseDMI(src io.Reader) *System {
-	sys := new(System)
+func parseDMI(src io.Reader) *systemInfo {
+	sys := new(systemInfo)
 	reader := bufio.NewReader(src)
 	var part interface{}
 	for {
@@ -85,11 +85,11 @@ func ParseDMI(src io.Reader) *System {
 			line = strings.TrimSpace(line)
 			switch {
 			case line == "Memory Device":
-				m := new(MemoryDevice)
+				m := new(memoryDevice)
 				sys.Memory = append(sys.Memory, m)
 				part = m
 			case line == "System Power Supply":
-				p := new(SystemPowerSupply)
+				p := new(systemPowerSupply)
 				sys.Power = append(sys.Power, p)
 				part = p
 			case line == "Base Board Information":
