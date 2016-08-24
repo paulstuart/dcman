@@ -127,8 +127,9 @@ func objFromForm(obj interface{}, values map[string][]string) {
 func cors(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
-	w.Header().Set("Access-Control-Allow-Methods", "GET,HEAD,OPTIONS,POST,PUT")
-	w.Header().Set("Access-Control-Allow-Headers", "Access-Control-Allow-Headers,Origin,Accept,X-Requested-With,Content-Type,Access-Control-Request-Method,Access-Control-Request-Headers")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS, POST, PUT, DELETE")
+	//w.Header().Set("Access-Control-Allow-Headers", "Origin,Accept,X-Requested-With,Content-Type,Access-Control-Request-Method,Access-Control-Request-Headers")
+	w.Header().Set("Access-Control-Allow-Headers", "Origin, Accept, Content-Type, X-API-KEY") // TODO: X-API-KEY should probably be X-Auth-Token
 }
 
 func sendJSON(w http.ResponseWriter, obj interface{}) {
@@ -138,6 +139,7 @@ func sendJSON(w http.ResponseWriter, obj interface{}) {
 	}
 	cors(w)
 	w.Header().Set("Content-Type", "application/json")
+	//fmt.Println("SEND JSON:", obj)
 	fmt.Fprint(w, string(j))
 }
 
@@ -681,6 +683,9 @@ func newREST(obj dbutil.DBObject, w http.ResponseWriter, r *http.Request) {
 		} else {
 			objFromForm(obj, r.Form)
 		}
+	case "OPTIONS", "HEAD":
+		cors(w)
+		fmt.Fprintln(w, "options:", bodyCopy(r))
 	}
 
 	// Make the change

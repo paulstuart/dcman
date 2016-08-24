@@ -146,10 +146,18 @@ var deviceRacks = function(device) {
     })
 }
 
+var deviceVMs = function(device) {
+    var url = vmURL + '?DID=' + device.DID; 
+    return get(url).then(function(vms) {
+        device.vms = vms
+        return device
+    })
+}
+
 
 // device info with associated interface / IPs
 var completeDevice = function(DID) {
-   return getDevice(DID).then(getInterfaces).then(deviceRacks); 
+   return getDevice(DID).then(getInterfaces).then(deviceRacks).then(deviceVMs); 
 }
 
 
@@ -898,6 +906,7 @@ var deviceEditVue = {
             ifaceColumns: ['Port', 'Mgmt', 'MAC', 'CableTag', 'SwitchPort'],
             Description: '',
             Device: new(Device),
+            vmColumns: ['Hostname', 'Note'], 
         }
     },
     route: { 
@@ -972,7 +981,12 @@ var deviceEditVue = {
              ev.preventDefault();
             return false;
         },
-
+        vmLinkable: function(key) {
+            return (key == 'Hostname')
+        },
+        vmLinkpath: function(entry, key) {
+            if (key == 'Hostname') return '/vm/edit/' + entry['VMI']
+        },
     },
 }
 
@@ -1645,7 +1659,6 @@ var partInventory = Vue.component('part-inventory', {
     mixins: [pagedCommon, commonListMIX, siteMIX],
     data: function() {
         return {
-            showgrid: true,
             DID: 0,
             STI: 4,
             PID: 0,
@@ -1761,7 +1774,6 @@ var partList = Vue.component('part-list', {
     mixins: [pagedCommon, commonListMIX],
     data: function() {
         return {
-            showgrid: true,
             isgood: true,
             isbad: false,
             DID: 0,

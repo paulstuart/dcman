@@ -761,6 +761,19 @@
                     :columns="ifaceColumns">
                 </interface-grid>
             </fieldset>
+
+            <fieldset class="col-xs-12" v-if="Device.vms">
+                <legend>VMs</legend>
+                <paged-grid 
+                    :data="Device.vms" 
+                    :columns="vmColumns" 
+                    :linkable="vmLinkable"
+                    :linkPath="vmLinkpath"
+                    :move-pages="movePages" 
+                    :start-row="startRow" 
+                    :rows-per-page="rowsPerPage">
+                </paged-grid>
+            </fieldset>
         </form>
     </div>
 </script>
@@ -1829,7 +1842,6 @@
 
 <script type="text/x-template" id="tmpl-tag-edit">
     <div id="tagform">
-        SITES: {{sites.length}}
         <form class="form-horizontal">
             <fieldset class="col-xs-12">
                 <div class="form-group">

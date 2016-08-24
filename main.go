@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/kardianos/osext"
+	pp "github.com/paulstuart/ping"
 	"github.com/paulstuart/secrets"
 	gcfg "gopkg.in/gcfg.v1"
 )
@@ -27,6 +28,7 @@ var (
 	sqlSchema         = sqlDir + "/schema.sql"
 	dbFile            = execDir + "/data.db"
 	systemLocation, _ = time.LoadLocation("Local")
+	pingTimeout       = 3
 	pathPrefix        string
 	bannerText        string
 	cfg               = struct {
@@ -123,6 +125,31 @@ func init() {
 	}
 }
 
+func ping(ip string, timeout int) bool {
+	return pp.Ping(ip, timeout)
+}
+
+type pingable struct {
+	IP string
+	OK bool
+}
+
+func bulkPing(timeout int, ips ...string) map[string]bool {
+	hits := make(map[string]bool)
+	c := make(chan pingable)
+
+	for _, ip := range ips {
+		go func(addr string) {
+			ok := ping(addr, timeout)
+			c <- pingable{addr, ok}
+		}(ip)
+	}
+	for range ips {
+		r := <-c
+		hits[r.IP] = r.OK
+	}
+	return hits
+}
 func myIP() string {
 	addrs, _ := net.InterfaceAddrs()
 	for _, addr := range addrs {

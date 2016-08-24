@@ -108,24 +108,6 @@ func apiSearch(w http.ResponseWriter, r *http.Request) {
 	jsonError(w, "no search term specified", http.StatusBadRequest)
 }
 
-func ServerDiscover(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
-	ipmi := r.URL.Path
-	if len(ipmi) == 0 {
-		notFound(w, r)
-		return
-	}
-	mac, _ := FindMAC(ipmi)
-	d := struct {
-		MacEth0 string
-	}{
-		MacEth0: mac,
-	}
-	j, _ := json.MarshalIndent(d, " ", " ")
-	w.Header().Set("Content-Type", "application/json")
-	fmt.Fprint(w, string(j))
-}
-
 // return the string after the last "/" of the url
 func urlSuffix(r *http.Request) string {
 	i := strings.LastIndex(r.URL.Path, "/")
@@ -164,33 +146,6 @@ func BulkPings(w http.ResponseWriter, r *http.Request) {
 		j, _ := json.MarshalIndent(pings, " ", " ")
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprint(w, string(j))
-	}
-}
-
-func IPMICredentialsGet(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "POST" {
-		r.ParseForm()
-		ipmi := r.Form.Get("ipmi")
-		username, password, err := GetCredentials(ipmi)
-		if err != nil {
-			log.Println("error getting creds for ipmp:", ipmi, "error:", err)
-		}
-		w.Header().Set("Content-Type", "text/plain")
-		fmt.Fprintln(w, username, password)
-	}
-}
-
-func IPMICredentialsSet(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "POST" {
-		r.ParseForm()
-		ipmi := r.Form.Get("ipmi")
-		username := r.Form.Get("username")
-		password := r.Form.Get("password")
-		err := SetCredentials(ipmi, username, password)
-		if err != nil {
-			w.Header().Set("Content-Type", "text/plain")
-			fmt.Fprintln(w, err)
-		}
 	}
 }
 
@@ -269,6 +224,24 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func apiLogout(w http.ResponseWriter, r *http.Request) {
+	cors(w)
+	c := &http.Cookie{
+		Name:    "SAML",
+		Path:    "/",
+		Expires: time.Unix(0, 0),
+	}
+	http.SetCookie(w, c)
+	c.Name = "dcuser"
+	http.SetCookie(w, c)
+	c.Name = "userinfo"
+	http.SetCookie(w, c)
+	c.Name = "redirect"
+	http.SetCookie(w, c)
+	c.Name = "X-API-KEY"
+	http.SetCookie(w, c)
+}
+
 func apiPragmas(w http.ResponseWriter, r *http.Request) {
 	dbDebug(true)
 	pragmas, err := dbPragmas()
@@ -288,33 +261,11 @@ func apiPragmas(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func apiLogout(w http.ResponseWriter, r *http.Request) {
-	cors(w)
-	c := &http.Cookie{
-		Name:    "SAML",
-		Path:    "/",
-		Expires: time.Unix(0, 0),
-	}
-	http.SetCookie(w, c)
-	c.Name = "dcuser"
-	http.SetCookie(w, c)
-	c.Name = "userinfo"
-	http.SetCookie(w, c)
-	c.Name = "redirect"
-	http.SetCookie(w, c)
-	c.Name = "X-API-KEY"
-	http.SetCookie(w, c)
-}
-
 var webHandlers = []hFunc{
-	//{"/favicon.ico", FaviconPage},
 	{"/static/", StaticPage},
-	{"/api/credentials/get", IPMICredentialsGet},
-	{"/api/credentials/set", IPMICredentialsSet},
 	{"/api/db/pragmas", apiPragmas},
 	{"/api/device/adjust/", MakeREST(deviceAdjust{})},
 	{"/api/device/ips/", MakeREST(deviceIPs{})},
-	//{"/api/device/network/", MakeREST(DeviceNetwork{})},
 	{"/api/device/pxe/", MakeREST(pxeDevice{})},
 	{"/api/device/type/", MakeREST(deviceType{})},
 	{"/api/device/view/", MakeREST(deviceView{})},
@@ -327,6 +278,7 @@ var webHandlers = []hFunc{
 	{"/api/part/view/", MakeREST(partView{})},
 	{"/api/part/", MakeREST(part{})},
 	{"/api/inventory/", MakeREST(inventory{})},
+	{"/api/mactable", macTable},
 	{"/api/mfgr/", MakeREST(manufacturer{})},
 	{"/api/network/circuit/view/", MakeREST(circuitView{})},
 	{"/api/network/circuit/list/", MakeREST(circuitList{})},
@@ -351,7 +303,5 @@ var webHandlers = []hFunc{
 	{"/api/vm/", MakeREST(vm{})},
 	{"/api/search/", apiSearch},
 	{"/api/", apiUnknown},
-	{"/data/server/discover/", ServerDiscover},
-	{"/data/mactable", macTable},
 	{"/", homePage},
 }
