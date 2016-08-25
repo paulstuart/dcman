@@ -126,7 +126,7 @@ func apiUnknown(w http.ResponseWriter, r *http.Request) {
 	jsonError(w, "Bad path: "+r.URL.Path, http.StatusBadRequest)
 }
 
-func BulkPings(w http.ResponseWriter, r *http.Request) {
+func pingMany(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	timeout := pingTimeout
 	if text := r.Form.Get("timeout"); len(text) > 0 {
@@ -291,7 +291,7 @@ var webHandlers = []hFunc{
 	{"/api/rack/", MakeREST(rack{})},
 	{"/api/site/", MakeREST(site{})},
 	{"/api/summary/", MakeREST(summary{})},
-	{"/api/pings", BulkPings},
+	{"/api/ping", pingMany},
 	{"/api/rma/view/", MakeREST(rmaView{})},
 	{"/api/rma/", MakeREST(rma{})},
 	{"/api/tag/", MakeREST(tag{})},

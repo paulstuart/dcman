@@ -220,6 +220,7 @@
         </select>
         <paged-grid 
             :data="rows | partFilter | filterBy searchQuery" 
+            :filename="filename" 
             :columns="columns" 
             :linkable="linkable"
             :linkPath="linkpath"
@@ -407,6 +408,7 @@
 
         <paged-grid 
             :data="rows | ipFilter | filterBy searchQuery" 
+            :filename="filename"
             :columns="columns" 
             :linkable="linkable"
             :linkPath="linkpath"
@@ -453,6 +455,7 @@
                 :linkPath="linkFN"
                 :move-pages="movePages" 
                 :start-row="startRow" 
+                :filename="filename"
                 :rows-per-page="rowsPerPage">
             </paged-grid>
         </div>
@@ -587,6 +590,7 @@
             :linkPath="linkpath"
             :move-pages="movePages" 
             :start-row="startRow" 
+            :filename="filename"
             :rows-per-page="rowsPerPage">
         </paged-grid>
     </div>
@@ -1944,13 +1948,13 @@
 
 
 <script type="text/x-template" id="tmpl-home-page">
-<div id="homepage">
-    <h1 class="mytitle" v-if="title.length">{{title}}</h1>
-    <tally-table
-        :rows="rows"
-        :columns="columns">
-    </tally-table>
-</div>
+    <div id="homepage">
+        <h1 class="mytitle" v-if="title.length">{{title}}</h1>
+        <tally-table
+            :rows="rows"
+            :columns="columns">
+        </tally-table>
+    </div>
 </script>
 
 
@@ -2055,10 +2059,13 @@
                 </tr>
             </tbody>
         </table>
-        <div id="page-navigation" v-if="data.length > rowsPerPage">
-            <button v-if="rowsPerPage" @click=movePages(-1)>Back</button>
+        <div id="page-navigation">
+            <template v-if="data.length > rowsPerPage">
+            <button v-if="rowsPerPage" class="btn" @click=movePages(-1)>Back</button>
             {{rowStatus}}
-            <button v-if="rowsPerPage" @click=movePages(1)>Next</button>
+            <button v-if="rowsPerPage" class="btn" @click=movePages(1)>Next</button>
+            </template>
+            <button v-if="data.length" class="btn download" v-on:click.prevent="download">Download</button>
         </div>
     </div>
 </script>

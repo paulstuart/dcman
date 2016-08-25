@@ -161,37 +161,6 @@ type rmaView struct {
 	USR         int64     `sql:"usr"`
 }
 
-/*
-type Carrier struct {
-	CarrierID int64     `sql:"cr_id" key:"true" table:"carriers"`
-	Name      string    `sql:"name"`
-	URL       string    `sql:"tracking_url"`
-	USR       int64    `sql:"usr"`
-	Modified  time.Time `sql:"ts"`
-}
-
-type Return struct {
-	ReturnID  int64     `sql:"return_id" key:"true" table:"rma_returns"`
-	RMD       int64     `sql:"rmd"`
-	CarrierID int64     `sql:"cr_id"`
-	Tracking  string    `sql:"tracking_no"`
-	USR       int64    `sql:"usr"`
-	Sent      time.Time `sql:"date_sent"`
-}
-
-type Sent struct {
-	ReturnID int64 `sql:"return_id" table:"rma_sent"`
-	PID      int64 `sql:"pid"`
-}
-
-type Received struct {
-	RMD int64     `sql:"rmd" table:"rma_received"`
-	PID int64     `sql:"pid"`
-	UID *int64    `sql:"usr"`
-	TS  time.Time `sql:"date_received"`
-}
-*/
-
 type manufacturer struct {
 	MID      int64     `sql:"mid" key:"true" table:"mfgrs"`
 	Name     string    `sql:"name"`
@@ -215,7 +184,7 @@ type sku struct {
 	PTI         *int64    `sql:"pti"`
 	PartNumber  *string   `sql:"part_no"`
 	Description *string   `sql:"description"`
-	sku         *string   `sql:"sku"`
+	SKU         *string   `sql:"sku"`
 	USR         int64     `sql:"usr"  audit:"user"`
 	Modified    time.Time `sql:"ts" audit:"time"`
 }
@@ -248,7 +217,7 @@ type partView struct {
 	Location    *string  `sql:"location"`
 	Serial      *string  `sql:"serial_no"`
 	AssetTag    *string  `sql:"asset_tag"`
-	partType    *string  `sql:"part_type"`
+	PartType    *string  `sql:"part_type"`
 	PartNumber  *string  `sql:"part_no"`
 	SKU         *string  `sql:"sku"`
 	Description *string  `sql:"description"`

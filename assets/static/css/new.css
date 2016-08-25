@@ -29,8 +29,6 @@ h2.login {
 table, th, td { 
    border: 1px solid black;
 }
-/*
-*/
 
 .bodybox {
     margin: 0em 4em ;
@@ -44,18 +42,6 @@ table, th, td {
     visibility: hidden;
 }
 
-/*
-.using-button {
-    visibility: hidden;
-}
-*/
-
-/*
-.button.disabled {
-  opacity: 0.5; 
-  cursor: not-allowed;
-}
-*/
 
 .rma-form {
     margin: 20px;
@@ -68,9 +54,10 @@ hr.menubar {
     background-image: linear-gradient(to right, #ccc, #333, #ccc);
 }
 
-/*
-th.nobreak {
-*/
+.download {
+    float: right;
+}
+
 th {
     white-space: nowrap;
 }

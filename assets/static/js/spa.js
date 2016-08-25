@@ -39,6 +39,7 @@ function isNumeric(n) {
   return !isNaN(parseFloat(n)) && isFinite(n);
 }
 
+
 var getIt = function(geturl, what) {
     return function(id, query) {
         var url = geturl;
@@ -240,7 +241,7 @@ var pagedCommon = {
             columns: [],
             searchQuery: '',
             startRow: 0,
-            pagerows: 25,
+            pagerows: 10,
             sizes: [10, 25, 50, 100, 'all'],
         }
     },
@@ -488,7 +489,7 @@ var ipList = Vue.component('ip-list', {
     },
     data: function() {
         return {
-            title: 'default title',
+            filename: 'iplist',
             rows: [],
             columns: [
                 "Site",
@@ -501,7 +502,6 @@ var ipList = Vue.component('ip-list', {
             sortKey: '',
             sortOrders: [],
             Host: '',
-            site: 'blah',
             STI: 1,
             IPT: 0,
             searchQuery: '',
@@ -522,7 +522,7 @@ var ipList = Vue.component('ip-list', {
             var self = this;
             console.log('server list promises starting for STI:', self.STI)
             return Promise.all([
-                getSiteLIST(), 
+                getSiteLIST(true), 
                 getIPTypes(),
            ]).then(function (data) {
               console.log('server list promises returning. site label:', self.site, 'STI:', self.STI)
@@ -1216,8 +1216,8 @@ var deviceList = Vue.component('device-list', {
           sites: [],
           racks: [],
           searchQuery: '',
-          pagerows: 10,
           rows: [],
+          filename: "servers",
           columns: [
                "Site",
                "Rack",
@@ -1591,6 +1591,7 @@ var vmList = Vue.component('vm-list', {
     mixins: [pagedCommon, siteMIX, commonListMIX],
     data: function() {
         return {
+            filename: "vms",
             STI: 1,
             sites: [],
             site: 'blah',
@@ -1774,6 +1775,7 @@ var partList = Vue.component('part-list', {
     mixins: [pagedCommon, commonListMIX],
     data: function() {
         return {
+            filename: "parts",
             isgood: true,
             isbad: false,
             DID: 0,
@@ -1815,9 +1817,13 @@ var partList = Vue.component('part-list', {
                 (STI > 0 ? getPart(STI, '?sti=') : getPart()), 
            ]).then(function (data) {
               console.log('part list promises returning')
+                var parts = data[1];
+                for (var i=0; i<parts.length; i++) {
+                    parts[i].Price = parts[i].Price.toFixed(2);
+                }
              return {
                 sites: data[0],
-                rows: data[1],
+                rows: parts,
                 STI: STI,
               }
             })
@@ -2376,6 +2382,7 @@ var partLoad = Vue.component('part-load', {
                     case "Qty":             return col;
                     case "Price":           return col;
                 }
+                console.log("unknown part entry:", col);
                 return ""
             }
             var parts = this.Parts.split("\n");
@@ -3114,7 +3121,8 @@ var pagedGrid = Vue.component('paged-grid', {
         linkable: Function,
         linkpath: Function,
         startRow: Number,
-        rowsPerPage: Number
+        rowsPerPage: Number,
+        filename: String,
     },
     data: function() {
         var sortOrders = {}
@@ -3133,11 +3141,16 @@ var pagedGrid = Vue.component('paged-grid', {
             if (! this.rowsPerPage) {
                 return this.data.length + ((this.data.length === 1) ? ' row' : ' rows')
             }
-            return (
+            var status = 
+                ' Page ' +
                 (this.startRow / this.rowsPerPage + 1) +
-                ' out of ' +
-                (Math.ceil(this.data.length / this.rowsPerPage))
-            )
+                ' / ' +
+                (Math.ceil(this.data.length / this.rowsPerPage));
+
+            if (this.data.length >  this.rowsPerPage) {
+                status += " (" + this.data.length + " rows) ";
+            }
+            return status
         }
     },
     methods: {
@@ -3151,6 +3164,37 @@ var pagedGrid = Vue.component('paged-grid', {
                 this.startRow = newStartRow;
             }
         },
+        download() {
+            // TODO: perhaps get fancier and use this?
+            // https://github.com/eligrey/FileSaver.js#saving-text
+            var filename = this.filename || "data.xls";
+            if (filename.indexOf(".") < 0 ) {
+                filename += ".xls";
+            }
+
+            // gather up our data to save (tab delimited)
+            var text = this.columns.join("\t") + "\n";
+            for (var i=0; i < this.data.length; i++) {
+                var line = [];
+                for (var j=0; j < this.columns.length; j++) {
+                    var col = this.columns[j];
+                    line.push(this.data[i][col])
+                }
+                text += line.join("\t") + "\n";
+            }
+
+            var element = document.createElement('a');
+            var ctype = 'application/vnd.ms-excel';
+            element.setAttribute('href', 'data:' + ctype + ';charset=utf-8,' + encodeURIComponent(text));
+            element.setAttribute('download', filename);
+
+            element.style.display = 'none';
+            document.body.appendChild(element);
+
+            element.click();
+
+            document.body.removeChild(element);
+        },
     }
 });
 
@@ -3162,6 +3206,7 @@ var homePage = Vue.component('home-page', {
             title: "PubMatic Datacenters",
             rows: [],
             columns: [ "Site", "Servers", "VMs" ],
+            testData: 'this is a test',
         }
     },
     created: function() {
@@ -3175,6 +3220,9 @@ var homePage = Vue.component('home-page', {
                 self.rows = data
             })
         },
+        dl: function() {
+            download('test.txt', this.testData)
+        }
     },
 })
 

@@ -793,5 +793,6 @@ func newREST(obj dbutil.DBObject, w http.ResponseWriter, r *http.Request) {
 		db.FindSelf(obj) // load what DB has for verification
 		sendJSON(w, obj)
 	}
-	spew.Dump(obj)
+	// TODO: special debug flag for spew?
+	//spew.Dump(obj)
 }
