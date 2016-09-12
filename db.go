@@ -85,6 +85,7 @@ func dbPragmas() (map[string]string, error) {
 	return datastore.Pragmas()
 }
 
+/*
 func dbPrep() {
 	var fresh bool
 	var err error
@@ -105,6 +106,19 @@ func dbPrep() {
 	if err := dbExec("PRAGMA foreign_keys = ON"); err != nil {
 		panic(err)
 	}
+}
+*/
+func dbPrep() {
+	var err error
+	//log.Println("DBFILE:", dbFile)
+	datastore, err = dbutil.Open(dbFile, true)
+	if err != nil {
+		panic(err)
+	}
+	if err := dbExec("PRAGMA foreign_keys = ON"); err != nil {
+		panic(err)
+	}
+	datastore.DB.SetMaxOpenConns(1)
 }
 
 func backups(freq int, to string) {
@@ -195,6 +209,13 @@ func dbStream(fn func([]string, int, []interface{}), query string, args ...inter
 	return datastore.Stream(fn, query, args...)
 }
 
+func dbTable(query string, args ...interface{}) (*dbutil.Table, error) {
+	if err := readable(); err != nil {
+		return &dbutil.Table{}, err
+	}
+	return datastore.Table(query, args...)
+}
+
 /*
 //func (db DBU) Stream(fn func([]string, int, []interface{}), query string, args ...interface{}) error {
 func dbStreamTab(w io.Writer, query string, args ...interface{}) error {
@@ -278,13 +299,6 @@ func dbStreamCSV(w io.Writer, query string, args ...interface{}) error {
 	return datastore.StreamCSV(w, query, args...)
 }
 
-
-func dbTable(query string, args ...interface{}) (*dbutil.Table, error) {
-	if err := readable(); err != nil {
-		return &dbutil.Table{}, err
-	}
-	return datastore.Table(query, args...)
-}
 
 func dbUpdate(query string, args ...interface{}) (i int64, e error) {
 	if err := writable(); err != nil {

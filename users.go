@@ -23,6 +23,7 @@ func userByID(id interface{}) (user, error) {
 	return getUser("where usr=?", id)
 }
 
+/*
 func userLogin(id string) string {
 	if len(id) == 0 {
 		return ""
@@ -36,6 +37,7 @@ func userLogin(id string) string {
 	}
 	return u.Login
 }
+*/
 
 func userByLogin(login string) (user, error) {
 	return getUser("where login=?", login)

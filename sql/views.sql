@@ -1,4 +1,11 @@
 
+DROP VIEW IF EXISTS sessions_view;
+CREATE VIEW "sessions_view" as
+    select s.*, u.login
+    from sessions s
+    left outer join users u on s.usr = u.usr
+    ;
+
 DROP VIEW IF EXISTS racks_view;
 CREATE VIEW racks_view as
 	select s.name as site, r.*
@@ -65,6 +72,8 @@ create view ips_next as
     where next32 is null
     order by ip32
    ;
+
+
 
 drop view if exists devices_view;
 create view devices_view as
@@ -162,6 +171,21 @@ CREATE VIEW vms_ips as
     left outer join ips_view i on v.vmi = i.vmi
     ;
 
+/*
+sti|rid|site|rack|ru|server|vmi|did|hostname|profile|note|usr|ts|iid|ipt|ipv4|iptype
+2|4|SFO|1|33|sfo1hyp079|1256|2447|APPS33003|||0|2015-01-23 19:07:18|4794|2|10.100.128.11|Internal
+2|4|SFO|1|33|sfo1hyp079|1256|2447|APPS33003|||0|2015-01-23 19:07:18|8525|6|162.248.16.38|VIP
+
+*/
+
+drop view if exists vms_list;
+create view vms_list as
+    select vmi, did, sti, rid, site, rack, ru, server, hostname, profile, note, usr, ts, 
+    group_concat(ipv4, ', ') as ips
+    from vms_ips
+    where ipt not in (select ipt from ip_types where multi > 0)
+    group by vmi
+    ;
 
 DROP VIEW IF EXISTS rackspace; 
 create view rackspace as select *,ru+height-1 as top from devices_view;
@@ -337,3 +361,34 @@ create view devices_adjust as
     from devices_adjust d1
     ;
     */
+
+drop view if exists devices_history;
+CREATE VIEW devices_history as 
+    with all_devices as (
+        select * from devices
+        union 
+        select * from audit_devices
+    ) 
+    select d.*, r.sti, r.site, r.rack, dt.name as devtype, t.tag, u.login 
+    from all_devices d
+    left outer join racks_view r on d.rid = r.rid
+    left outer join device_types dt on d.dti = dt.dti
+    left outer join tags t on d.tid = t.tid
+    left outer join users u on d.usr=u.usr
+    order by did asc, version desc
+    ;
+
+drop view if exists vms_history;
+CREATE VIEW vms_history as 
+    with all_vms as (
+        select * from vms
+        union 
+        select * from audit_vms
+    ) 
+    select v.*, d.sti, d.rid, d.site, d.rack, d.ru, d.hostname as server, u.login 
+    from all_vms v
+    left outer join devices_view d on v.did = d.did
+    left outer join users u on d.usr=u.usr
+    order by vmi asc, version desc
+    ;
+

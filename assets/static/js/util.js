@@ -4,6 +4,11 @@ var get = function(url) {
     // Do the usual XHR stuff
     var req = new XMLHttpRequest();
     req.open('GET', url);
+    /*
+    if (user_apikey && user_apikey.length > 0) {
+	    req.setRequestHeader("X-API-KEY", user_apikey)
+    }
+    */
     if (user_apikey && user_apikey.length > 0) {
 	    req.setRequestHeader("X-API-KEY", user_apikey)
     }

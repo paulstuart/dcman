@@ -33,48 +33,28 @@ DROP TRIGGER IF EXISTS devices_view_insert;
 CREATE TRIGGER devices_view_insert INSTEAD OF INSERT ON devices_view 
 BEGIN
     insert into devices
-        (rid, dti, tid, ru, height, hostname, alias, sn, profile, asset_tag, assigned, note)
+        (usr, rid, dti, tid, ru, height, hostname, alias, sn, profile, asset_tag, assigned, note)
         values
-        (NEW.rid, NEW.dti, NEW.tid, NEW.ru, NEW.height, NEW.hostname, NEW.alias, 
+        (NEW.usr, NEW.rid, NEW.dti, NEW.tid, NEW.ru, NEW.height, NEW.hostname, NEW.alias, 
             NEW.sn, NEW.profile, NEW.asset_tag, NEW.assigned, NEW.note)
         ;
 END;
 
-/*
-drop table if exists devices;
-CREATE TABLE "devices" (
-    did integer primary key,
-    rid integer,    -- rack ID
-    dti integer,    -- device type ID
-    kid integer,    -- vendor sku ID
-    tid integer,    -- tag ID
-    ru  integer default 0,
-    height    int default 1,
-    hostname  text not null COLLATE NOCASE,
-    alias     text,
-    asset_tag text,
-    sn        text,
-    profile   text,
-    assigned  text,
-    note      text,
-    usr integer default 0,
-    ts  date DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(rid) REFERENCES racks(rid)
-    FOREIGN KEY(dti) REFERENCES device_types(dti)
-    FOREIGN KEY(kid) REFERENCES skus(kid)
-    FOREIGN KEY(tid) REFERENCES tags(tid)
-);
-*/
 
 DROP TRIGGER IF EXISTS devices_view_update;
 CREATE TRIGGER devices_view_update INSTEAD OF UPDATE ON devices_view 
 BEGIN
+    /*
+    insert into log values('devices_view_update - USR:' || ifnull(new.usr, 'nada'));
+    insert into log values('devices_view_update - TID:' || ifnull(new.tid, 'no tag'));
+    */
   update devices set 
-	rid = nullif(ifnull(NEW.rid,OLD.rid),0),
-	dti = nullif(ifnull(NEW.dti,OLD.dti),0),
-	kid = nullif(ifnull(NEW.kid,OLD.kid),0),
-	tid = nullif(ifnull(NEW.tid,OLD.tid),0),
-    ru = ifnull(NEW.ru, OLD.ru),
+	rid = ifnull(nullif(NEW.rid,0),OLD.rid),
+	usr = ifnull(nullif(NEW.usr,0),OLD.usr),
+	dti = ifnull(nullif(NEW.dti,0),OLD.dti),
+	kid = ifnull(nullif(NEW.kid,0),OLD.kid),
+	tid = ifnull(nullif(NEW.tid,0),OLD.tid),
+    ru =  ifnull(NEW.ru, OLD.ru),
     height = ifnull(NEW.height, OLD.height),
     hostname = ifnull(NEW.hostname, OLD.hostname),
     alias = ifnull(NEW.alias, OLD.alias),
@@ -87,12 +67,20 @@ BEGIN
     ;
 END;
 
+-- add data for full text search
 DROP TRIGGER IF EXISTS devices_insert;
 CREATE TRIGGER devices_insert AFTER INSERT ON devices 
 BEGIN
     insert or replace into notes values(NEW.did, 'Device', NEW.hostname, NEW.note);
 END;
 
+DROP TRIGGER IF EXISTS devices_update;
+CREATE TRIGGER devices_update AFTER UPDATE ON devices 
+BEGIN
+    insert or replace into notes values(NEW.did, 'Device', NEW.hostname, NEW.note);
+END;
+
+-- remove deleted data from full text search
 DROP TRIGGER IF EXISTS devices_delete;
 CREATE TRIGGER devices_delete AFTER DELETE ON devices 
 BEGIN
@@ -311,11 +299,101 @@ BEGIN
        INSERT INTO audit_racks select * from racks where rid=old.rid;
 END;
 
+/*
+DROP TABLE IF EXISTS "audit_log";
+CREATE TABLE "audit_log" (
+    id integer,
+    kind text,
+    what text,
+    pre text,
+    post text,
+    usr integer,
+    ts timestamp
+);
+*/
+
+        /*
+        select old.did as id, 'devices' as kind, 'hostname' as what, old.hostname as pre, new.hostname as post, nullif(old.hostname, new.hostname) as diff
+        union
+        select old.did as id, 'devices' as kind, 'alias' as what, old.alias as pre, new.alias as post, nullif(old.alias, new.alias) as diff
+        union
+        select old.did as id, 'devices' as kind, 'profile' as what, old.profile as pre, new.profile as post, nullif(old.profile, new.profile) as diff
+        */
+
+/*
 DROP TRIGGER IF EXISTS devices_audit;
 CREATE TRIGGER devices_audit BEFORE UPDATE
 ON devices
 BEGIN
-   INSERT INTO audit_devices select * from devices where did=old.did;
+    with comps as (
+        select 'hostname' as what, old.hostname as pre, new.hostname as post, nullif(old.hostname, new.hostname) as diff
+        union
+        select 'alias' as what, old.alias as pre, new.alias as post, nullif(old.alias, new.alias) as diff
+        union
+        select 'profile' as what, old.profile as pre, new.profile as post, nullif(old.profile, new.profile) as diff
+    ),
+    diffs as (
+        select * from comps where diff is not null
+    )
+    INSERT INTO audit_log select old.did as id, 'devices' as kind, what, pre, post, new.usr, new.ts from diffs;
+    --INSERT INTO audit_devices select * from devices where did=old.did;
+END;
+*/
+
+DROP TRIGGER IF EXISTS devices_audit;
+CREATE TRIGGER devices_audit BEFORE UPDATE ON devices
+BEGIN
+    INSERT INTO audit_devices select * from devices where did=old.did;
+    update devices set version=version+1 where did=old.did;
+END;
+
+/*
+DROP TRIGGER IF EXISTS devices_version;
+CREATE TRIGGER devices_version AFTER UPDATE ON devices
+BEGIN
+    update devices set version=version+1 where did=old.did;
+END;
+*/
+
+/*
+DROP TRIGGER IF EXISTS devices_audit;
+CREATE TRIGGER devices_audit BEFORE UPDATE
+ON devices
+BEGIN
+    INSERT INTO audit_devices 
+    select 
+        old.did, 
+        what || ': ' ||  ifnull(pre,'(null)') || ' => ' || ifnull(post,'(null)' as action, 
+        new.usr, 
+        new.ts 
+    from (
+        select 'hostname' as what, old.hostname as pre, new.hostname as post, nullif(old.hostname, new.hostname) as diff
+        union
+        select 'ru' as what, old.ru as pre, new.ru as post, nullif(old.ru, new.ru) as diff
+        union
+        select 'height' as what, old.height as pre, new.height as post, nullif(old.height, new.height) as diff
+        union
+        select 'alias' as what, old.alias as pre, new.alias as post, nullif(old.alias, new.alias) as diff
+        union
+        select 'profile' as what, old.profile as pre, new.profile as post, nullif(old.profile, new.profile) as diff
+    ) where diff is not null;
+END;
+
+------------------
+DROP TRIGGER IF EXISTS devices_audit;
+CREATE TRIGGER devices_audit BEFORE UPDATE ON devices
+BEGIN
+    INSERT INTO audit_devices select * from devices where did=old.did;
+    update devices set version=version+1 where did=old.did;
+END;
+*/
+
+DROP TRIGGER IF EXISTS vms_audit;
+CREATE TRIGGER vms_audit BEFORE UPDATE
+ON vms
+BEGIN
+    INSERT INTO audit_vms select * from vms where vmi=old.vmi;
+    update vms set version=version+1 where vmi=old.vmi;
 END;
 
 DROP TRIGGER IF EXISTS parts_view_insert_new_sku;

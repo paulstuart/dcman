@@ -1,8 +1,507 @@
 'use strict';
 
-var pingURL = "http://10.100.182.16:8080/dcman/api/pings?debug=true";
+var macURL = 'http://10.100.182.16:8080/dcman/data/server/discover/';
+
+var userInfo = {};
+var urlDebug = false;
+
+var toggleDebug = function() {
+    urlDebug = ! urlDebug;
+    console.log('server-side debugging: ' + urlDebug);
+}
+
+var apikey = function() {
+    if (userInfo && userInfo.APIKey && userInfo.APIKey.length > 0) {
+        return userInfo.APIKey
+    }
+    return ""
+}
+
+var admin = function() {
+    if (userInfo && userInfo.Level) {
+        return userInfo.Level
+    }
+    return 0 
+}
+
+var get = function(url) {
+  return new Promise(function(resolve, reject) {
+      console.log("get url debug:",urlDebug);
+    if (urlDebug) {
+        url += (url.indexOf('?') > 0) ? '&debug=true' : '?debug=true'
+    }
+    // Do the usual XHR stuff
+    var req = new XMLHttpRequest();
+    req.open('GET', url);
+    var key = apikey();
+    if (key.length > 0) {
+	    req.setRequestHeader("X-API-KEY", key)
+    }
+
+    req.onload = function() {
+      // This is called even on 404 etc, so check the status
+      //console.log('get status:', req.status, 'txt:', req.statusText)
+      if (req.status == 200) {
+        // Resolve the promise with the response text
+        var obj = JSON.parse(req.responseText)
+        resolve(obj)
+      }
+      else {
+        // Otherwise reject with the status text
+        // which will hopefully be a meaningful error
+        console.log('rejecting!!! ack:',req.status, 'txt:', req.statusText)
+        reject(Error(req.statusText));
+      }
+    };
+
+    // Handle network errors
+    req.onerror = function() {
+      console.log('get network error');
+      reject(Error("Network Error"));
+    };
+
+    // Make the request
+    req.send();
+  });
+}
+
+var posty = function(url, data, method) {
+    return new Promise(function(resolve, reject) {
+    // Do the usual XHR stuff
+    if (typeof method == "undefined") method = 'POST';
+    var req = new XMLHttpRequest();
+    if (urlDebug) {
+        url += (url.indexOf('?') > 0) ? '&debug=true' : '?debug=true'
+    }
+    req.open(method, url);
+    var key = apikey();
+    if (key.length > 0) {
+	    req.setRequestHeader("X-API-KEY", key)
+    }
+	req.setRequestHeader("Content-Type", "application/json")
+
+    req.onload = function() {
+        // This is called even on 404 etc
+        // so check the status
+        console.log('get status:', req.status, 'txt:', req.statusText)
+        if (req.status >= 200 && req.status < 300) {
+            if (req.responseText.length > 0) {
+                resolve(JSON.parse(req.responseText))
+            } else {
+                resolve(null)
+            }
+        }
+        else {
+            // Otherwise reject with the status text
+            // which will hopefully be a meaningful error
+            console.log('rejecting!!! ack:',req.status, 'txt:', req.statusText)
+            reject(Error(req.statusText));
+        }
+    };
+
+    // Handle network errors
+    req.onerror = function() {
+        console.log('posty network error');
+        reject(Error("Network Error"));
+    };
+
+    // Make the request
+    req.send(JSON.stringify(data));
+  });
+}
+
+
+
+var deleteIt = function(url, fn) {
+    posty(url, null, 'DELETE')
+}
+
+function toQueryString(obj) {
+    var parts = [];
+    for (var i in obj) {
+        if (obj.hasOwnProperty(i)) {
+            parts.push(encodeURIComponent(i) + "=" + encodeURIComponent(obj[i]));
+        }
+    }
+    return parts.join("&");
+}
+
+var postForm = function(url, data, fn, method) {
+    var xhr = new XMLHttpRequest();
+    if (typeof method == "undefined") var method = 'POST';
+    var form = toQueryString(data);
+    xhr.open(method, url, true);
+
+    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded; charset=UTF-8');
+
+    xhr.send(form);
+    xhr.onreadystatechange = function() {
+        if (typeof fn === 'function') {
+            fn(xhr);
+            return
+        }
+        if (xhr.readyState == 4 && xhr.status != 200) {
+            alert("Oops:" + xhr.responseText);
+        }
+    };
+}
+
+
+function getParameterByName(name, url) {
+    if (!url) url = window.location.href;
+    name = name.replace(/[\[\]]/g, "\\$&");
+    var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
+        results = regex.exec(url);
+    if (!results) return null;
+    if (!results[2]) return '';
+    return decodeURIComponent(results[2].replace(/\+/g, " "));
+}
+
+var buttonEnable = function(btn, enable) {
+    if (enable) {
+        btn.disabled = false
+        btn.classList.remove("disabled")
+    } else {
+        btn.disabled = true
+        btn.classList.add("disabled")
+    }
+}
+
+
+var Maker = function(self, names, fresh) {
+    self.Columns = function() {
+        return names
+    }
+
+    self.Load = function(data) {
+        for (var i=0; i < names.length; i++) {
+            var column = names[i];
+            self[column] = data[column]
+        }
+    }
+
+    fresh = fresh || function(name) { return '' };
+
+    self.Init = function() {
+        for (var i=0; i < names.length; i++) {
+            var column = names[i];
+            self[column] = fresh(column)
+        }
+    }
+
+    self.Init()
+}
+
+var newTable = function(name, template, mixins) {
+  return Vue.component(name, {
+      template: template,
+      props: {
+          data: Array,
+          columns: Array,
+          filterKey: String
+      },
+      data: function () {
+          var sortOrders = {}
+          this.columns.forEach(function (key) {
+              sortOrders[key] = 1
+          })
+          return {
+              sortKey: '',
+              sortOrders: {} //sortOrders
+          }
+      },
+      methods: {
+            sortBy: function (key) {
+                this.sortKey = key
+                this.sortOrders[key] = this.sortOrders[key] * -1
+            },
+      },
+      mixins: mixins,
+    })
+}
+
+var makeTable = function(template, mixins) {
+  return Vue.extend({
+      template: template,
+      data: function () {
+          return {
+              columns: [],
+              rows: [],
+              sortKey: '',
+              sortOrders: {},
+              title: '',
+          }
+      },
+      methods: {
+            sortBy: function (key) {
+                this.sortKey = key
+                this.sortOrders[key] = this.sortOrders[key] * -1
+            },
+      },
+      mixins: mixins,
+      watch: {
+          'columns': function(val, oldVal) {
+              var self = this;
+              this.columns.forEach(function (key) {
+                  self.sortOrders[key] = 1
+              })
+          }
+      },
+    })
+}
+
+var makeNewTable = function(name, template, mixins) {
+  return Vue.component(name, {
+      template: template,
+      data: function () {
+          return {
+              columns: [],
+              rows: [],
+              sortKey: '',
+              sortOrders: {},
+              title: '',
+          }
+      },
+      methods: {
+            sortBy: function (key) {
+                this.sortKey = key
+                this.sortOrders[key] = this.sortOrders[key] * -1
+            },
+      },
+      mixins: mixins,
+      watch: {
+          'columns': function(val, oldVal) {
+              var self = this;
+              this.columns.forEach(function (key) {
+                  self.sortOrders[key] = 1
+              })
+          }
+      },
+    })
+}
+
+var childTable = function(name, template, mixins) {
+    return Vue.component(name, {
+        template: template,
+        props: [ 
+              'columns',
+              'rows',
+              'filterKey',
+              ],
+        data: function() {
+            var sortOrders = {}
+            this.columns.forEach(function (key) {
+                sortOrders[key] = 1
+            })
+            return {
+                sortKey: '',
+                sortOrders: sortOrders,
+            }
+        },
+        methods: {
+            sortBy: function (key) {
+                this.sortKey = key
+                this.sortOrders[key] = this.sortOrders[key] * -1
+            },
+        },
+        mixins: mixins,
+    })
+}
+
+
+var menuMIX = {
+  data: {
+      myapp: {
+        auth: {
+            loggedIn: true,
+            user: {
+                name: "Waldo"
+            }
+        },
+      },
+    }
+}
+
+
+var RMA = function() {
+    Maker(this, [
+        'RMD',
+        'DID',
+        'STI',
+        'VID',
+        'OldPID',
+        'NewPID',
+        'Description',
+        'Hostname',
+        'ServerSN',
+        'PartSN',
+        'PartNumber',
+        'VendorRMA',
+        'Jira',
+        'ShipTrack',
+        'RecvTrack',
+        'DCTicket',
+        'Receiving',
+        'Note',
+        'Shipped',
+        'Received',
+        'Closed',
+        'Created',
+    ])
+}
+
+var Part = function() {
+    Maker(this, [
+        'PID',
+        'DID',
+        'STI',
+        'PTI',
+        'VID',
+        'Site',
+        'Hostname',
+        'Description',
+        'PartNumber',
+        'Serial',
+        'AssetTag',
+        'Mfgr',
+        'Price',
+        'Cents',
+        'Bad',
+        'Used',
+    ])
+}
+
+var Tag = function() {
+    Maker(this, [
+        'TID',
+        'Name',
+    ])
+}
+
+var VM = function() {
+    Maker(this, [
+        'VMI',
+        'DID',
+        'RID',
+        'STI',
+        'Rack',
+        'Site',
+        'Server',
+        'Hostname',
+        'Private',
+        'Public',
+        'Profile',
+        'Note',
+        'Version',
+        'VIP',
+    ])
+}
+
+var VLAN = function() {
+    Maker(this, [
+       'VLI',
+       'STI',
+       'Site',
+       'Name',
+       'Profile',
+       'Gateway',
+       'Route',
+       'Netmask',
+    ])
+}
+
+var User = function() {
+    Maker(this, [
+        'USR',
+        'Login',
+        'First',
+        'Last',
+        'Email',
+        'Level',
+    ])
+}
+
+var Rack = function() {
+    Maker(this, [
+        'RID',
+        'STI',
+        'Site',
+        'RUs',
+        'Label',
+        'Note',
+        'VendorID',
+    ])
+}
+
+var Vendor = function() {
+    Maker(this, [
+        'VID',
+        'Name',
+        'WWW',
+        'Phone',
+        'Address',
+        'City',
+        'State',
+        'Country',
+        'Postal',
+        'Note',
+    ])
+}
+
+var Mfgr = function() {
+    Maker(this, [
+        'MID',
+        'Name',
+        'Note',
+        'URL',
+    ])
+}
+
+var IPType = function() {
+    Maker(this, [
+        'IPT',
+        'Name',
+        'Multi',
+    ])
+}
+
+var DeviceType = function() {
+    Maker(this, [
+        'Name',
+        'DTI',
+    ])
+}
+
+var Device = function() {
+    Maker(this, [
+        'Alias',
+        'AssetTag',
+        'Assigned',
+        'Site',
+        'DID',
+        'DTI',
+        'DevType',
+        'Height',
+        'Hostname',
+        'ID',
+        'Note',
+        'PartNo',
+        'Profile',
+        'Rack',
+        'RID',
+        'RU',
+        'SerialNo',
+        'STI',
+        'TID',
+        'Version',
+    ])
+}
+
+// old start of spa.js
+var pingURL = "http://10.100.182.16:8080/dcman/api/pings";
 
 var deviceURL       = '/dcman/api/device/view/'
+var deviceAuditURL  = '/dcman/api/device/audit/'
 var deviceListURL   = '/dcman/api/device/ips/'
 var deviceNetworkURL = '/dcman/api/device/network/'
 var deviceTypesURL  = '/dcman/api/device/type/'
@@ -13,20 +512,21 @@ var ifaceViewURL    = '/dcman/api/interface/view/'
 var mfgrURL         = '/dcman/api/mfgr/'
 var inURL           = "/dcman/api/inventory/";
 var vmURL           = "/dcman/api/vm/";
+var vmIPsURL        = "/dcman/api/vm/ips/";
 var vmViewURL       = "/dcman/api/vm/view/";
+var vmAuditURL      = '/dcman/api/vm/audit/'
 var partTypesURL    = "/dcman/api/part/type/";
 var partURL         = "/dcman/api/part/view/";
 var rackURL         = "/dcman/api/rack/view/";
 var rmaURL          = "/dcman/api/rma/";
 var rmaviewURL      = "/dcman/api/rma/view/";
 var tagURL          = "/dcman/api/tag/";
+var sessionsURL      = "/dcman/api/session/" ; 
 var sitesURL        = "/dcman/api/site/" ; 
 var networkURL      = "/dcman/api/network/ip/used/";
 var userURL         = "/dcman/api/user/" ; 
 var vlanURL         = "/dcman/api/vlan/view/" ; 
 var vendorURL       = "/dcman/api/vendor/" ; 
-
-var userInfo = {};
 
 var mySTI = 1;
 
@@ -96,13 +596,17 @@ var getInventory = getIt(inURL, 'inventory');
 var getDeviceTypes = getIt(deviceTypesURL, 'device typess');
 var getIPTypes = getIt(iptypesURL, 'ip types');
 var getDeviceLIST = getIt(deviceListURL, 'device list');
+var getDeviceAudit = getIt(deviceAuditURL, 'device audit');
 var getTagList = getIt(tagURL, 'tags');
 var getDevice = getIt(deviceURL, 'device');
 var getMfgr = getIt(mfgrURL, 'mfgr');
 var getVM = getIt(vmViewURL, 'vm');
+var getVMAudit = getIt(vmAuditURL, 'vm audit');
 var getRack = getIt(rackURL, 'racks')
 var getRMA = getIt(rmaviewURL, 'rma')
 var getVLAN = getIt(vlanURL, 'vlan')
+var getUser = getIt(userURL, 'user')
+var getSessions = getIt(sessionsURL, 'sessions')
 
 
 
@@ -162,20 +666,6 @@ var completeDevice = function(DID) {
 }
 
 
-function remember() {
-    var cookies = document.cookie.split("; ");
-    for (var i=0; i < cookies.length; i++) {
-        var tuple = cookies[i].split('=')
-        if (tuple[0] === 'X-API-KEY') {
-            // all changeable actions require this key
-            window.user_apikey = tuple[1]; 
-            break
-        } 
-    }
-}
-
-remember();
-
 var siteMIX = {
     route: { 
           data: function (transition) {
@@ -227,9 +717,9 @@ var ipv4 = function(ip) {
 
 var saveMe = function(url, data, id, fn) {
     if (id && id > 0) {
-        postIt(url + id + "?debug=true", data, fn, 'PATCH')
+        posty(url + id, data, fn, 'PATCH')
     } else {
-        postIt(this.dataURL + id + "?debug=true", data, fn)
+        posty(url, data, fn)
     }
 }
 
@@ -258,21 +748,38 @@ var pagedCommon = {
     },
 }
 
+var authVue = {
+    computed: {
+        /*
+        admin: function() {
+            return admin()
+        },
+        */
+        canEdit: function() {
+            return (admin() > 0)
+        },
+        isAdmin: function() {
+            return (admin() > 1)
+        },
+    },
+}
+
 // common stuff for edits 
 var editVue = {
+    mixins: [authVue],
     methods: {
         saveSelf: function() {
             var data = this.myself()
             var id = this.myID()
             if (id > 0) {
-                postIt(this.dataURL + id + "?debug=true", data, this.showList, 'PATCH')
+                posty(this.dataURL + id, data, 'PATCH').then(this.showList)
             } else {
-                postIt(this.dataURL + id + "?debug=true", data, this.showList)
+                posty(this.dataURL, data).then(this.showList)
             }
         },
         deleteSelf: function(event) {
             console.log('delete event: ' + event)
-            postIt(this.dataURL + this.myID(), null, this.showList, 'DELETE')
+            posty(this.dataURL + this.myID(), null, 'DELETE').then(this.showList)
         },
         showList: function(ev) {
             router.go(this.listURL)
@@ -362,7 +869,7 @@ var cleanText = function(text) {
 var searchVue = {
     data: function () {
         return {
-            columns: ['Kind', 'Name'],
+            columns: ['Kind', 'Name', 'Note'],
             searchText: '',
             found: [],
         }
@@ -382,7 +889,7 @@ var searchVue = {
             }
             var searchURL = "/dcman/api/search/";
             var url = searchURL + what;
-            fetchData(url, function(data) {
+            get(url).then(function(data) {
                 console.log('we are searching for:', what)
                 if (data) {
                     console.log('search matched:', data.length)
@@ -420,6 +927,7 @@ var sList = Vue.component('search-for', {
 
 Vue.component('my-nav', {
     template: '#tmpl-main-menu',
+    mixins: [authVue],
     props: ['app', 'msg'],
     data: function() {
        return {
@@ -429,6 +937,13 @@ Vue.component('my-nav', {
     created: function() {
         this.userinfo()
     },
+        /*
+    computed: {
+        'debugAction': function() {
+            return (urlDebug) ? "Disable" : "Enable"
+        },
+    },
+    */
     methods: {
         'doSearch': function(ev) {
             var text = cleanText(this.searchText);
@@ -442,14 +957,29 @@ Vue.component('my-nav', {
                 router.go({name: 'search', params: { searchText: text }})
             }
         },
+        'debugAction': function() {
+            return (urlDebug) ? "Disable" : "Enable"
+        },
+        /*
+        'toggleDebug': function() {
+            urlDebug = ! urlDebug;
+            console.log('server-side debugging: ' + urlDebug);
+        },
+        */
         'userinfo': function() {
+            // reload existing auth from cookie
             var cookies = document.cookie.split("; ");
+            var key = "";
             for (var i=0; i < cookies.length; i++) {
                 var tuple = cookies[i].split('=')
+                if (tuple[0] == 'X-API-KEY') {
+                    key=tuple[1]
+                    continue
+                }
                 if (tuple[0] != 'userinfo') continue;
                 if (tuple[1].length == 0) break; // no cookie value so don't bother
                 var user = JSON.parse(atob(tuple[1]));
-                this.$dispatch('user-info', user)
+                this.$dispatch('user-info', user, key)
                 break
             }
         },
@@ -464,10 +994,9 @@ var ipload = {
                  url = networkURL;
             if (self.STI > 0) {
                 url +=  "?STI=" + self.STI;
-                url += "&debug=true"
             }
 
-            fetchData(url, function(data) {
+            get(url).then(function(data) {
                 if (data) {
                     self.rows = data
                     console.log("loaded", data.length, "ip records")
@@ -553,7 +1082,7 @@ var ipList = Vue.component('ip-list', {
             }
 
             var self = this;
-            return data.map(function(obj) {
+            return data.filter(function(obj) {
                 if (self.IPT == obj.IPT && ! self.Host) {
                     return obj
                 }
@@ -652,9 +1181,9 @@ var iptypeEdit = Vue.component('iptype-edit', {
             var id = data.IPT;
             var url = iptypesURL;
             if (id > 0) {
-                postIt(url + id + "?debug=true", data, this.showList, 'PATCH')
+                posty(url + id, data, this.showList, 'PATCH')
             } else {
-                postIt(url + id + "?debug=true", data, this.showList)
+                posty(url + id, data, this.showList)
             }
         },
         deleteSelf: function() {
@@ -675,7 +1204,7 @@ var UserList = Vue.component('user-list', {
     mixins: [pagedCommon],
     data: function() {
         return {
-            columns: ['Login', 'First', 'Last', 'Access'],
+            columns: ['Login', 'First', 'Last', 'Level'],
             rows: [],
             url: userURL,
         }
@@ -687,7 +1216,7 @@ var UserList = Vue.component('user-list', {
         loadData: function() {
             var self = this;
 
-            fetchData(this.url, function(data) {
+            get(this.url).then(function(data) {
                 if (data) {
                     self.rows = data
                     console.log("loaded", data.length, "ip records")
@@ -715,11 +1244,28 @@ var userEdit = Vue.component('user-edit', {
             User: new(User),
             dataURL: userURL,
             listURL: '/user/list',
+            current: userInfo,
+
+            // TODO: pull levels data from server
             levels: [
                 {Level:0, Label: 'User'},
                 {Level:1, Label: 'Editor'},
                 {Level:2, Label: 'Admin'},
             ],
+        }
+    },
+    route: {
+        data: function (transition) {
+            if (transition.to.params.USR > 0) {
+                return {
+                    User: getUser(transition.to.params.USR)
+                }
+            }
+            var user = new(User);
+            user.USR = 0
+            return {
+                User: user
+            }
         }
     },
     methods: {
@@ -729,16 +1275,18 @@ var userEdit = Vue.component('user-edit', {
         myself: function() {
             return this.User
         },
-        loadSelf: function () {
+        canAssume: function() {
+            return (this.User.USR > 0 && userInfo.Level > 1)
+        },
+        assumeUser: function() {
             var self = this;
-            var id = this.$route.params.USR;
-            if (id > 0) {
-                var url = this.dataURL + id;
-
-                fetchData(url, function(data) {
-                    self.User.Load(data);
-                })
-            }
+            var url = '/dcman/api/user/assume/' + this.User.USR;
+            posty(url, null).then(function(user) {
+                console.log("I AM NOW:", user);
+                self.$dispatch('user-auth', user)
+                //userInfo = user;
+                router.go('/')
+            })
         },
     },
 })
@@ -746,6 +1294,7 @@ var userEdit = Vue.component('user-edit', {
 
 
 var ipMIX = {
+    mixins: [authVue],
     props: ['iptypes', 'ports'],
     data: function() {
         return {
@@ -763,48 +1312,42 @@ var ipMIX = {
         updateIP(i) {
             var row = this.rows[i]
             var iid = row.IID
-            var ip = row.IP
+            var ip  = row.IP
             var ipt = row.IPT
             var ifd = row.IFD
             var data = {IFD:ifd, IID: iid, IPT: ipt, IPv4: ip}
             console.log('update IP:', ip, ' IID:', iid)
-            postIt(ipURL + iid, data, null, 'PATCH')
+            posty(ipURL + iid, data, null, 'PATCH')
             return false
         },
         deleteIP(i) {
             var self = this;
             var iid = this.rows[i].IID
             console.log("IP id:", iid)
-            deleteIt(ipURL + iid, function(xhr) {
-                if (xhr.readyState == 4 && (xhr.status == 200 || xhr.status == 201)) {
-                    self.rows.splice(i, 1)
-                }
+            posty(ipURL + iid, null, 'DELETE').then(function() {
+                self.rows.splice(i, 1)
             })
-            return false
         },
         addIP: function() {
             var self = this;
             var data = {IFD: this.newIFD, IPT: this.newIPT, IPv4: this.newIP}
             console.log("we will add IP info:", data)
-            postIt(ipURL + '?debug=true', data, function(xhr) {
-                if (xhr.readyState == 4 && (xhr.status == 200 || xhr.status == 201)) {
-                    var ip = JSON.parse(xhr.responseText);
-                    ip.IP = ip.IPv4 // naming is inconsistent
-                    self.rows.push(ip)
-
-                    self.newIP = ''
-                    self.newIPT = 0
-                    self.newIFD = 0
-                }
+            posty(ipURL, data).then(function(ip) {
+                ip.IP = ip.IPv4 // naming is inconsistent
+                self.rows.push(ip)
+                self.newIP = ''
+                self.newIPT = 0
+                self.newIFD = 0
             })
             return false
         }
     }
 }
 
-var netgrid = childTable("network-grid", "#tmpl-network-grid", [ipMIX])
+var netgrid = childTable("network-grid", "#tmpl-network-grid", [ipMIX, authVue])
 
 var interfaceMIX = {
+    mixins: [authVue],
     props: ['DID'],
     data: function() {
         return {
@@ -837,21 +1380,16 @@ var interfaceMIX = {
                 CableTag: row.CableTag,
             }
 
-            postIt(ifaceURL + ifd, data, null, 'PATCH')
+            posty(ifaceURL + ifd, data, null, 'PATCH')
         },
         deleteInterface(i) {
             var self = this;
             var ifd = this.rows[i].IFD
             console.log("Iface id:", ifd)
-            deleteIt(ifaceURL + ifd, function(xhr) {
-                if (xhr.readyState == 4) {
-                    if (xhr.status == 200 || xhr.status == 201) {
-                        self.rows.splice(i, 1)
-                    } else {
-                        var err = JSON.parse(xhr.responseText)
-                        console.log('=============> ERROR:', err)
-                    }
-                }
+            posty(ifaceURL + ifd, null, 'DELETE').then(function() {
+                self.rows.splice(i, 1)
+            }).catch(function(ack) {
+                console.log('=============> ACK!:', ack)
             })
         },
         addInterface: function(ev) {
@@ -867,20 +1405,17 @@ var interfaceMIX = {
                 CableTag: this.newCableTag,
             }
             console.log("we will add interface info:", data)
-            postIt(ifaceURL + '?debug=true', data, function(xhr) {
-                if (xhr.readyState == 4 && (xhr.status == 200 || xhr.status == 201)) {
-                    var iface = JSON.parse(xhr.responseText);
-                    if (! iface.Mgmt) {
-                        iface.Port = 'Eth' + iface.Port
-                    }
-                    self.rows.push(iface)
-
-                    self.newPort = ''
-                    self.newMgmt = ''
-                    self.newMAC = ''
-                    self.newSwitchPort = ''
-                    self.newCableTag = ''
+            posty(ifaceURL, data).then(function(iface) {
+                if (! iface.Mgmt) {
+                    iface.Port = 'Eth' + iface.Port
                 }
+                self.rows.push(iface)
+
+                self.newPort = ''
+                self.newMgmt = ''
+                self.newMAC = ''
+                self.newSwitchPort = ''
+                self.newCableTag = ''
             })
             return false
         }
@@ -893,8 +1428,9 @@ var ifacegrid = childTable("interface-grid", "#tmpl-interface-grid", [interfaceM
 // Device Edit
 //
 var deviceEditVue = {
-  data: function() {
-      return {
+    mixins: [editVue],
+    data: function() {
+        return {
             sites: [],
             device_types: [],
             tags: [],
@@ -937,33 +1473,23 @@ var deviceEditVue = {
             delete device['interfaces'];
             delete device['ips'];
 
-            if (this.Device.DID == 0) {
+            if (device.DID == 0) {
+                //device.Version = 0;
                 console.log('save new device');
-                postIt(deviceURL + "?debug=true", device, this.showList)
+                posty(deviceURL, device).then(this.showList)
                 return
             }
             console.log('update device id: ' + this.Device.DID);
-            postIt(deviceURL + this.Device.DID + "?debug=true", device, this.showList, 'PATCH')
+            var url = deviceURL + this.Device.DID;
+            posty(url, device, 'PATCH').then(this.showList)
         },
         deleteSelf: function(event) {
             console.log('delete event: ' + event)
-            deleteIt(deviceURL + this.Device.DID, this.showList)
+            var url = deviceURL + this.Device.DID;
+            posty(url, device, 'DELETE').then(this.showList)
         },
         showList: function(ev) {
             router.go('/device/list')
-        },
-        loadRacks: function () {
-             var self = this;
-            console.log("RACK URL:", rackURL + "?STI=" + self.Device.STI)
-             fetchData(rackURL + "?STI=" + self.Device.STI, function(data) {
-                 self.racks = data
-             })
-        },
-        loadTags: function () {
-             var self = this;
-             fetchData(tagURL, function(data) {
-                 self.tags = data
-             })
         },
         portLabel: function(ipinfo) {
             if (this.Device.DevType === 'server') {
@@ -972,14 +1498,12 @@ var deviceEditVue = {
             return (ipinfo.Mgmt ? 'Mgmt' : 'Port') + ipinfo.Port
         },
         getMacAddr: function(ev) {
-            var url = 'http://10.100.182.16:8080/dcman/data/server/discover/' + this.Server.IPIpmi;
+            var url = macURL + this.Server.IPIpmi;
             var self = this
-            fetchData(url, function(data) {
+            get(url).then(function(data) {
                 self.Device.MacPort0 = data.MacEth0
                 console.log("MAC DATA:", data)
              })
-             ev.preventDefault();
-            return false;
         },
         vmLinkable: function(key) {
             return (key == 'Hostname')
@@ -987,6 +1511,9 @@ var deviceEditVue = {
         vmLinkpath: function(entry, key) {
             if (key == 'Hostname') return '/vm/edit/' + entry['VMI']
         },
+        audit: function() {
+            router.go('/device/audit/' + this.Device.DID)
+        }
     },
 }
 
@@ -1000,15 +1527,16 @@ var deviceAddMIX = {
     route: { 
           data: function (transition) {
             var device = new(Device);
-            device.DID    = 0;
-            device.Height = 1;
-            device.TID    = 1;
-            device.Rack   = 0;
-            device.STI    = parseInt(this.$route.params.STI);
-            device.RID    = parseInt(this.$route.params.RID);
-            device.RU     = parseInt(this.$route.params.RU);
+            device.DID     = 0;
+            device.TID     = 1;
+            device.Height  = 1;
+            device.Rack    = 0;
+            device.Version = 0;
+            device.STI     = parseInt(this.$route.params.STI);
+            device.RID     = parseInt(this.$route.params.RID);
+            device.RU      = parseInt(this.$route.params.RU);
             return {
-                Device: device
+                Device: deviceRacks(device)
             }
           },
     },
@@ -1019,10 +1547,81 @@ var deviceAdd = Vue.component('device-add', {
     mixins: [deviceEditVue, deviceAddMIX],
 })
 
+
+var deltas = function(ignore, data) {
+    var rows = [];
+    for (var i=0; i<data.length - 1; i++) {
+        var before = data[i+1];
+        var after  = data[i];
+        Object.keys(before).forEach(function(key,index) {
+            // key: the name of the object key
+            // index: the ordinal position of the key within the object 
+            if (! ignore.includes(key)) {
+                var pre = before[key];
+                var post = after[key];
+                if (pre != post) {
+                    var saved = {Column:key, Before: pre, After: post};
+                    for (let keep of ignore) {
+                        saved[keep] = after[keep]
+                    }
+                    rows.push(saved) 
+                }
+            }
+        });
+    }
+    return rows
+}
+
+// audit data comes back with column and row data separate
+// this will create our standard row with named fields
+var deviceAudit = Vue.component('device-audit', {
+    template: '#tmpl-device-audit',
+    mixins: [pagedCommon],
+    data: function() {
+        return {
+            filename: "audit",
+            rows: [],
+            columns: [ 
+                "TS",
+                "Version",
+                "Login",
+                "Column",
+                "Before",
+                "After",
+            ],
+        }
+    },
+    route: { 
+        data: function (transition) {
+            var self = this;
+            var ignore = ["TS", "Version", "Login", "USR", "RID", "TID", "KID", "DTI"];
+            return {
+                rows: getDeviceAudit(transition.to.params.DID).then(function(fix) {
+                    return deltas(ignore, fix)
+                })
+            }
+        }
+    },
+    methods: {
+        linkable: function(key) {
+            //return (key == 'Name')
+        },
+        linkpath: function(entry, key) {
+            //return '/ip/type/edit/' + entry['IPT']
+        }
+    },
+    watch: {
+        'STI': function(x) {
+            this.loadData()
+        }
+    },
+})
+
 //
 // VM IPs
 //
 var vmIpMIX = {
+    mixins: [authVue],
     props: ['VMI'],
     data: function() {
         return {
@@ -1033,7 +1632,6 @@ var vmIpMIX = {
         }
     },
     created: function () {
-        console.log('CREATED VMI:', this.VMI)
         this.loadSelf()
     },
     computed: {
@@ -1046,10 +1644,10 @@ var vmIpMIX = {
             var self = this;
             console.log('MY VMI:', this.VMI)
             var url = ipURL + '?VMI=' + this.VMI;
-            fetchData(url, function(data) {
+            get(url).then(function(data) {
                  self.rows = data
             })
-            fetchData(iptypesURL, function(data) {
+            get(iptypesURL).then(function(data) {
                  self.types = data
                  console.log("IP TYPES:", data)
             })
@@ -1061,7 +1659,7 @@ var vmIpMIX = {
             var ipt = row.IPT
             var data = {VMI:this.VMI, IID: iid, IPT: ipt, IPv4: ip}
             console.log('update IP:', ip, ' IID:', iid)
-            postIt(ipURL + iid, data, null, 'PATCH')
+            posty(ipURL + iid, data, null, 'PATCH')
             return false
         },
         deleteIP(i) {
@@ -1078,7 +1676,7 @@ var vmIpMIX = {
         addIP: function() {
             var self = this;
             var data = {VMI: this.VMI, IPT: this.newIPT, IPv4: this.newIP}
-            postIt(ipURL + '?debug=true', data, function(xhr) {
+            posty(ipURL, data, function(xhr) {
                 if (xhr.readyState == 4 && (xhr.status == 200 || xhr.status == 201)) {
                     self.rows.push(data)
                     self.newIP = ''
@@ -1105,6 +1703,7 @@ var vmips = Vue.component('vm-ips', {
 // VM Edit
 //
 var vmEditVue = {
+    mixins: [authVue],
     data: function() {
         return {
             url: vmViewURL,
@@ -1129,11 +1728,11 @@ var vmEditVue = {
     methods: {
         saveSelf: function(event) {
             console.log('send update event: ' + event);
-            postIt(this.url + this.VM.VMI + "?debug=true", this.VM, this.showList, 'PATCH')
+            posty(this.url + this.VM.VMI, this.VM, 'PATCH').then(this.showList)
         },
         deleteSelf: function(event) {
             console.log('delete event: ' + event)
-            postIt(this.url + this.VM.VMI, null, this.showList, 'DELETE')
+            posty(this.url + this.VM.VMI, null, 'DELETE').then(this.showList)
         },
         showList: function(ev) {
             router.go('/vm/list')
@@ -1146,6 +1745,46 @@ var vmEdit = Vue.component('vm-edit', {
     mixins: [vmEditVue, siteMIX],
 })
 
+// audit data comes back with column and row data separate
+// this will create our standard row with named fields
+var vmAudit = Vue.component('vm-audit', {
+    template: '#tmpl-audit',
+    mixins: [pagedCommon],
+    data: function() {
+        return {
+            filename: "audit",
+            rows: [],
+            columns: [ 
+                "TS",
+                "Version",
+                "Login",
+                "Column",
+                "Before",
+                "After",
+            ],
+        }
+    },
+    route: { 
+        data: function (transition) {
+            //var self = this;
+            return {
+                rows: getVMAudit(transition.to.params.VMI, "?vmi=").then(function(fix) {
+                    var ignore = ["TS", "Version", "Login", "USR", "RID", "TID", "KID", "DTI"];
+                    return deltas(ignore, fix)
+                })
+            }
+        }
+    },
+    methods: {
+        linkable: function(key) {
+            //return (key == 'Name')
+        },
+        linkpath: function(entry, key) {
+            //return '/ip/type/edit/' + entry['IPT']
+        }
+    },
+})
+
 
 // Base APP component, this is the root of the app
 var App = Vue.extend({
@@ -1153,6 +1792,7 @@ var App = Vue.extend({
         return {
             myapp: {
                 auth: {
+                    // TODO: unify this with 'userInfo'
                     loggedIn: false,
                     user: {
                         name: null, 
@@ -1173,25 +1813,37 @@ var App = Vue.extend({
             console.log('app reload event:', ev)
             this.$broadcast('server-reload', 'gotcha!')
         },
-        'user-info': function (user) {
+        'user-info': function (user, key) {
             this.myapp.auth.user.name = user.username;
+            this.myapp.auth.user.admin = user.admin;
             this.myapp.auth.loggedIn = true;
+            userInfo.Login = user.username;
+            userInfo.Level = user.admin;
+            userInfo.APIKey = key;
         },
         'user-auth': function (user) {
             console.log('*** user auth event:', user)
+            /*
             this.myapp.auth.user.name = user.Login;
             this.myapp.auth.user.admin = user.Level;
             window.user_apikey = user.APIKey
-            userInfo = user;
+            */
             this.myapp.auth.loggedIn = true;
+            this.myapp.auth.user.name = user.Login;
+            this.myapp.auth.user.admin = user.Level;
+            userInfo = user;
         },
         'logged-out': function () {
             console.log('*** logged out event')
+                /*
+            this.myapp.auth.user.name = null
+            window.user_apikey = ''
+            */
+            this.myapp.auth.loggedIn = false
             this.myapp.auth.user.name = null
             this.myapp.auth.user.admin = 0
-            this.myapp.auth.loggedIn = false
-            window.user_apikey = ''
-            fetchData('/dcman/api/logout')
+            userInfo = {};
+            get('/dcman/api/logout')
         },
         'search-again': function(text) {
             // relay event from navbar search
@@ -1241,7 +1893,7 @@ var deviceList = Vue.component('device-list', {
             if (this.RID == 0) return data;
 
             var self = this;
-            return data.map(function(obj) {
+            return data.filter(function(obj) {
                 if (obj.RID == self.RID) return obj
             });
         }
@@ -1391,6 +2043,7 @@ var vlanList = Vue.component('vlan-list', {
     mixins: [pagedCommon, commonListMIX],
     data: function() {
         return {
+            filename: "vlans",
             dataURL: '/dcman/api/vlan/view/',
             listURL: '/vlan/list',
             STI: 0,
@@ -1418,7 +2071,7 @@ var vlanList = Vue.component('vlan-list', {
         loadSelf: function () {
             var self = this;
             var url = this.dataURL;
-            fetchData(url, function(data) {
+            get(url).then(function(data) {
                 self.data = data
             })
         },
@@ -1436,7 +2089,7 @@ var vlanList = Vue.component('vlan-list', {
             if (! this.STI) return data;
 
             var self = this;
-            return data.map(function(obj) {
+            return data.filter(function(obj) {
                  if (obj.STI == self.STI) return obj
             });
         }
@@ -1545,7 +2198,7 @@ var ipReserveVue = {
         STI: function() {
             var self = this;
             var url = vlanURL + "?STI=" + this.STI
-            fetchData(url, function(data) {
+            get(url).then(function(data) {
                 console.log('loaded vlan cnt:', data.length)
                 self.vlans = data
             })
@@ -1601,6 +2254,7 @@ var vmList = Vue.component('vm-list', {
                  "Site",
                  "Server",
                  "Hostname",
+                 "IPs",
                  "Profile",
                  "Note",
             ],
@@ -1610,37 +2264,24 @@ var vmList = Vue.component('vm-list', {
         this.loadSelf()
     },
     methods: {
-    loadRacks: function () {
-         var self = this,
-              url = rackURL + "?STI=" + self.STI;
+        loadSelf: function () {
+             var self = this
 
-         fetchData(url, function(data) {
-             if (data) {
-                 data.unshift({RID:0, Label:''})
-                 self.racks = data
-             }
-         })
-    },
-    loadSelf: function () {
-         var self = this
-
-         var url = vmViewURL;
-         if (self.STI > 0) {
-             url += "?sti=" + self.STI
-         } 
-         fetchData(url, function(data) {
-             self.data = data
-         })
-         self.loadRacks()
-        
-        },
-        linkable: function(key) {
-            return (key == 'Hostname' || key == 'Server')
-        },
-        linkpath: function(entry, key) {
-            if (key == 'Server') return '/device/edit/' + entry['DID']
-            if (key == 'Hostname') return '/vm/edit/' + entry['VMI']
-        }
+             var url = vmIPsURL;
+             if (self.STI > 0) {
+                 url += "?sti=" + self.STI
+             } 
+             get(url).then(function(data) {
+                 self.data = data
+             })
+            },
+            linkable: function(key) {
+                return (key == 'Hostname' || key == 'Server')
+            },
+            linkpath: function(entry, key) {
+                if (key == 'Server') return '/device/edit/' + entry['DID']
+                if (key == 'Hostname') return '/vm/edit/' + entry['VMI']
+            }
   },
   watch: {
     'STI': function(val, oldVal){
@@ -1731,7 +2372,7 @@ var partUse = Vue.component('part-use', {
             var kid = this.$route.params.KID;
             var sti = this.$route.params.STI;
             var url = partURL + "?unused=1&bad=0&kid=" + kid + "&sti=" + sti
-            fetchData(url, function(data) {
+            get(url).then(function(data) {
                 self.available = data
             })
         },
@@ -1743,8 +2384,7 @@ var partUse = Vue.component('part-use', {
             DID: this.DID,
             Unused: false,
           }
-          postIt(partURL + pid, part, null, "PATCH")
-          this.showList()
+          posty(partURL + pid, part, null, "PATCH").then(this.showList)
         },
         findhost: function() {
             if (this.hostname.length === 0) {
@@ -1818,8 +2458,10 @@ var partList = Vue.component('part-list', {
            ]).then(function (data) {
               console.log('part list promises returning')
                 var parts = data[1];
-                for (var i=0; i<parts.length; i++) {
-                    parts[i].Price = parts[i].Price.toFixed(2);
+                if (parts) {
+                    for (var i=0; i<parts.length; i++) {
+                        parts[i].Price = parts[i].Price.toFixed(2);
+                    }
                 }
              return {
                 sites: data[0],
@@ -1833,7 +2475,7 @@ var partList = Vue.component('part-list', {
       findhost: function(ev) {
           var self = this;
           console.log("find hostname:",this.hostname);
-          fetchData("api/server/hostname/" + this.hostname, function(data, status) {
+          get("api/server/hostname/" + this.hostname).then(function(data, status) {
                var enable = (status == 200);
                buttonEnable(document.getElementById('use-btn'), enable)
                self.DID = enable ? data.ID : 0;
@@ -1860,7 +2502,7 @@ var partList = Vue.component('part-list', {
                 return data
             }
             var self = this;
-            return data.map(function(obj) {
+            return data.filter(function(obj) {
                 if (self.ktype == 2 && ! obj.Bad) {
                     return obj 
                 }
@@ -1868,7 +2510,6 @@ var partList = Vue.component('part-list', {
                     return obj
                 }
             });
-
         },
     }
 })
@@ -1952,7 +2593,7 @@ var rmaList = Vue.component('rma-list', {
              if (self.STI > 0) {
                  url += "?STI=" + self.STI
              }
-             fetchData(url, function(data) {
+             get(url).then(function(data) {
                  if (! data) data = [];
                  self.rmas = data
              })
@@ -1983,7 +2624,7 @@ var rmaList = Vue.component('rma-list', {
                 return data
             }
             var self = this;
-            return data.map(function(obj) {
+            return data.filter(function(obj) {
                 if (self.rmaType == 2 && ! obj.Closed) {
                     return obj
                 }
@@ -2034,7 +2675,7 @@ var vendorList = Vue.component('vendor-list', {
     methods: {
         loadSelf: function () {
             var self = this;
-            fetchData(vendorURL, function(data) {
+            get(vendorURL).then(function(data) {
                 self.rows = data
             })
         },
@@ -2061,9 +2702,16 @@ var vendorEdit = Vue.component('vendor-edit', {
         }
     },
     route: { 
-          data: function (transition) {
+        data: function (transition) {
+            if (this.$route.params.VID > 0) {
+                return {
+                    Vendor: getVendor(this.$route.params.VID)
+                }
+            }
+            var vendor = new(Vendor);
+            vendor.VID = 0
             return {
-                Vendor: getVendor(this.$route.params.VID)
+                Vendor: vendor
             }
           },
     },
@@ -2104,7 +2752,7 @@ var mfgrList = Vue.component('mfgr-list', {
     methods: {
         loadSelf: function () {
             var self = this;
-            fetchData(mfgrURL, function(data) {
+            get(mfgrURL).then(function(data) {
                 self.rows = data
             })
         },
@@ -2157,6 +2805,7 @@ var mfgrEdit = Vue.component('mfgr-edit', {
 // PART EDIT
 //
 var partEdit = Vue.component('part-edit', {
+    mixins: [authVue],
     template: '#tmpl-part-edit',
     data: function() {
         var part = new(Part);
@@ -2212,11 +2861,9 @@ var partEdit = Vue.component('part-edit', {
             var url = partURL;
             if (this.Part.PID > 0) {
                 url += this.Part.PID
-                url += "?debug=true"
-                postIt(url, this.Part, this.showList, 'PATCH')
+                posty(url, this.Part, this.showList, 'PATCH')
             } else {
-                url += "?debug=true"
-                postIt(url, this.Part, this.showList)
+                posty(url, this.Part, this.showList)
             }
         },
         doRMA: function(ev) {
@@ -2263,9 +2910,9 @@ var rmaCommon = {
     methods: {
         saveSelf: function(event) {
             if (this.RMA.RMD > 0) {
-                postIt(rmaviewURL + this.RMA.RMD + "?debug=true", this.RMA, this.showList, 'PATCH')
+                posty(rmaviewURL + this.RMA.RMD, this.RMA, this.showList, 'PATCH')
             } else {
-                postIt(rmaviewURL+ "?debug=true", this.RMA, this.showList)
+                posty(rmaviewURL, this.RMA, this.showList)
             }
         },
         showList: function() {
@@ -2308,7 +2955,7 @@ var rmaEdit = Vue.component('rma-edit', {
     methods: {
         deleteSelf: function(event) {
             console.log('delete event: ' + event)
-            postIt(this.dataURL + this.myID(), null, this.showList, 'DELETE')
+            posty(this.dataURL + this.myID(), null, this.showList, 'DELETE')
         },
     },
 })
@@ -2423,7 +3070,6 @@ var partLoad = Vue.component('part-load', {
                     part.Cents = 0
                 }
                 var url = partURL;
-                url += "?debug=true"
                 for (var j=0; j < qty; j++) {
                     posty(url, part).then(function(p) {
                     })
@@ -2467,7 +3113,7 @@ var tagEdit = Vue.component('tag-edit', {
         },
         loadSelf: function () {
              var self = this;
-             fetchData(this.url, function(data) {
+             get(this.url).then(function(data) {
                  self.tags = data
              })
         },
@@ -2477,7 +3123,7 @@ var tagEdit = Vue.component('tag-edit', {
                 return
             }
             console.log('delete tag url: ' + this.url + this.tag.TID)
-            postIt(this.url + this.tag.TID, null, function(data) {}, 'DELETE')
+            posty(this.url + this.tag.TID, null, function(data) {}, 'DELETE')
             console.log("delete tid:",this.tag.TID)
             for (var i=0; i < this.tags.length; i++) {
                 console.log("i:",i,"tid:",this.tags[i].TID)
@@ -2513,9 +3159,9 @@ var tagEdit = Vue.component('tag-edit', {
                         }
                     }
                 }
-                postIt(this.url + this.tag.TID + "?debug=true", this.tag, refresh, 'PATCH')
+                posty(this.url + this.tag.TID, this.tag, refresh, 'PATCH')
             } else {
-                postIt(this.url + "?debug=true", this.tag, saved)
+                posty(this.url, this.tag, saved)
             }
         },
     },
@@ -2626,7 +3272,7 @@ var rackList = Vue.component('rack-list', {
              if (self.STI > 0) {
                  url += "?sti=" + self.STI
              }
-             fetchData(url, function(data) {
+             get(url).then(function(data) {
                  self.rows = data
              })
         },
@@ -2953,7 +3599,7 @@ var rackView = Vue.component('rack-view', {
 
 var rackLayout = Vue.component('rack-layout', {
     template: '#tmpl-rack-layout',
-    mixins: [commonListMIX],
+    mixins: [authVue, commonListMIX],
     data: function() {
         return {
             dataURL: deviceListURL,
@@ -3002,10 +3648,10 @@ var rackLayout = Vue.component('rack-layout', {
                  url += "?sti=" + self.STI
              }
 
-             fetchData(url, function(units) {
+             get(url).then(function(units) {
                  url = rackURL + "?STI=" + self.STI;
 
-                 fetchData(url, function(racks) {
+                 get(url).then(function(racks) {
                      if (racks) {
                          racks.unshift({RID:0, Label:''})
                          self.racks = racks
@@ -3015,7 +3661,7 @@ var rackLayout = Vue.component('rack-layout', {
              })
         },
         ping: function() {
-            var url = "http://10.100.182.16:8080/dcman/api/pings?debug=true";
+            var url = "http://10.100.182.16:8080/dcman/api/pings";
             var ips = [];
             for (var i=0; i < this.lumpy.length; i++) {
                 var lump = this.lumpy[i];
@@ -3076,6 +3722,7 @@ var userLogin = Vue.component('user-login', {
             var url = '/dcman/api/login';
             var data = {Username: this.username, Password: this.password};
             var self = this;
+            /*
             var results = function(xhr) {;
                 if (xhr.readyState == 4) {
                     if (xhr.status == 200) {
@@ -3091,8 +3738,15 @@ var userLogin = Vue.component('user-login', {
                     }
                 }
             };
-            postIt(url, data, results)
+            posty(url, data, results)
             ev.preventDefault()
+            */
+            posty(url, data).then(function(user) {
+                self.$dispatch('user-auth', user)
+                router.go('/')
+            }).catch(function(msg) {
+                self.errorMsg = msg.Error
+            })
         },
     },
 })
@@ -3151,7 +3805,14 @@ var pagedGrid = Vue.component('paged-grid', {
                 status += " (" + this.data.length + " rows) ";
             }
             return status
-        }
+        },
+        canDownload: function() {
+            /*
+            console.log("DATA OK:", (this.data && (this.data.length > 0)));
+            console.log("FILE OK:", (filename && (filename.length > 0)));
+            */
+            return (this.data && (this.data.length > 0) && this.filename && (this.filename.length > 0))
+        },
     },
     methods: {
         sortBy: function (key) {
@@ -3167,7 +3828,7 @@ var pagedGrid = Vue.component('paged-grid', {
         download() {
             // TODO: perhaps get fancier and use this?
             // https://github.com/eligrey/FileSaver.js#saving-text
-            var filename = this.filename || "data.xls";
+            var filename = this.filename;
             if (filename.indexOf(".") < 0 ) {
                 filename += ".xls";
             }
@@ -3199,6 +3860,34 @@ var pagedGrid = Vue.component('paged-grid', {
 });
 
 
+var sessionList = Vue.component('session-list', {
+    template: '#tmpl-session-list',
+    mixins: [pagedCommon],
+    data: function() {
+        return {
+            filename: "sessions",
+            columns: ['TS', 'Login', 'Remote', 'Event'],
+            rows: [],
+        }
+    },
+    route: { 
+        data: function (transition) {
+            return {
+              rows: getSessions(), 
+            }
+        }
+    },
+    methods: {
+        linkable: function(key) {
+            return (key == 'Login')
+        },
+        linkpath: function(entry, key) {
+            return '/user/edit/' + entry['USR']
+        }
+    }
+})
+
+
 var homePage = Vue.component('home-page', {
     template: '#tmpl-home-page',
     data: function() {
@@ -3216,7 +3905,7 @@ var homePage = Vue.component('home-page', {
         loadSelf: function() {
             var self = this;
             var url = '/dcman/api/summary/';
-            fetchData(url, function(data) {
+            get(url).then(function(data) {
                 self.rows = data
             })
         },
@@ -3255,6 +3944,9 @@ router.map({
     '/auth/logout': {
         component:  Vue.component('user-logout')
     },
+    '/admin/sessions': {
+        component: Vue.component('session-list')
+    },
     '/admin/tags': {
         component: Vue.component('tag-edit')
     },
@@ -3280,6 +3972,9 @@ router.map({
         component: Vue.component('device-add'),
         name: 'device-add'
     },
+    '/device/audit/:DID': {
+        component: Vue.component('device-audit')
+    },
     '/device/edit/:DID': {
         component: Vue.component('device-edit')
     },
@@ -3291,6 +3986,9 @@ router.map({
     },
     '/device/type/edit/:DTI': {
         component:  Vue.component('device-type-edit')
+    },
+    '/vm/audit/:VMI': {
+        component: Vue.component('vm-audit')
     },
     '/vm/edit/:VMI': {
         component: Vue.component('vm-edit')
@@ -3365,7 +4063,8 @@ router.map({
 })
 
 router.beforeEach(function (transition) {
-    if (window.user_apikey.length == 0 && transition.to.path !== '/auth/login') {
+    //if (window.user_apikey.length == 0 && transition.to.path !== '/auth/login') {
+    if ((! userInfo.APIKey || userInfo.APIKey.length == 0) && transition.to.path !== '/auth/login') {
         router.go('/auth/login')
         //transition.abort()
     } else {

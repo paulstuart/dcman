@@ -22,7 +22,7 @@ import (
 	ttext "text/template"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
+	//"github.com/davecgh/go-spew/spew"
 	gorilla "github.com/gorilla/handlers"
 	sqlite3 "github.com/mattn/go-sqlite3"
 	"github.com/paulstuart/dbutil"
@@ -79,7 +79,7 @@ func remoteHost(r *http.Request) string {
 }
 
 // for loading an object from an http post
-func objFromForm(obj interface{}, values map[string][]string) {
+func objFromForm(obj interface{}, values map[string][]string) error {
 	val := reflect.ValueOf(obj)
 	base := reflect.Indirect(val)
 	t := reflect.TypeOf(base.Interface())
@@ -115,13 +115,22 @@ func objFromForm(obj interface{}, values map[string][]string) {
 					v := reflect.ValueOf(when)
 					b.Set(v)
 				} else {
-					fmt.Println("TIME PARSE ERR:", err)
+					return err
 				}
 			default:
-				fmt.Println("unhandled field type for:", f.Name, "type:", b.Type())
+				return fmt.Errorf("unhandled field type for:%s type:%s", f.Name, b.Type())
 			}
 		}
 	}
+	return nil
+}
+
+func loadObj(r *http.Request, obj dbutil.DBObject) error {
+	content := r.Header.Get("Content-Type")
+	if strings.Contains(content, "application/json") {
+		return json.NewDecoder(r.Body).Decode(obj)
+	}
+	return objFromForm(obj, r.Form)
 }
 
 func cors(w http.ResponseWriter) {
@@ -139,7 +148,6 @@ func sendJSON(w http.ResponseWriter, obj interface{}) {
 	}
 	cors(w)
 	w.Header().Set("Content-Type", "application/json")
-	//fmt.Println("SEND JSON:", obj)
 	fmt.Fprint(w, string(j))
 }
 
@@ -152,7 +160,6 @@ func objPost(r *http.Request, o dbutil.DBObject, validators ...Validator) error 
 	action := r.Form.Get("action")
 	user := currentUser(r)
 	o.ModifiedBy(user.USR, time.Now())
-	//fmt.Println("POST OBJ:", o)
 	name := fmt.Sprintf("%v", reflect.TypeOf(o))
 	for _, v := range validators {
 		if err := v(action); err != nil {
@@ -160,9 +167,7 @@ func objPost(r *http.Request, o dbutil.DBObject, validators ...Validator) error 
 			return err
 		}
 	}
-	//dbDebug(true)
 	auditLog(user.USR, remoteHost(r), action, name)
-	//dbDebug(false)
 	switch {
 	case action == "Add":
 		return dbAdd(o)
@@ -176,7 +181,6 @@ func objPost(r *http.Request, o dbutil.DBObject, validators ...Validator) error 
 }
 
 func loadTemplates() {
-	//fmt.Println("LOAD TEMPLATES DIR:", tdir)
 	funcMap := template.FuncMap{
 		"isBlank":   isBlank,
 		"isTrue":    isTrue,
@@ -491,8 +495,6 @@ func badRequest(w http.ResponseWriter, err error) {
 }
 
 func webServer(handlers []hFunc) {
-	loadTemplates()
-
 	// mux all the handlers
 	for _, h := range handlers {
 		p := pathPrefix + h.Path
@@ -502,7 +504,8 @@ func webServer(handlers []hFunc) {
 		case strings.HasPrefix(h.Path, "/data/"):
 			http.Handle(p, http.StripPrefix(p, h.Func))
 		case strings.HasPrefix(h.Path, "/api/"):
-			http.Handle(p, h.Func)
+			http.Handle(p, http.StripPrefix(p, h.Func))
+			//http.Handle(p, h.Func)
 		case strings.HasPrefix(h.Path, "/login"):
 			http.Handle(p, http.StripPrefix(p, h.Func))
 		default:
@@ -626,11 +629,9 @@ func MakeREST(gen dbutil.DBGen) http.HandlerFunc {
 }
 
 func newREST(obj dbutil.DBObject, w http.ResponseWriter, r *http.Request) {
-	//fmt.Printf("REST OBJ: %p\n", obj)
 	db := datastore
 	query := r.URL.Query()
-	//log.Println("QUERY:", query)
-	debug := true
+	debug := false
 	apiKey := r.Header.Get("X-API-KEY")
 	if len(apiKey) == 0 {
 		apiKey = query.Get("X-API-KEY")
@@ -645,34 +646,29 @@ func newREST(obj dbutil.DBObject, w http.ResponseWriter, r *http.Request) {
 		dbDebug(debug)
 		defer dbDebug(false)
 	}
-	//var user User
-	/*
-		user, err := userFromAPIKey(apiKey)
-		if err != nil {
-			log.Println("AUTH ERROR:", err)
-				TODO: keep commented out for initial testing only!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-				jsonError(w, err, http.StatusUnauthorized)
-				return
-		}
-	*/
-	/*
-		if debug {
-			log.Println("USER LOGIN NAME:", user.Login)
-		}
-	*/
+	user, err := userFromAPIKey(apiKey)
+	if err != nil {
+		log.Println("AUTH ERROR:", err)
+		jsonError(w, err, http.StatusUnauthorized)
+		return
+	}
+	//spew.Println("\nUSER:", user, "\n")
+
 	var id string
 	i := strings.LastIndex(r.URL.Path, "/")
 	if i < len(r.URL.Path)-1 {
 		id = r.URL.Path[i+1:]
 	}
 	body := bodyCopy(r)
-	log.Printf("(%s) PATH:%s ID:%s Q:%s BODY:%s", r.Method, r.URL.Path, id, r.URL.RawQuery, body)
+	if debug {
+		log.Printf("(%s) PATH:%s ID:%s Q:%s BODY:%s", r.Method, r.URL.Path, id, r.URL.RawQuery, body)
+	}
 	method := strings.ToUpper(r.Method)
 	switch method {
 	case "PUT", "POST":
 		bodyString := bodyCopy(r)
 		content := r.Header.Get("Content-Type")
-		fmt.Println("CONTENT:", content)
+		//fmt.Println("CONTENT:", content)
 		if strings.Contains(content, "application/json") {
 			if err := json.NewDecoder(r.Body).Decode(obj); err != nil {
 				fmt.Println("***** BODY:", bodyString)
@@ -683,6 +679,7 @@ func newREST(obj dbutil.DBObject, w http.ResponseWriter, r *http.Request) {
 		} else {
 			objFromForm(obj, r.Form)
 		}
+		obj.ModifiedBy(user.USR, time.Now())
 	case "OPTIONS", "HEAD":
 		cors(w)
 		fmt.Fprintln(w, "options:", bodyCopy(r))
@@ -698,7 +695,9 @@ func newREST(obj dbutil.DBObject, w http.ResponseWriter, r *http.Request) {
 				jsonError(w, err, http.StatusInternalServerError)
 				return
 			}
-			log.Println("Q VAL:", val)
+			if debug && len(val) > 0 {
+				log.Println("Q VAL:", val)
+			}
 			list, err := db.ListQuery(obj, q, val...)
 			if err != nil {
 				log.Println("list error:", err)
@@ -735,7 +734,6 @@ func newREST(obj dbutil.DBObject, w http.ResponseWriter, r *http.Request) {
 		}
 		if err := db.DeleteByID(obj, id); err != nil {
 			sqle := err.(sqlite3.Error)
-			//	log.Printf("DELETE ERROR (%T) code:%d ext:%d %s\n", err, err.Code, err.ExtendedCode, err)
 			log.Printf("DELETE ERROR (%T) code:%d ext:%d %s\n", sqle, sqle.Code, sqle.ExtendedCode, sqle)
 			//if sqle.Code == sqlite3.ErrConstraintForeignKey {
 			if sqle.Code == sqlite3.ErrConstraint {
@@ -749,11 +747,11 @@ func newREST(obj dbutil.DBObject, w http.ResponseWriter, r *http.Request) {
 		sendJSON(w, msg)
 		return
 	case "PATCH":
-		log.Println("PATCH ID:", id)
 		if len(id) == 0 {
 			jsonError(w, "no ID specified", http.StatusBadRequest)
 			return
 		}
+
 		// if we're patching the object, we first fetch the original copy
 		// then overwrite the new fields supplied by the patch object
 		if err := db.FindByID(obj, id); err != nil {
@@ -767,7 +765,8 @@ func newREST(obj dbutil.DBObject, w http.ResponseWriter, r *http.Request) {
 			jsonError(w, err, http.StatusInternalServerError)
 			return
 		}
-		spew.Println("SAVE OBJ:", obj)
+
+		obj.ModifiedBy(user.USR, time.Now())
 		if err := db.Save(obj); err != nil {
 			log.Println("PATCH ERR 3:", err)
 			jsonError(w, err, http.StatusInternalServerError)

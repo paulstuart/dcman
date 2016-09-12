@@ -37,6 +37,7 @@ insert into vms (vmi, did, hostname, profile, note, ts, usr)
     select id, sid, hostname, profile, note, modified, uid from olddb.vms
     ;
 
+DROP TRIGGER IF EXISTS devices_audit;
 insert into devices
     (did,
     rid,
@@ -88,6 +89,10 @@ select
     (select dti from device_types where name='Switch')
 from olddb.routers;
 
+update devices set tid=null where tid=0;
+
+.read sql/triggers.sql
+
 create temp view devfix as
   select d.*, f.ifd, f.mgmt, s.ip_ipmi, s.ip_internal, s.ip_public
   from devices d, olddb.servers s, interfaces f
@@ -133,7 +138,7 @@ insert into ips
     select ifd, ip_public, (select ipt from ip_types where name='Public') 
     from devfix 
     where mgmt = 0 
-    and ip_public > ' '
+    and length(ip_public) > 3
 ;
 
 -- add eth1
@@ -161,14 +166,14 @@ insert into ips
      (vmi, ipv4, ipt)
     select id, public, (select ipt from ip_types where name='Public') 
     from olddb.vms 
-    where public > ' '
+    where length(public) > 3
 ;
 
 insert into ips
      (vmi, ipv4, ipt)
     select id, vip, (select ipt from ip_types where name='VIP') 
     from olddb.vms 
-    where vip > ' '
+    where length(vip) > 3
 ;
 
 --

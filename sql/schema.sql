@@ -20,7 +20,7 @@ CREATE TABLE "sites" (
     web text,
     postal text,
     country text,
-    usr integer default 0, 
+    usr integer, 
     ts timestamp DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -34,7 +34,7 @@ CREATE TABLE "racks" (
     rackunits integer default 45,
     vendor_id text default '',
     note text default '',
-    usr integer default 0, 
+    usr integer, 
     ts timestamp DEFAULT CURRENT_TIMESTAMP, 
     FOREIGN KEY(sti) REFERENCES sites(sti)
 );
@@ -49,7 +49,7 @@ CREATE TABLE "audit_racks" (
     rackunits integer,
     vendor_id text,
     note text,
-    usr integer default 0, 
+    usr integer, 
     ts timestamp,
     FOREIGN KEY(sti) REFERENCES sites(sti)
 );
@@ -58,7 +58,7 @@ DROP TABLE IF EXISTS "part_types" ;
 CREATE TABLE "part_types" (
     pti integer primary key,
     name text not null COLLATE NOCASE,
-    usr integer default 0, 
+    usr integer, 
     ts date DEFAULT CURRENT_TIMESTAMP,
     unique (name)
 );
@@ -73,7 +73,7 @@ CREATE TABLE "mfgrs" (
     aka text, -- shortened and unique (to avoid dupes of different versions of same)
     url text, 
     note text, 
-    usr integer default 0, 
+    usr integer, 
     ts date DEFAULT CURRENT_TIMESTAMP,
     unique (name)
 );
@@ -92,7 +92,7 @@ CREATE TABLE "vendors" (
     country text,
     postal text,
     note text,
-    usr integer default 0, 
+    usr integer, 
     ts date DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -106,7 +106,7 @@ CREATE TABLE "skus" (
     description text,
     part_no text, 
     sku text, 
-    usr integer default 0, 
+    usr integer, 
     ts date DEFAULT CURRENT_TIMESTAMP,
     unique (mid,description),
     FOREIGN KEY(vid) REFERENCES vendors(vid)
@@ -127,7 +127,7 @@ CREATE TABLE "parts" (
     serial_no text,
     asset_tag text, 
     cents integer default 0,  -- in cents to avoid floating point
-    usr integer default 0, 
+    usr integer, 
     ts date DEFAULT CURRENT_TIMESTAMP  
     ,
     FOREIGN KEY(sti) REFERENCES sites(sti)
@@ -159,7 +159,7 @@ CREATE TABLE "rmas" (
     date_received date,
     date_closed date,
     date_created date DEFAULT CURRENT_TIMESTAMP,
-    usr integer default 0,
+    usr integer,
     FOREIGN KEY(sti) REFERENCES sites(sti)
 );
 
@@ -193,12 +193,34 @@ CREATE TABLE "devices" (
     profile   text,
     assigned  text,
     note      text,
-    usr integer default 0,
+    version integer default 0,
+    usr integer,
     ts  date DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(rid) REFERENCES racks(rid)
     FOREIGN KEY(dti) REFERENCES device_types(dti)
     FOREIGN KEY(kid) REFERENCES skus(kid)
     FOREIGN KEY(tid) REFERENCES tags(tid)
+);
+
+drop table if exists audit_devices;
+CREATE TABLE "audit_devices" (
+    did integer,
+    rid integer,
+    dti integer,
+    kid integer,
+    tid integer,
+    ru  integer,
+    height    integer,
+    hostname  text,
+    alias     text,
+    asset_tag text,
+    sn        text,
+    profile   text,
+    assigned  text,
+    note      text,
+    version integer,
+    usr integer,
+    ts  date
 );
 
 CREATE TABLE "vms" (
@@ -207,9 +229,22 @@ CREATE TABLE "vms" (
     hostname text,
     profile text default '',
     note text default '',
-    usr integer default 0,
+    version integer default 0,
+    usr integer,
     ts timestamp DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(did) REFERENCES devices(did)
+);
+
+drop table if exists audit_vms;
+CREATE TABLE "audit_vms" (
+    vmi integer,
+    did integer,
+    hostname text,
+    profile text,
+    note text,
+    version integer,
+    usr integer,
+    ts timestamp
 );
 
 DROP TABLE IF EXISTS "vlans";
@@ -224,7 +259,7 @@ CREATE TABLE "vlans" (
     note text,
     min_ip32 integer,
     max_ip32 integer,
-    usr integer default 0,
+    usr integer,
     ts timestamp DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -258,7 +293,7 @@ create table "ips" (
     ip32 integer default 0,    -- ip address as integer
     ipv4 text default '',    -- ip address as string
     note text,
-    usr integer default 0, 
+    usr integer, 
     ts date DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(ifd) REFERENCES interfaces(ifd)
     FOREIGN KEY(vmi) REFERENCES vms(vmi)
@@ -272,8 +307,8 @@ create index ips_ip32 on ips(ip32);
 drop index if exists ips_ipv4;
 create index ips_ipv4 on ips(ipv4);
 
-drop table if exists audit_devices;
-CREATE TABLE "audit_devices" (
+drop table if exists x_devices;
+CREATE TABLE "x_devices" (
     did integer,
     kid integer,    -- vendor sku ID
     rid integer,    -- rack ID
@@ -288,7 +323,7 @@ CREATE TABLE "audit_devices" (
     profile   text,
     assigned  text,
     note      text,
-    usr   integer default 0,
+    usr   integer,
     ts  date
 );
 
@@ -306,6 +341,15 @@ CREATE TABLE users (
     apikey text default (lower(hex(randomblob(32))))
 );
 
+DROP TABLE IF EXISTS sessions;
+CREATE TABLE "sessions" (
+    ssi integer primary key,
+    event text,
+    remote_addr text,
+    usr integer, 
+    ts timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
 DROP TABLE IF EXISTS "providers";
 CREATE TABLE "providers" (
     pri integer primary key,
@@ -315,7 +359,7 @@ CREATE TABLE "providers" (
     email text,
     url text,
     note text,
-    usr integer default 0,
+    usr integer,
     ts timestamp DEFAULT CURRENT_TIMESTAMP
 );
 

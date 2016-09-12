@@ -5,15 +5,10 @@
     <link rel="stylesheet" type="text/css" href="/dcman/static/css/bootstrap.css">
     <link rel="stylesheet" type="text/css" href="/dcman/static/css/new.css">
 
-    <script>
-    window.user_apikey = ''; // all changeable actions require this key
-    </script>
-
     <script src="/dcman/static/js/jquery-2.0.3.js"></script>
     <script src="/dcman/static/js/bootstrap.js"></script>
     <script src="/dcman/static/js/vue.js"></script>
     <script src="/dcman/static/js/vue-router.js"></script>
-    <script src="/dcman/static/js/util.js"></script>
 
 </head>
 <body>
@@ -64,16 +59,16 @@
           <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Parts<span class="caret"></span></a>
           <ul class="dropdown-menu">
             <li><a v-link="{ path: '/part/inventory' }">Parts Inventory</a></li>
-            <li><a v-link="{ path: '/part/load' }">Load Inventory</a></li>
+            <li v-if="canEdit"><a v-link="{ path: '/part/load' }">Load Inventory</a></li>
             <li><a v-link="{ path: '/part/list/0' }">All Parts</a></li>
-            <li><a v-link="{ path: '/part/add' }">Add Part</a></li>
+            <li v-if="canEdit"><a v-link="{ path: '/part/add' }">Add Part</a></li>
             <li role="separator" class="divider"></li>
             <li><a v-link="{ path: '/part/types' }">Part Types</a></li>
             <li role="separator" class="divider"></li>
             <li><a v-link="{ path: '/rma/list' }">RMA List</a></li>
             <li role="separator" class="divider"></li>
             <li><a v-link="{ path: '/vendor/list' }">Vendor List</a></li>
-            <li><a v-link="{ path: '/vendor/edit/0' }">Add Vendor</a></li>
+            <li v-if="canEdit"><a v-link="{ path: '/vendor/edit/0' }">Add Vendor</a></li>
             <li role="separator" class="divider"></li>
             <li><a v-link="{ path: '/mfgr/list' }">Manufactuer List</a></li>
           </ul>
@@ -83,7 +78,7 @@
             <li><a v-link="{ path: '/ip/list' }">Network IPs</a></li>
             <li><a v-link="{ path: '/vlan/list' }">VLANs</a></li>
             <li role="separator" class="divider"></li>
-            <li><a v-link="{ path: '/ip/reserve' }">Reserve IPs</a></li>
+            <li v-if="canEdit"><a v-link="{ path: '/ip/reserve' }">Reserve IPs</a></li>
             <li role="separator" class="divider"></li>
             <li><a v-link="{ path: '/ip/types' }">IP Types</a></li>
           </ul>
@@ -95,17 +90,24 @@
         </div>
         <button class="btn btn-default" v-on:click.prevent="doSearch">Search</button>
       </form>
-      <ul class="nav navbar-nav navbar-right">
+      <ul class="nav navbar-nav navbar-right" v-if="app.auth.user.admin > 1">
         <li class="dropdown">
           <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Admin<span class="caret"></span></a>
           <ul class="dropdown-menu">
             <li><a v-link="{ path: '/admin/tags' }">Manage Tags</a></li>
             <li><a v-link="{ path: '/user/list' }">User List</a></li>
+            <li role="separator" class="divider"></li>
+            <li><a v-link="{ path: '/admin/sessions' }">Session Log</a></li>
+            <li><a href="#" onclick="toggleDebug(); return false">{{debugAction()}} Debug</a></li>
+<!--
+            <li><button class="btn" v-on:click.prevent="toggleDebug">Debug</button></li>
+            <li><button class="btn" v-on:click.prevent="updateIP($index)">Update</button>
             <li><a href="#">Action</a></li>
             <li><a href="#">Another action</a></li>
             <li><a href="#">Something else here</a></li>
             <li role="separator" class="divider"></li>
             <li><a href="#">Separated link</a></li>
+-->
           </ul>
         </li>
       </ul>
@@ -219,7 +221,7 @@
             </option>
         </select>
         <paged-grid 
-            :data="rows | partFilter | filterBy searchQuery" 
+            :data="rows | filterBy searchQuery | partFilter " 
             :filename="filename" 
             :columns="columns" 
             :linkable="linkable"
@@ -255,7 +257,7 @@
         <th>IP</th>
         <th>Type</th>
         <th>Port</th>
-        <th>Action</th>
+        <th v-if="canEdit">Action</th>
       </tr>
     </thead>
     <tbody>
@@ -277,7 +279,7 @@
             </option>
         </select>
         </td>
-        <td>
+        <td v-if="canEdit">
             <button class="btn" v-on:click.prevent="updateIP($index)">Update</button>
             <button class="btn" v-on:click.prevent="deleteIP($index)">Delete</button>
         </td>
@@ -301,7 +303,7 @@
             </option>
         </select>
         </td>
-        <td>
+        <td v-if="canEdit">
             <button class="btn" v-on:click.prevent="addIP" :disabled="ipAddDisabled">Add</button>
         </td>
       </tr>
@@ -319,7 +321,7 @@
         <th>MAC</th>
         <th>Switch Port</th>
         <th>Cable Tag</th>
-        <th>Action</th>
+        <th v-if="canEdit">Action</th>
       </tr>
     </thead>
     <tbody>
@@ -339,7 +341,7 @@
         <td>
             <input type="text" v-model="rows[$index].CableTag"/>
         </td>
-        <td>
+        <td v-if="canEdit">
             <button class="btn" v-on:click.prevent="updateInterface($index)">Update</button>
             <button class="btn" v-on:click.prevent="deleteInterface($index)">Delete</button>
         </td>
@@ -361,7 +363,7 @@
         <td>
             <input type="text" v-model="newCableTag"/>
         </td>
-        <td>
+        <td v-if="canEdit">
             <button class="btn" v-on:click.prevent="addInterface" :disabled="interfaceAddDisabled">Add</button>
         </td>
       </tr>
@@ -462,6 +464,33 @@
     </div>
 </script>
 
+<script type="text/x-template" id="tmpl-device-audit">
+    <div class="view">
+        <div v-if="$loadingRouteData">Loading ...</div>
+        <div v-if="!$loadingRouteData">
+            <label for="query">Filter</label>
+            <input name="query" v-model="searchQuery" @keyup="resetStartRow">
+
+            <select id="pagerows" v-model="pagerows">
+                <option v-for="size in sizes" v-bind:value="size">
+                    {{ size }}
+                </option>
+            </select>
+
+            <paged-grid 
+                :data="rows | filterBy searchQuery" 
+                :columns="columns" 
+                :linkable="linkable"
+                :linkPath="linkpath"
+                :move-pages="movePages" 
+                :start-row="startRow" 
+                :filename="filename"
+                :rows-per-page="rowsPerPage">
+            </paged-grid>
+        </div>
+    </div>
+</script>
+
 <script type="text/x-template" id="tmpl-device-types">
     <div class="view">
         <div v-if="$loadingRouteData">Loading ...</div>
@@ -521,7 +550,7 @@
       <tr>
         <th>IP</th>
         <th>Type</th>
-        <th>Action</th>
+        <th v-if="canEdit">Action</th>
       </tr>
     </thead>
     <tbody>
@@ -536,13 +565,13 @@
                 </option>
             </select>
         </td>
-        <td>
+        <td v-if="canEdit">
             <button class="btn" v-on:click.prevent="updateIP($index)">Update</button>
             <button class="btn" v-on:click.prevent="deleteIP($index)">Delete</button>
         </td>
       </tr>
        
-      <tr>
+      <tr v-if="canEdit">
         <td>
             <input type="text" v-model="newIP"/>
         </td>
@@ -729,7 +758,7 @@
                 </div>
             </fieldset>
 
-            <fieldset class="col-xs-12">
+            <fieldset class="col-xs-12" v-if="canEdit">
                 <div class="form-group">
                     <div class="col-xs-offset-1 col-xs-1">
                         <button class="btn" v-on:click.prevent="showList">Cancel</button>
@@ -739,6 +768,9 @@
                         <template v-if="Device.DID">Update</template>
                         <template v-else>Add</template>
                         </button>
+                    </div>
+                    <div class="col-xs-1" v-if="Device.Version > 0">
+                        <button class="btn" v-on:click.prevent="audit">Audit</button>
                     </div>
                     <div class="col-xs-1" v-if="Device.DID">
                         <button class="btn" v-on:click.prevent="deleteSelf">Delete</button>
@@ -808,7 +840,7 @@
             </div>
         </fieldset>
 
-        <fieldset class="col-xs-12">
+        <fieldset class="col-xs-12" v-if="canEdit">
             <div class="form-group">
                 <div class="col-xs-offset-1 col-xs-1">
                     <button class="btn" v-on:click.prevent="showList">Cancel</button>
@@ -847,7 +879,7 @@
             </div>
         </fieldset>
 
-        <fieldset class="col-xs-12">
+        <fieldset class="col-xs-12" v-if="canEdit">
             <div class="form-group">
                 <div class="col-xs-offset-1 col-xs-1">
                     <button class="btn" v-on:click.prevent="showList">Cancel</button>
@@ -957,7 +989,7 @@
             </div>
         </fieldset>
 
-        <fieldset class="col-xs-12">
+        <fieldset class="col-xs-12" v-if="canEdit">
             <div class="form-group">
                 <div class="col-xs-offset-1 col-xs-1">
                     <button class="btn" v-on:click.prevent="showList">Cancel</button>
@@ -1148,8 +1180,10 @@
 
         <button class="btn" v-on:click.prevent="ping">Ping</button>
 
+        <template v-if="canEdit">
         <label for="audit">Audit</label>
         <input type="checkbox" id="audit" name="audit" v-model="audit"/>
+        </template>
 
         <div class="allracks">
             <rack-view 
@@ -1197,14 +1231,14 @@
             </div>
         </fieldset>
 
-        <fieldset class="col-xs-12" v-if="VM.VMI != 0">
+        <fieldset class="col-xs-12" v-if="VM.Version > 0">
             <label for="Audit" class="control-label col-xs-2">Audit</label>
             <div class="col-xs-2">
                  <a v-link="{ path: '/vm/audit/' + VM.VMI }">Change History</a>
             </div>
         </fieldset>
 
-        <fieldset class="col-xs-12">
+        <fieldset class="col-xs-12" v-if="canEdit">
             <div class="form-group">
                 <div class="col-xs-offset-1 col-xs-1">
                     <button class="btn" v-on:click.prevent="showList">Cancel</button>
@@ -1224,6 +1258,33 @@
                 </vm-ips>
             </fieldset>
     </form>
+    </div>
+</script>
+
+<script type="text/x-template" id="tmpl-audit">
+    <div class="view">
+        <div v-if="$loadingRouteData">Loading ...</div>
+        <div v-if="!$loadingRouteData">
+            <label for="query">Filter</label>
+            <input name="query" v-model="searchQuery" @keyup="resetStartRow">
+
+            <select id="pagerows" v-model="pagerows">
+                <option v-for="size in sizes" v-bind:value="size">
+                    {{ size }}
+                </option>
+            </select>
+
+            <paged-grid 
+                :data="rows | filterBy searchQuery" 
+                :columns="columns" 
+                :linkable="linkable"
+                :linkPath="linkpath"
+                :move-pages="movePages" 
+                :start-row="startRow" 
+                :filename="filename"
+                :rows-per-page="rowsPerPage">
+            </paged-grid>
+        </div>
     </div>
 </script>
 
@@ -1294,6 +1355,7 @@
 
         <paged-grid 
             :data="data | siteFilter" 
+            :filename="filename" 
             :columns="columns" 
             :linkable="linkable"
             :linkPath="linkpath"
@@ -1357,7 +1419,7 @@
                 </div>
             </fieldset>
 
-            <fieldset class="col-xs-12">
+            <fieldset class="col-xs-12" v-if="canEdit">
                 <div class="form-group">
                     <div class="col-xs-offset-1 col-xs-1">
                         <button class="btn" v-on:click.prevent="showList">Cancel</button>
@@ -1376,7 +1438,7 @@
 
 
 <script type="text/x-template" id="tmpl-ip-reserve">
-    <div id="vlan-edit" class="col-xs-12">
+    <div id="ip-reserve" class="col-xs-12">
     
         <form role="form" class="form-horizontal">
             <fieldset class="col-xs-12">
@@ -1536,7 +1598,7 @@
                 <input type="text" class="form-control" v-bind:class="{badentry: badHost}" id="hostname" placeholder="optional"  v-model="Part.Hostname" @change="findhost">
             </div>
         </div>
-        <div class="form-group">
+        <div class="form-group" v-if="canEdit">
             <div class="col-xs-offset-1 col-xs-1">
                 <button class="btn" type="cancel" v-on:click.prevent="showList">Cancel</button>
             </div>
@@ -1558,7 +1620,7 @@
     </div>
 </script>
 
-
+<!--
 <script type="text/x-template" id="tmpl-part-edit">
     <div id="part-edit">
 
@@ -1628,7 +1690,7 @@
                 <input type="text" class="form-control" v-bind:class="{badentry: badHost}" id="hostname" placeholder="optional"  v-model="Part.Hostname" @change="findhost">
             </div>
         </div>
-        <div class="form-group">
+        <div class="form-group" v-if="canEdit">
             <div class="col-xs-offset-1 col-xs-1">
                 <button class="btn" type="cancel" v-on:click.prevent="showList">Cancel</button>
             </div>
@@ -1649,11 +1711,10 @@
         </form>
     </div>
 </script>
-
+-->
 
 <script type="text/x-template" id="tmpl-user-edit">
     <div id="user-edit">
-
         <h1 class="mytitle">Edit User</h1>
         <form class="form-horizontal">
             <div class="form-group">
@@ -1684,7 +1745,7 @@
                     </select>
                 </div>
             </div>
-            <div class="form-group">
+            <div class="form-group" v-if="isAdmin">
                 <div class="col-xs-offset-1 col-xs-1">
                     <button class="btn" type="cancel" v-on:click.prevent="showList">Cancel</button>
                 </div>
@@ -1694,6 +1755,9 @@
                 </div>
                 <div class="col-xs-1" v-if="User.USR">
                     <button class="btn" v-on:click.prevent="deleteSelf">Delete</button>
+                </div>
+                <div class="col-xs-1" v-if="canAssume" v-if="admin > 2">
+                    <button class="btn" v-on:click.prevent="assumeUser">Run as {{User.Login}}</button>
                 </div>
             </div>
         </form>
@@ -1787,7 +1851,7 @@
                     <input type="text" class="form-control" id="date-created" v-model="RMA.Created">
                 </div>
             </div>
-            <div class="form-group">
+            <div class="form-group" v-if="canEdit">
                 <div class="col-xs-offset-1 col-xs-1">
                     <button class="btn" type="cancel" v-on:click.prevent="showList">Cancel</button>
                 </div>
@@ -2003,7 +2067,7 @@
                 </div>
             </fieldset>
 
-            <fieldset class="col-xs-12">
+            <fieldset class="col-xs-12" v-if="canEdit">
                 <div class="form-group">
                     <div class="col-xs-offset-1 col-xs-1">
                         <button class="btn" v-on:click.prevent="showList">Cancel</button>
@@ -2065,11 +2129,34 @@
             {{rowStatus}}
             <button v-if="rowsPerPage" class="btn" @click=movePages(1)>Next</button>
             </template>
-            <button v-if="data.length" class="btn download" v-on:click.prevent="download">Download</button>
+            <button v-if="canDownload" class="btn download" v-on:click.prevent="download">Download</button>
         </div>
     </div>
 </script>
 
+
+<script type="text/x-template" id="tmpl-session-list">
+    <div>
+        <h1 class="mytitle">Session Activity</h1>
+
+        <label for="pagerows">page size</label>
+        <select id="pagerows" v-model="pagerows">
+            <option v-for="size in sizes" v-bind:value="size">
+                {{ size }}
+            </option>
+        </select>
+
+        <paged-grid 
+            :data="rows"
+            :filename="filename" 
+            :columns="columns" 
+            :linkable="linkable"
+            :linkPath="linkpath"
+            :start-row="startRow" 
+            :rows-per-page="rowsPerPage">
+        </paged-grid>
+    </div>
+</script>
 
 <!-- instantiate our components -->
 

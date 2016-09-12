@@ -59,6 +59,8 @@ func (d *jsonDate) Value() (driver.Value, error) {
 	return time.Time(*d), nil
 }
 
+//type int64 int64
+
 type summary struct {
 	ID      int64   `sql:"sti" key:"true" table:"summary"`
 	Site    *string `sql:"site"`
@@ -91,19 +93,36 @@ type fullUser struct {
 	Level    int    `sql:"admin"`
 }
 
+type session struct {
+	SSI    int64      `sql:"ssi" key:"true" table:"sessions"`
+	Event  string     `sql:"event"`
+	Remote string     `sql:"remote_addr"`
+	USR    *int64     `sql:"usr"`
+	TS     *time.Time `sql:"ts" update:"false"`
+}
+
+type sessionView struct {
+	SSI    int64      `sql:"ssi" key:"true" table:"sessions_view"`
+	Login  string     `sql:"login"`
+	Event  string     `sql:"event"`
+	Remote string     `sql:"remote_addr"`
+	USR    *int64     `sql:"usr"`
+	TS     *time.Time `sql:"ts" update:"false"`
+}
+
 type vendor struct {
-	VID      int64     `sql:"vid" key:"true" table:"vendors"`
-	Name     string    `sql:"name"`
-	WWW      *string   `sql:"www"`
-	Phone    *string   `sql:"phone"`
-	Address  *string   `sql:"address"`
-	City     *string   `sql:"city"`
-	State    *string   `sql:"state"`
-	Country  *string   `sql:"country"`
-	Postal   *string   `sql:"postal"`
-	Note     *string   `sql:"note"`
-	USR      int64     `sql:"usr"  audit:"user"`
-	Modified time.Time `sql:"ts" audit:"time"`
+	VID     int64     `sql:"vid" key:"true" table:"vendors"`
+	Name    string    `sql:"name"`
+	WWW     *string   `sql:"www"`
+	Phone   *string   `sql:"phone"`
+	Address *string   `sql:"address"`
+	City    *string   `sql:"city"`
+	State   *string   `sql:"state"`
+	Country *string   `sql:"country"`
+	Postal  *string   `sql:"postal"`
+	Note    *string   `sql:"note"`
+	USR     *int64    `sql:"usr" audit:"user"`
+	TS      time.Time `sql:"ts" audit:"time"`
 }
 
 type ipType struct {
@@ -131,7 +150,7 @@ type rma struct {
 	Received  *jsonDate `sql:"date_received"`
 	Closed    *jsonDate `sql:"date_closed"`
 	Created   *jsonDate `sql:"date_created"`
-	USR       int64     `sql:"usr"`
+	USR       *int64    `sql:"usr"`
 }
 
 type rmaView struct {
@@ -158,24 +177,24 @@ type rmaView struct {
 	Received    *jsonDate `sql:"date_received"`
 	Closed      *jsonDate `sql:"date_closed"`
 	Created     *jsonDate `sql:"date_created"`
-	USR         int64     `sql:"usr"`
+	USR         *int64    `sql:"usr"`
 }
 
 type manufacturer struct {
-	MID      int64     `sql:"mid" key:"true" table:"mfgrs"`
-	Name     string    `sql:"name"`
-	Note     *string   `sql:"note"`
-	AKA      *string   `sql:"aka"`
-	URL      *string   `sql:"url"`
-	USR      int64     `sql:"usr"  audit:"user"`
-	Modified time.Time `sql:"ts" audit:"time"`
+	MID  int64     `sql:"mid" key:"true" table:"mfgrs"`
+	Name string    `sql:"name"`
+	Note *string   `sql:"note"`
+	AKA  *string   `sql:"aka"`
+	URL  *string   `sql:"url"`
+	USR  *int64    `sql:"usr"  audit:"user"`
+	TS   time.Time `sql:"ts" audit:"time"`
 }
 
 type partType struct {
-	PTI      int64     `sql:"pti" key:"true" table:"part_types"`
-	Name     string    `sql:"name"`
-	USR      int64     `sql:"usr"  audit:"user"`
-	Modified time.Time `sql:"ts" audit:"time"`
+	PTI  int64     `sql:"pti" key:"true" table:"part_types"`
+	Name string    `sql:"name"`
+	USR  *int64    `sql:"usr"  audit:"user"`
+	TS   time.Time `sql:"ts" audit:"time"`
 }
 
 type sku struct {
@@ -185,8 +204,8 @@ type sku struct {
 	PartNumber  *string   `sql:"part_no"`
 	Description *string   `sql:"description"`
 	SKU         *string   `sql:"sku"`
-	USR         int64     `sql:"usr"  audit:"user"`
-	Modified    time.Time `sql:"ts" audit:"time"`
+	USR         *int64    `sql:"usr"  audit:"user"`
+	TS          time.Time `sql:"ts" audit:"time"`
 }
 
 type part struct {
@@ -201,8 +220,8 @@ type part struct {
 	Unused   bool      `sql:"unused"`
 	Bad      bool      `sql:"bad"`
 	Cents    *int      `sql:"cents"` // in cents to avoid floating point issues
-	USR      int64     `sql:"usr"  audit:"user"`
-	Modified time.Time `sql:"ts" audit:"time"`
+	USR      *int64    `sql:"usr"  audit:"user"`
+	TS       time.Time `sql:"ts" audit:"time"`
 }
 
 type partView struct {
@@ -249,17 +268,17 @@ func (u user) Access() string {
 }
 
 type site struct {
-	STI      int64     `sql:"sti" key:"true" table:"sites"`
-	Name     *string   `sql:"name"`
-	Address  *string   `sql:"address"`
-	City     *string   `sql:"city"`
-	State    *string   `sql:"state"`
-	Postal   *string   `sql:"postal"`
-	Country  *string   `sql:"country"`
-	Phone    *string   `sql:"phone"`
-	Web      *string   `sql:"web"`
-	USR      int64     `sql:"usr"  audit:"user"`
-	Modified time.Time `sql:"ts" audit:"time"`
+	STI     int64     `sql:"sti" key:"true" table:"sites"`
+	Name    *string   `sql:"name"`
+	Address *string   `sql:"address"`
+	City    *string   `sql:"city"`
+	State   *string   `sql:"state"`
+	Postal  *string   `sql:"postal"`
+	Country *string   `sql:"country"`
+	Phone   *string   `sql:"phone"`
+	Web     *string   `sql:"web"`
+	USR     *int64    `sql:"usr"  audit:"user"`
+	TS      time.Time `sql:"ts" audit:"time"`
 }
 
 type tag struct {
@@ -276,7 +295,7 @@ type rack struct {
 	XPos     *string    `sql:"x_pos"`
 	YPos     *string    `sql:"y_pos"`
 	Note     *string    `sql:"note"`
-	USR      int64      `sql:"usr"`
+	USR      *int64     `sql:"usr"`
 	TS       *time.Time `sql:"ts" update:"false"`
 }
 
@@ -290,7 +309,7 @@ type rackView struct {
 	XPos     *string    `sql:"x_pos"`
 	YPos     *string    `sql:"y_pos"`
 	Note     *string    `sql:"note"`
-	USR      int64      `sql:"usr"`
+	USR      *int64     `sql:"usr"`
 	TS       *time.Time `sql:"ts" update:"false"`
 }
 
@@ -300,8 +319,8 @@ type vm struct {
 	Hostname *string   `sql:"hostname"`
 	Profile  *string   `sql:"profile"`
 	Note     *string   `sql:"note"`
-	USR      int64     `sql:"usr"`
-	Modified time.Time `sql:"ts"`
+	USR      *int64    `sql:"usr" audit:"user"`
+	TS       time.Time `sql:"ts" audit:"time"`
 }
 
 type vmView struct {
@@ -315,8 +334,44 @@ type vmView struct {
 	Hostname *string   `sql:"hostname"`
 	Profile  *string   `sql:"profile"`
 	Note     *string   `sql:"note"`
-	USR      int64     `sql:"usr"`
-	Modified time.Time `sql:"ts"`
+	Version  *int      `sql:"version"`
+	USR      *int64    `sql:"usr" audit:"user"`
+	TS       time.Time `sql:"ts" audit:"time"`
+}
+
+// vm_ips with non-vip IPs rolled up to a single field
+type vmIPs struct {
+	VMI      int64     `sql:"vmi" key:"true" table:"vms_list"`
+	DID      int64     `sql:"did"`
+	RID      *int64    `sql:"rid"`
+	STI      *int64    `sql:"sti"`
+	Rack     *int      `sql:"rack"`
+	RU       *int      `sql:"ru"`
+	Site     *string   `sql:"site"`
+	Server   *string   `sql:"server"`
+	Hostname *string   `sql:"hostname"`
+	Profile  *string   `sql:"profile"`
+	Note     *string   `sql:"note"`
+	IPs      *string   `sql:"ips"`
+	USR      *int64    `sql:"usr"`
+	TS       time.Time `sql:"ts"`
+}
+
+type vmHistory struct {
+	VMI      int64     `sql:"vmi" key:"true" table:"vms_history"`
+	DID      int64     `sql:"did"`
+	RID      *int64    `sql:"rid"`
+	STI      *int64    `sql:"sti"`
+	Rack     *int      `sql:"rack"`
+	Site     *string   `sql:"site"`
+	Server   *string   `sql:"server"`
+	Hostname *string   `sql:"hostname"`
+	Profile  *string   `sql:"profile"`
+	Note     *string   `sql:"note"`
+	Login    *string   `sql:"login"`
+	Version  *int      `sql:"version"`
+	USR      *int64    `sql:"usr"`
+	TS       time.Time `sql:"ts"`
 }
 
 func getUser(where string, args ...interface{}) (user, error) {
@@ -410,8 +465,8 @@ type device struct {
 	AssetTag *string   `sql:"asset_tag"`
 	Assigned *string   `sql:"assigned"`
 	Note     *string   `sql:"note"`
-	USR      int64     `sql:"usr"`
-	Modified time.Time `sql:"ts"`
+	USR      *int64    `sql:"usr" audit:"user"`
+	TS       time.Time `sql:"ts" audit:"time"`
 }
 
 // deviceView is a more usable view of the Device record
@@ -435,10 +490,39 @@ type deviceView struct {
 	DevType  *string   `sql:"devtype"`
 	Tag      *string   `sql:"tag"`
 	Site     *string   `sql:"site"`
-	USR      int64     `sql:"usr"`
-	Modified time.Time `sql:"ts"`
+	Version  *int      `sql:"version"`
+	USR      *int64    `sql:"usr" audit:"user"`
+	TS       time.Time `sql:"ts" audit:"time"`
 }
 
+// deviceHistory is a usable view of the Device record history
+type deviceHistory struct {
+	DID      int64     `sql:"did" key:"true" table:"devices_history"`
+	STI      *int64    `sql:"sti"` // Site ID
+	KID      *int64    `sql:"kid"` // SKU ID
+	RID      *int64    `sql:"rid"` // Rack ID
+	DTI      *int64    `sql:"dti"` // Device type ID
+	TID      *int64    `sql:"tid"` // Tag ID
+	Rack     int       `sql:"rack"`
+	RU       int       `sql:"ru"`
+	Height   int       `sql:"height"`
+	Hostname *string   `sql:"hostname"`
+	Alias    *string   `sql:"alias"`
+	Profile  *string   `sql:"profile"`
+	SerialNo *string   `sql:"sn"`
+	AssetTag *string   `sql:"asset_tag"`
+	Assigned *string   `sql:"assigned"`
+	Note     *string   `sql:"note"`
+	DevType  *string   `sql:"devtype"`
+	Tag      *string   `sql:"tag"`
+	Site     *string   `sql:"site"`
+	Login    *string   `sql:"login"`
+	Version  *int      `sql:"version"`
+	USR      *int64    `sql:"usr"`
+	TS       time.Time `sql:"ts"`
+}
+
+//did|rid|dti|kid|tid|ru|height|hostname|alias|asset_tag|sn|profile|assigned|note|version|usr|ts|sti|site|rack|devtype|tag|login
 // deviceIPs merges IP info into the DeviceView
 type deviceIPs struct {
 	DID      int64     `sql:"did" key:"true" table:"devices_list"`
@@ -462,8 +546,8 @@ type deviceIPs struct {
 	Note     *string   `sql:"note"`
 	DevType  *string   `sql:"devtype"`
 	Site     *string   `sql:"site"`
-	USR      int64     `sql:"usr"`
-	Modified time.Time `sql:"ts"`
+	USR      *int64    `sql:"usr"`
+	TS       time.Time `sql:"ts"`
 }
 
 // special view with triggers for resizing/moving unit
@@ -590,30 +674,30 @@ type vlanProfile struct {
 }
 
 type vlan struct {
-	VLI      int64     `sql:"vli" key:"true" table:"vlans"`
-	STI      int64     `sql:"sti"`
-	Name     int       `sql:"name"`
-	Profile  *string   `sql:"profile"`
-	Gateway  *string   `sql:"gateway"`
-	Route    *string   `sql:"route"`
-	Netmask  *string   `sql:"netmask"`
-	Note     *string   `sql:"note"`
-	Modified time.Time `sql:"ts" audit:"time"`
-	USR      int64     `sql:"usr"  audit:"user"`
+	VLI     int64     `sql:"vli" key:"true" table:"vlans"`
+	STI     int64     `sql:"sti"`
+	Name    int       `sql:"name"`
+	Profile *string   `sql:"profile"`
+	Gateway *string   `sql:"gateway"`
+	Route   *string   `sql:"route"`
+	Netmask *string   `sql:"netmask"`
+	Note    *string   `sql:"note"`
+	TS      time.Time `sql:"ts" audit:"time"`
+	USR     *int64    `sql:"usr"  audit:"user"`
 }
 
 type vlanView struct {
-	VLI      int64     `sql:"vli" key:"true" table:"vlans_view"`
-	STI      int64     `sql:"sti"`
-	Name     int       `sql:"name"`
-	Site     *string   `sql:"site"`
-	Profile  *string   `sql:"profile"`
-	Gateway  *string   `sql:"gateway"`
-	Route    *string   `sql:"route"`
-	Netmask  *string   `sql:"netmask"`
-	Note     *string   `sql:"note"`
-	Modified time.Time `sql:"ts" audit:"time"`
-	USR      int64     `sql:"usr"  audit:"user"`
+	VLI     int64     `sql:"vli" key:"true" table:"vlans_view"`
+	STI     int64     `sql:"sti"`
+	Name    int       `sql:"name"`
+	Site    *string   `sql:"site"`
+	Profile *string   `sql:"profile"`
+	Gateway *string   `sql:"gateway"`
+	Route   *string   `sql:"route"`
+	Netmask *string   `sql:"netmask"`
+	Note    *string   `sql:"note"`
+	TS      time.Time `sql:"ts" audit:"time"`
+	USR     *int64    `sql:"usr"  audit:"user"`
 }
 
 type pxeDevice struct {

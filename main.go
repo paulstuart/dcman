@@ -17,16 +17,18 @@ import (
 )
 
 var (
-	version           = "0.9.0"
-	sessionMinutes    = time.Duration(time.Minute * 240)
-	masterMode        = true
-	hostname, _       = os.Hostname()
-	basedir, _        = os.Getwd() // get abs path now, as we will be changing dirs
-	execDir, _        = osext.ExecutableFolder()
-	startTime         = time.Now()
-	sqlDir            = "sql" // dir containing sql schemas, etc
-	sqlSchema         = sqlDir + "/schema.sql"
-	dbFile            = execDir + "/data.db"
+	version        = "0.9.1"
+	sessionMinutes = time.Duration(time.Minute * 240)
+	masterMode     = true
+	hostname, _    = os.Hostname()
+	basedir, _     = os.Getwd() // get abs path now, as we will be changing dirs
+	execDir, _     = osext.ExecutableFolder()
+	startTime      = time.Now()
+	sqlDir         = "sql" // dir containing sql schemas, etc
+	sqlSchema      = sqlDir + "/schema.sql"
+	dbName         = execDir + "/data.db"
+	//dbFile            = "file:" + dbName + "?cache=shared&mode=rwc"
+	dbFile            = "file://" + dbName //+ "?cache=shared&mode=rwc"
 	systemLocation, _ = time.LoadLocation("Local")
 	pingTimeout       = 3
 	pathPrefix        string
@@ -164,6 +166,7 @@ type found struct {
 	ID   int64  `sql:"id"`
 	Kind string `sql:"kind"`
 	Name string `sql:"name"`
+	Note string `sql:"note"`
 }
 
 func dbHits(q string, args ...interface{}) []found {
@@ -177,8 +180,78 @@ func dbHits(q string, args ...interface{}) []found {
 
 func searchDB(what string) []found {
 
-	q := "select distinct did as id, 'server' as kind, hostname from devices where hostname=? or sn=? or alias=? or asset_tag=? or profile=?"
-	hits := dbHits(q, what, what, what, what, what)
+	q := "select distinct did as id, 'server' as kind, hostname, note from devices where hostname=? or sn=? or alias=? or asset_tag=? or profile=? or assigned=?"
+	hits := dbHits(q, what, what, what, what, what, what)
+	if len(hits) > 0 {
+		return hits
+	}
+	q = `select distinct did as id, 'server' as kind, hostname, note from devices where hostname like ? 
+			or sn like ? or alias like ? or asset_tag like ? or profile like ? or assigned like ?`
+	almost := "%" + what + "%"
+	hits = dbHits(q, almost, almost, almost, almost, almost, almost)
+	if len(hits) > 0 {
+		return hits
+	}
+
+	q = "select distinct vmi as id, 'vm' as kind, hostname, note from vms where hostname=?"
+	hits = dbHits(q, what)
+	if len(hits) > 0 {
+		return hits
+	}
+
+	q = "select distinct did as id, devtype as kind, hostname, note from devices_network where mac=? or ipv4=?"
+	hits = dbHits(q, what, what)
+	if len(hits) > 0 {
+		return hits
+	}
+
+	q = "select distinct did as id, 'server' as kind, hostname, note from devices where hostname like ?"
+	hits = dbHits(q, "%"+what+"%")
+	if len(hits) > 0 {
+		return hits
+	}
+
+	q = "select distinct id, kind, hostname, note from notes where note MATCH ?"
+	hits = dbHits(q, what)
+	if len(hits) > 0 {
+		return hits
+	}
+
+	q = "select distinct id, kind, hostname, note from notes where note MATCH ?"
+	hits = dbHits(q, what+"*")
+	if len(hits) > 0 {
+		return hits
+	}
+
+	q = "select distinct id, kind, hostname, note from notes where note MATCH ?"
+	hits = dbHits(q, "*"+what)
+	if len(hits) > 0 {
+		return hits
+	}
+
+	// partial MAC addr?
+	if strings.Contains(what, ":") {
+		q = "select distinct did as id, devtype as kind, hostname, note from devices_network where mac like ?"
+		hits = dbHits(q, "%"+what+"%")
+		if len(hits) > 0 {
+			return hits
+		}
+	}
+
+	return hits
+}
+
+func EXsearchDB(what string) []found {
+
+	q := "select distinct did as id, 'server' as kind, hostname from devices where hostname=? or sn=? or alias=? or asset_tag=? or profile=? or assigned=?"
+	hits := dbHits(q, what, what, what, what, what, what)
+	if len(hits) > 0 {
+		return hits
+	}
+	q = `select distinct did as id, 'server' as kind, hostname from devices where hostname like ? 
+			or sn like ? or alias like ? or asset_tag like ? or profile like ? or assigned like ?`
+	almost := "%" + what + "%"
+	hits = dbHits(q, almost, almost, almost, almost, almost, almost)
 	if len(hits) > 0 {
 		return hits
 	}
@@ -263,7 +336,13 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
+	/*
+		log.Println("sleep")
+		time.Sleep(1 * time.Hour)
+		log.Println("slept")
+	*/
 	if cfg.Backups.Freq > 0 {
+		log.Println("set up backups")
 		go backups(cfg.Backups.Freq, cfg.Backups.Dir)
 	}
 
