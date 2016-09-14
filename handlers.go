@@ -150,7 +150,22 @@ func ipRange(w http.ResponseWriter, r *http.Request) {
 	log.Println("IP RANGE METHOD:", method)
 	switch method {
 	case "POST":
-		obj := struct{ From, To string }{}
+		query := r.URL.Query()
+		apiKey := r.Header.Get("X-API-KEY")
+		if len(apiKey) == 0 {
+			apiKey = query.Get("X-API-KEY")
+		}
+		u, err := userFromAPIKey(apiKey)
+		if err != nil {
+			log.Println("AUTH ERROR:", err)
+			jsonError(w, err, http.StatusUnauthorized)
+			return
+		}
+
+		obj := struct {
+			From, To, Note string
+			VLI            int64
+		}{}
 		content := r.Header.Get("Content-Type")
 		log.Println("IP RANGE CONTENT:", content)
 		if strings.Contains(content, "application/json") {
@@ -161,6 +176,12 @@ func ipRange(w http.ResponseWriter, r *http.Request) {
 		} else {
 			objFromForm(&obj, r.Form)
 		}
+		/*
+			if err := loadObj(r, &obj); err != nil {
+				jsonError(w, err, http.StatusInternalServerError)
+				return
+			}
+		*/
 		log.Println("RANGE OBJ:", obj)
 		from := ipFromString(obj.From)
 		to := ipFromString(obj.To)
@@ -173,8 +194,55 @@ func ipRange(w http.ResponseWriter, r *http.Request) {
 			jsonError(w, err, http.StatusInternalServerError)
 			return
 		}
-		sendJSON(w, list)
+		ips := list.([]ipAddr)
+		if len(ips) > 0 {
+			log.Println("IP RANGE CONFLICT - USED:", len(ips))
+			jsonError(w, err, http.StatusNotAcceptable)
+			return
+		}
+		add := make([][]interface{}, 0, to-from+1)
+		for i := from; i <= to; i++ {
+			info := []interface{}{obj.VLI, i, ipToString(i), obj.Note, u.USR}
+			add = append(add, info)
+		}
+		q := "insert into ips (vli, ip32, ipv4, note, usr) values (?,?,?,?, ?)"
+		if err := datastore.InsertMany(q, add); err != nil {
+			log.Println("ADD IP RANGE ERROR:", err)
+			jsonError(w, err, http.StatusInternalServerError)
+			return
+		}
+		status := struct{ Status string }{"ok"}
+		sendJSON(w, status)
+		//sendJSON(w, list)
 	}
+}
+
+func ipReserved(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+	apiKey := r.Header.Get("X-API-KEY")
+	if len(apiKey) == 0 {
+		apiKey = query.Get("X-API-KEY")
+	}
+	_, err := userFromAPIKey(apiKey)
+	if err != nil {
+		log.Println("AUTH ERROR:", err)
+		jsonError(w, err, http.StatusUnauthorized)
+		return
+	}
+	var obj ipReserve
+	var where string
+	args := make([]interface{}, 0, 1)
+	if sti, ok := query["sti"]; ok {
+		where += " and sti=?"
+		args = append(args, sti)
+	}
+	list, err := datastore.ListQuery(&obj, where, args...)
+	if err != nil {
+		log.Println("list error:", err)
+		jsonError(w, err, http.StatusInternalServerError)
+		return
+	}
+	sendJSON(w, list)
 }
 
 func fullURL(path ...string) string {
@@ -392,28 +460,12 @@ func assumeUser(w http.ResponseWriter, r *http.Request) {
 func deviceAudit(w http.ResponseWriter, r *http.Request) {
 	dbDebug(true)
 	defer dbDebug(false)
-	//const query = "select * from devices_history where did=?"
-	//list, err := datastore.ListQuery(&deviceHistory{}, query, r.URL.Path)
 	list, err := datastore.ListQuery(&deviceHistory{}, "where did=?", r.URL.Path)
 	if err != nil {
 		log.Println("audit error:", err)
 		jsonError(w, err, http.StatusInternalServerError)
 		return
 	}
-	//log.Println("LIST LEN:", len(list.([]dbutil.DBObject)))
-	/*
-		table, _ := dbTable(query, r.URL.Path)
-			if len(table.Rows) > 1 {
-				var hostname string
-				for i, col := range table.Columns {
-					if col == "hostname" {
-						hostname = table.Rows[
-				skip := []string{"did", "usr", "login", "version", "ts"}
-				t2 := table.Diff(true, skip...)
-				cors(w)
-				sendJSON(w, t2)
-			}
-	*/
 	sendJSON(w, list)
 }
 
@@ -434,7 +486,6 @@ var webHandlers = []hFunc{
 	{"/ping", pingPage},
 	{"/api/db/pragmas", apiPragmas},
 	{"/api/device/adjust/", MakeREST(deviceAdjust{})},
-	//{"/api/device/history/", MakeREST(deviceHistory{})},
 	{"/api/device/audit/", deviceAudit},
 	{"/api/device/ips/", MakeREST(deviceIPs{})},
 	{"/api/device/pxe/", MakeREST(pxeDevice{})},
@@ -457,6 +508,8 @@ var webHandlers = []hFunc{
 	{"/api/network/ip/type/", MakeREST(ipType{})},
 	{"/api/network/ip/used/", MakeREST(ipsUsed{})},
 	{"/api/network/ip/range", ipRange},
+	{"/api/network/ip/reserved", ipReserved},
+	{"/api/network/ip/view/", MakeREST(ipView{})},
 	{"/api/network/ip/", MakeREST(ipAddr{})},
 	{"/api/rack/view/", MakeREST(rackView{})},
 	{"/api/rack/", MakeREST(rack{})},

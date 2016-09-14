@@ -14,13 +14,32 @@ CREATE VIEW racks_view as
     order by site, r.rack
     ;
 
-DROP VIEW IF EXISTS ips_view;
-CREATE VIEW ips_view as
-    select i.*, t.name as iptype
-    from ips i 
-    left outer join ip_types t on i.ipt = t.ipt
+DROP VIEW IF EXISTS vlans_view;
+CREATE VIEW vlans_view as
+    select s.name as site, v.*
+    from vlans v
+    left outer join sites s on v.sti = s.sti
+    order by v.sti, v.name
     ;
 
+DROP VIEW IF EXISTS ips_view;
+CREATE VIEW ips_view as
+    select i.*, v.name as vlan, t.name as iptype
+    from ips i 
+    left outer join ip_types t on i.ipt = t.ipt
+    left outer join vlans v on i.vli = v.vli
+    ;
+
+DROP VIEW IF EXISTS ips_reserved;
+CREATE VIEW ips_reserved as
+    select i.iid, i.ipt, i.vli, v.sti, null as rid, 
+           v.site, v.name as vlan, i.iptype, i.ip32, i.ipv4, i.note, i.usr, i.ts, u.login as username
+    from ips_view i 
+    left outer join vlans_view v on i.vli = v.vli
+    left outer join users u on i.usr = u.usr
+	where i.ifd is null 
+    and i.vmi is null
+    ;
 
 DROP VIEW IF EXISTS ips_calc;
 CREATE VIEW ips_calc as
@@ -135,20 +154,6 @@ CREATE VIEW rmas_view as
     left join parts_view p on p.pid = r.old_pid
     ;
 
-
-/*
-DROP VIEW IF EXISTS rma_report;
-CREATE VIEW rma_report as 
-  select r.*, u.login, s.site, s.hostname, s.sn as server_sn, s.rack, s.ru, v.name as vendor_name,
-         b.serial_no as bad_serial, b.part_no as bad_partno
-  from  rmas r
-  left outer join users u on r.user_id = u.id
-  left outer join devices_view s on r.did = s.did
-  left outer join vendors v on r.vid = v.vid
-;
-*/
-
-
 DROP VIEW IF EXISTS vms_view; 
 CREATE VIEW vms_view as
   select ifnull(r.sti,0) as sti, s.name as site, r.rack as rack, d.rid, d.hostname as server, v.*
@@ -171,13 +176,6 @@ CREATE VIEW vms_ips as
     left outer join ips_view i on v.vmi = i.vmi
     ;
 
-/*
-sti|rid|site|rack|ru|server|vmi|did|hostname|profile|note|usr|ts|iid|ipt|ipv4|iptype
-2|4|SFO|1|33|sfo1hyp079|1256|2447|APPS33003|||0|2015-01-23 19:07:18|4794|2|10.100.128.11|Internal
-2|4|SFO|1|33|sfo1hyp079|1256|2447|APPS33003|||0|2015-01-23 19:07:18|8525|6|162.248.16.38|VIP
-
-*/
-
 drop view if exists vms_list;
 create view vms_list as
     select vmi, did, sti, rid, site, rack, ru, server, hostname, profile, note, usr, ts, 
@@ -189,23 +187,6 @@ create view vms_list as
 
 DROP VIEW IF EXISTS rackspace; 
 create view rackspace as select *,ru+height-1 as top from devices_view;
-
-
-DROP VIEW IF EXISTS vlans_view;
-CREATE VIEW vlans_view as
-    select s.name as site, v.*
-    from vlans v
-    left outer join sites s on v.sti = s.sti
-    order by v.sti, v.name
-    ;
-
-/*
-DROP VIEW IF EXISTS rack_vlans;
-CREATE VIEW rack_vlans as 
-select rid, vid, "start" as action, first_ip as ip from racknet
-union
-select rid, vid, "stop" as action, last_ip as ip from racknet;
-*/
 
 -- 
 -- totals for front page
@@ -315,15 +296,6 @@ CREATE VIEW ips_devices as
     where i.ifd > 0
     ;
 
-DROP VIEW IF EXISTS ips_reserved;
-CREATE VIEW ips_reserved as
-    select v.sti, v.vli, i.ipt, 0 as rid, v.site, i.iptype, ipv4, i.note  
-        from ips_view i
-    left outer join vlans_view v on i.vli = v.vli
-        where i.ipv4 > '' 
-        and i.iptype = 'Reserved'
-        ;
-
 DROP VIEW IF EXISTS ips_list;
 CREATE VIEW ips_list as
     select sti, did as id, rid, ipt, devtype as host, site, rack, ipv4 as ip, iptype, hostname, note  from devices_all_ips where ipv4 > ''
@@ -353,14 +325,6 @@ create view devices_adjust as
     select d.*, (d.ru + d.height - 1) as space 
     from devices d
     ;
-
-    /*
-drop view if exists devices_conflict;
-create view devices_adjust as
-    select d1.*, (d.ru + d.height - 1) as space 
-    from devices_adjust d1
-    ;
-    */
 
 drop view if exists devices_history;
 CREATE VIEW devices_history as 

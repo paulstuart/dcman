@@ -79,6 +79,7 @@
             <li><a v-link="{ path: '/vlan/list' }">VLANs</a></li>
             <li role="separator" class="divider"></li>
             <li v-if="canEdit"><a v-link="{ path: '/ip/reserve' }">Reserve IPs</a></li>
+            <li><a v-link="{ path: '/ip/reserved' }">IPs Reserved</a></li>
             <li role="separator" class="divider"></li>
             <li><a v-link="{ path: '/ip/types' }">IP Types</a></li>
           </ul>
@@ -94,20 +95,12 @@
         <li class="dropdown">
           <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Admin<span class="caret"></span></a>
           <ul class="dropdown-menu">
-            <li><a v-link="{ path: '/admin/tags' }">Manage Tags</a></li>
+            <li><a v-link="{ path: '/site/list' }">Site List</a></li>
             <li><a v-link="{ path: '/user/list' }">User List</a></li>
+            <li><a v-link="{ path: '/admin/tags' }">Manage Tags</a></li>
             <li role="separator" class="divider"></li>
             <li><a v-link="{ path: '/admin/sessions' }">Session Log</a></li>
-            <li><a href="#" onclick="toggleDebug(); return false">{{debugAction()}} Debug</a></li>
-<!--
-            <li><button class="btn" v-on:click.prevent="toggleDebug">Debug</button></li>
-            <li><button class="btn" v-on:click.prevent="updateIP($index)">Update</button>
-            <li><a href="#">Action</a></li>
-            <li><a href="#">Another action</a></li>
-            <li><a href="#">Something else here</a></li>
-            <li role="separator" class="divider"></li>
-            <li><a href="#">Separated link</a></li>
--->
+            <li><a v-on:click.prevent="toggleDebug">{{debugAction}} Debug</a></li>
           </ul>
         </li>
       </ul>
@@ -421,6 +414,40 @@
     </div>
 </script>
 
+<script type="text/x-template" id="tmpl-reserved-ips">
+    <div>
+        <h1 class="mytitle">{{sitename}} Reserved IP Addresses</h1>
+
+        <label for="STI">Site</label>
+        <select id="STI" v-model="STI">
+            <option v-for="dc in sites" v-bind:value="dc.STI">
+                {{ dc.Name }}
+            </option>
+        </select>
+
+        <label for="query">Search</label>
+        <input id="query" name="query" v-model="searchQuery">
+
+        <label for="pagerows">page size</label>
+        <select id="pagerows" v-model="pagerows">
+            <option v-for="size in sizes" v-bind:value="size">
+                {{ size }}
+            </option>
+        </select>
+
+        <paged-grid 
+            :data="rows | filterBy searchQuery | siteFilter" 
+            :filename="filename"
+            :columns="columns" 
+            :linkable="linkable"
+            :linkPath="linkpath"
+            :move-pages="movePages" 
+            :start-row="startRow" 
+            :rows-per-page="rowsPerPage">
+        </paged-grid>
+    </div>
+</script>
+
 <script type="text/x-template" id="tmpl-device-list">
     <div class="view">
         <div v-if="$loadingRouteData">Loading ...</div>
@@ -556,7 +583,7 @@
     <tbody>
       <tr v-for="entry in rows" id="ip-row-{{$index}}">
         <td>
-            <input id="ip-{{$index}}" type="text" v-model="rows[$index].IPv4"/>
+            <input id="ip-{{$index}}" type="text" v-model="rows[$index].IP"/>
         </td>
         <td>
             <select id="ip-{{$index}}" v-model="rows[$index].IPT" number>
@@ -890,7 +917,7 @@
                     <template v-else>Add</template>
                     </button>
                 </div>
-                <div class="col-xs-1" v-if="Mfgr.MID">
+                <div class="col-xs-1" v-if="Mfgr.MID > 1">
                     <button class="btn" v-on:click.prevent="deleteSelf">Delete</button>
                 </div>
             </div>
@@ -1073,6 +1100,78 @@
         <h1 class="mytitle">Manufacturers</h1>
         <label for="query">Search</label>
         <input id="query" v-model="searchQuery">
+        <a v-if="canEdit" class="btn btn-info" v-link="{ path: '/mfgr/edit/0' }">Add</a>
+        <paged-grid 
+            :data="rows | filterBy searchQuery" 
+            :columns="columns" 
+            :linkable="linkable"
+            :linkPath="linkpath"
+            :move-pages="movePages" 
+            :start-row="startRow" 
+            :rows-per-page="rowsPerPage">
+        </paged-grid>
+    </div>
+</script>
+
+<script type="text/x-template" id="tmpl-site-edit">
+    <form role="form" class="form-horizontal">
+        <fieldset class="col-xs-12">
+            <legend>Site</legend>
+            <div class="form-group">
+                <label for="name" class="control-label col-xs-2">Name</label>
+                <div class="col-xs-2">
+                    <input type="text" name="name" v-model="Site.Name"/>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="city" class="control-label col-xs-2">City</label>
+                <div class="col-xs-2">
+                    <input type="text" name="city" v-model="Site.City"/>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="country" class="control-label col-xs-2">Country</label>
+                <div class="col-xs-2">
+                    <input type="text" name="country" v-model="Site.Country"/>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="note" class="control-label col-xs-2">Note</label>
+                <div class="col-xs-2">
+                    <input type="text" name="note" v-model="Site.Note"/>
+                </div>
+            </div>
+        </fieldset>
+
+        <fieldset class="col-xs-12" v-if="canEdit">
+            <div class="form-group">
+                <div class="col-xs-offset-1 col-xs-1">
+                    <button class="btn" v-on:click.prevent="showList">Cancel</button>
+                </div>
+                <div class="col-xs-1">
+                    <button class="btn" v-on:click.prevent="saveSelf">
+                    <template v-if="Site.STI">Update</template>
+                    <template v-else>Add</template>
+                    </button>
+                </div>
+                <div class="col-xs-1" v-if="Site.STI">
+                    <button class="btn" v-on:click.prevent="deleteSelf">Delete</button>
+                </div>
+            </div>
+        </fieldset>
+    </form>
+    </div>
+</script>
+
+<script type="text/x-template" id="tmpl-site-list">
+    <div>
+        <h1 class="mytitle">Sites</h1>
+        <label for="query">Search</label>
+        <input id="query" v-model="searchQuery">
+        <a v-if="canEdit" class="btn btn-info" v-link="{ path: '/site/edit/0' }">Add</a>
         <paged-grid 
             :data="rows | filterBy searchQuery" 
             :columns="columns" 
@@ -1201,7 +1300,7 @@
     <div class="vm">
     <form role="form" class="form-horizontal">
         <fieldset class="col-xs-12">
-            <legend>VM</legend>
+            <legend>Edit VM</legend>
             <div class="form-group">
                 <label for="Server" class="control-label col-xs-2">Server</label>
                 <div class="col-xs-2">
@@ -1512,6 +1611,63 @@
     </div>
 </script>
 
+<script type="text/x-template" id="tmpl-ip-edit">
+    <form role="form" class="form-horizontal">
+        <fieldset class="col-xs-12">
+            <legend>IP Edit</legend>
+            <div class="form-group">
+                <label for="ipaddr" class="control-label col-xs-2">IP Address</label>
+                <div class="col-xs-2">
+                    <input type="text" name="ipaddr" v-model="IP.IP"/>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="vlan" class="control-label col-xs-2">VLAN</label>
+                <div class="col-xs-2">
+                    <input type="text" name="vlan" v-model="IP.VLAN" readonly/>
+                </div>
+            </div>
+
+            <div class="form-group" v-if="inuse">
+                <label for="iptype" class="control-label col-xs-2">Type</label>
+                <div class="col-xs-2">
+                    <select id="iptype" v-model="IP.IPT" number>
+                        <option v-for="type in iptypes" v-bind:value="type.IPT">
+                            {{ type.Name }}
+                        </option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="Note" class="control-label col-xs-2">Note</label>
+                <div class="col-xs-2">
+                    <textarea cols="25" rows="2" name="Note" v-model="IP.Note"></textarea>
+                </div>
+            </div>
+        </fieldset>
+
+        <fieldset class="col-xs-12" v-if="canEdit">
+            <div class="form-group">
+                <div class="col-xs-offset-1 col-xs-1">
+                    <button class="btn" v-on:click.prevent="showList">Cancel</button>
+                </div>
+                <div class="col-xs-1">
+                    <button class="btn" v-on:click.prevent="saveSelf">
+                    <template v-if="IP.IID">Update</template>
+                    <template v-else>Add</template>
+                    </button>
+                </div>
+                <div class="col-xs-1" v-if="IP.IID">
+                    <button class="btn" v-on:click.prevent="deleteSelf">Delete</button>
+                </div>
+            </div>
+        </fieldset>
+    </form>
+    </div>
+</script>
+
 
 <script type="text/x-template" id="tmpl-part-edit">
     <div id="part-edit">
@@ -1620,98 +1776,6 @@
     </div>
 </script>
 
-<!--
-<script type="text/x-template" id="tmpl-part-edit">
-    <div id="part-edit">
-
-        <h1 class="mytitle" v-if="Part.PID">Edit Part</h1>
-        <h1 class="mytitle" v-else>Add Part</h1>
-
-        <form id="part-edit" class="form-horizontal">
-        <div class="form-group">
-            <label for="STI" class="control-label col-xs-2">Site</label>
-            <div class="col-xs-2">
-                <select id="STI" name="STI" v-model="Part.STI" number>
-                <option v-for="site in sites" v-bind:value="site.STI">
-                    {{ site.Name }}
-                </option>
-                </select>
-            </div>
-        </div>
-        <div class="form-group">
-            <label for="description" class="control-label col-xs-2">Description</label>
-            <div class="col-xs-4">
-                <input type="text" class="form-control" id="description" v-model="Part.Description">
-            </div>
-        </div>
-        <div class="form-group">
-            <label for="PTI" class="control-label col-xs-2">Part Type</label>
-            <div class="col-xs-2">
-                <select id="PTI" name="PTI" v-model="Part.PTI" number>
-                <option v-for="type in types" v-bind:value="types.PTI">
-                    {{ type.Name }}
-                </option>
-                </select>
-            </div>
-        </div>
-        <div class="form-group">
-            <label for="part-number" class="control-label col-xs-2">Part Number</label>
-            <div class="col-xs-2">
-                <input type="text" class="form-control" id="part-number" v-model="Part.PartNumber">
-            </div>
-        </div>
-        <div class="form-group">
-            <label for="part-sn" class="control-label col-xs-2">Serial Number</label>
-            <div class="col-xs-2">
-                <input type="text" class="form-control" id="part-sn" v-model="Part.Serial">
-            </div>
-        </div>
-        <div class="form-group">
-            <label for="part-tag" class="control-label col-xs-2">Asset Tag</label>
-            <div class="col-xs-2">
-                <input type="text" class="form-control" id="part-tag" v-model="Part.AssetTag">
-            </div>
-        </div>
-        <div class="form-group">
-            <label for="vendor-rma" class="control-label col-xs-2">Manufacturer</label>
-            <div class="col-xs-2">
-                <input type="text" class="form-control" id="vendor-rma" v-model="Part.Mfgr">
-            </div>
-        </div>
-        <div class="form-group">
-            <label for="bad-part" class="control-label col-xs-2">Bad Part</label>
-            <div class="col-xs-2">
-                <input type="checkbox" class="form-control" id="bad-part" v-model="Part.Bad">
-            </div>
-        </div>
-        <div class="form-group">
-            <label for="hostname" class="control-label col-xs-2">Server Hostname</label>
-            <div class="col-xs-2">
-                <input type="text" class="form-control" v-bind:class="{badentry: badHost}" id="hostname" placeholder="optional"  v-model="Part.Hostname" @change="findhost">
-            </div>
-        </div>
-        <div class="form-group" v-if="canEdit">
-            <div class="col-xs-offset-1 col-xs-1">
-                <button class="btn" type="cancel" v-on:click.prevent="showList">Cancel</button>
-            </div>
-            <div class="col-xs-1" v-if="Part.PID">
-                <button class="btn" v-on:click.prevent="doRMA">RMA</button>
-            </div>
-            <div class="col-xs-1">
-                <button class="btn btn-primary" v-on:click.prevent="saveSelf" :disabled="disableSave">
-                <template v-if="Part.PID">
-                Update
-                </template>
-                <template v-else>
-                Add
-                </template>
-                </button>
-            </div>
-        </div>
-        </form>
-    </div>
-</script>
--->
 
 <script type="text/x-template" id="tmpl-user-edit">
     <div id="user-edit">

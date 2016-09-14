@@ -179,16 +179,22 @@ func dbHits(q string, args ...interface{}) []found {
 }
 
 func searchDB(what string) []found {
-
 	q := "select distinct did as id, 'server' as kind, hostname, note from devices where hostname=? or sn=? or alias=? or asset_tag=? or profile=? or assigned=?"
 	hits := dbHits(q, what, what, what, what, what, what)
 	if len(hits) > 0 {
 		return hits
 	}
+
 	q = `select distinct did as id, 'server' as kind, hostname, note from devices where hostname like ? 
 			or sn like ? or alias like ? or asset_tag like ? or profile like ? or assigned like ?`
 	almost := "%" + what + "%"
 	hits = dbHits(q, almost, almost, almost, almost, almost, almost)
+	if len(hits) > 0 {
+		return hits
+	}
+
+	q = "select distinct iid as id, 'ip' as kind, '* reserved *' as hostname, note from ips_reserved where ipv4=?"
+	hits = dbHits(q, what)
 	if len(hits) > 0 {
 		return hits
 	}
@@ -241,69 +247,6 @@ func searchDB(what string) []found {
 	return hits
 }
 
-func EXsearchDB(what string) []found {
-
-	q := "select distinct did as id, 'server' as kind, hostname from devices where hostname=? or sn=? or alias=? or asset_tag=? or profile=? or assigned=?"
-	hits := dbHits(q, what, what, what, what, what, what)
-	if len(hits) > 0 {
-		return hits
-	}
-	q = `select distinct did as id, 'server' as kind, hostname from devices where hostname like ? 
-			or sn like ? or alias like ? or asset_tag like ? or profile like ? or assigned like ?`
-	almost := "%" + what + "%"
-	hits = dbHits(q, almost, almost, almost, almost, almost, almost)
-	if len(hits) > 0 {
-		return hits
-	}
-
-	q = "select distinct vmi as id, 'vm' as kind, hostname from vms where hostname=?"
-	hits = dbHits(q, what)
-	if len(hits) > 0 {
-		return hits
-	}
-
-	q = "select distinct did as id, devtype as kind, hostname from devices_network where mac=? or ipv4=?"
-	hits = dbHits(q, what, what)
-	if len(hits) > 0 {
-		return hits
-	}
-
-	q = "select distinct did as id, 'server' as kind, hostname from devices where hostname like ?"
-	hits = dbHits(q, "%"+what+"%")
-	if len(hits) > 0 {
-		return hits
-	}
-
-	q = "select distinct id, kind, hostname from notes where note MATCH ?"
-	hits = dbHits(q, what)
-	if len(hits) > 0 {
-		return hits
-	}
-
-	q = "select distinct id, kind, hostname from notes where note MATCH ?"
-	hits = dbHits(q, what+"*")
-	if len(hits) > 0 {
-		return hits
-	}
-
-	q = "select distinct id, kind, hostname from notes where note MATCH ?"
-	hits = dbHits(q, "*"+what)
-	if len(hits) > 0 {
-		return hits
-	}
-
-	// partial MAC addr?
-	if strings.Contains(what, ":") {
-		q = "select distinct did as id, devtype as kind, hostname from devices_network where mac like ?"
-		hits = dbHits(q, "%"+what+"%")
-		if len(hits) > 0 {
-			return hits
-		}
-	}
-
-	return hits
-}
-
 func auditLog(uid int64, ip, action, msg string) {
 	//log.Println("IP:", ip)
 	dbExec("insert into audit_log (uid,ip,action,msg) values(?,?,?,?)", uid, ip, strings.ToLower(action), msg)
@@ -336,11 +279,6 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	/*
-		log.Println("sleep")
-		time.Sleep(1 * time.Hour)
-		log.Println("slept")
-	*/
 	if cfg.Backups.Freq > 0 {
 		log.Println("set up backups")
 		go backups(cfg.Backups.Freq, cfg.Backups.Dir)

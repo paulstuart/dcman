@@ -277,6 +277,7 @@ type site struct {
 	Country *string   `sql:"country"`
 	Phone   *string   `sql:"phone"`
 	Web     *string   `sql:"web"`
+	Note    *string   `sql:"note"`
 	USR     *int64    `sql:"usr"  audit:"user"`
 	TS      time.Time `sql:"ts" audit:"time"`
 }
@@ -584,16 +585,32 @@ type ifaceView struct {
 }
 
 type ipAddr struct {
-	IID  int64   `sql:"iid" key:"true" table:"ips"`
-	IFD  *int64  `sql:"ifd"`
-	VMI  *int64  `sql:"vmi"`
-	VLI  *int64  `sql:"vli"` // reserved IPs link to their respective vlan
-	IPT  *int64  `sql:"ipt"`
-	IP32 *uint32 `sql:"ip32"`
-	IPv4 *string `sql:"ipv4"`
-	Note *string `sql:"note"`
+	IID  int64     `sql:"iid" key:"true" table:"ips"`
+	IFD  *int64    `sql:"ifd"`
+	VMI  *int64    `sql:"vmi"`
+	VLI  *int64    `sql:"vli"` // reserved IPs link to their respective vlan
+	IPT  *int64    `sql:"ipt"`
+	IP32 *uint32   `sql:"ip32"`
+	IP   *string   `sql:"ipv4"`
+	Note *string   `sql:"note"`
+	USR  *int64    `sql:"usr"`
+	TS   time.Time `sql:"ts"`
 }
 
+type ipView struct {
+	IID  int64     `sql:"iid" key:"true" table:"ips_view"`
+	IFD  *int64    `sql:"ifd"`
+	VMI  *int64    `sql:"vmi"`
+	VLI  *int64    `sql:"vli"` // reserved IPs link to their respective vlan
+	IPT  *int64    `sql:"ipt"`
+	IP32 *uint32   `sql:"ip32"`
+	IP   *string   `sql:"ipv4"`
+	Type *string   `sql:"iptype"`
+	VLAN *string   `sql:"vlan"`
+	Note *string   `sql:"note"`
+	USR  *int64    `sql:"usr"`
+	TS   time.Time `sql:"ts"`
+}
 type ipsUsed struct {
 	ID       int64   `sql:"id" table:"ips_list"`
 	STI      *int64  `sql:"sti"`
@@ -606,6 +623,21 @@ type ipsUsed struct {
 	Host     *string `sql:"host"`
 	Hostname *string `sql:"hostname"`
 	Note     *string `sql:"note"`
+}
+
+type ipReserve struct {
+	IID  int64     `sql:"iid" key:"true" table:"ips_reserved"`
+	STI  *int64    `sql:"sti"`
+	VLI  *int64    `sql:"vli"`
+	IPT  *int64    `sql:"ipt"`
+	Site *string   `sql:"site"`
+	VLAN *int      `sql:"vlan"`
+	IP32 *uint32   `sql:"ip32"`
+	IP   *string   `sql:"ipv4"`
+	Note *string   `sql:"note"`
+	User *string   `sql:"username"`
+	USR  *int64    `sql:"usr"`
+	TS   time.Time `sql:"ts"`
 }
 
 type provider struct {

@@ -23,7 +23,6 @@ insert into ip_types (name, mgmt) values('IPMI', 1);
 insert into ip_types (name) values('Internal');
 insert into ip_types (name) values('Public');
 insert into ip_types (name, mgmt) values('Mgmt', 1);
-insert into ip_types (name) values('Reserved');
 insert into ip_types (name,multi) values('VIP',1);
 
 

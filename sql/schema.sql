@@ -20,6 +20,7 @@ CREATE TABLE "sites" (
     web text,
     postal text,
     country text,
+    note text,
     usr integer, 
     ts timestamp DEFAULT CURRENT_TIMESTAMP
 );
@@ -133,10 +134,8 @@ CREATE TABLE "parts" (
     FOREIGN KEY(sti) REFERENCES sites(sti)
     FOREIGN KEY(kid) REFERENCES skus(kid)
     FOREIGN KEY(did) REFERENCES devices(did)
-    on update set null
-    /*
     FOREIGN KEY(vid) REFERENCES vendors(vid)
-    */
+    on update set null
 );
 
 
@@ -385,20 +384,7 @@ CREATE TABLE "sub_circuits" (
     note text
 );
 
-/*
-
-CID sub CID provider    A-side Data Center X-con ID A-side location A-side handoff  panel info  Z-side Data Center X-con ID Z-side location Z-side handoff  panel info  patch cable circuit type    service start   service term    purpose description Notes
-10846533        Equinix EU  10846533    AM3                 Cat5    100M    August 2013 unknown OOB 
-eqixCID11251637     AMS-IX/Equinix  11251637    AM3                 SC-SC SM    10G December 2013   unknown Peering at AMS-IX 80.249.210.220/21 
-GI/Ethernet/00360258        GTT 14315011 needs confirmation, query sent to eqix AM3 "AM3:3:20106:PUBMATIC
-PP:0104:170316 Ports 3-4"   dxcon-fg6fapza  AWS EU  unknown SC-SC SM    1G  April 2014  12  Xcon to AWS DirectConnect dxcon-fg6fapza    
-GI/Ethernet/00372586        GTT 16516962    AM3 "AM3:3:20106:PUBMATIC
-PP:0103:170315 Ports 7-8"   dxcon-fgit2je7  AWS EU  unknown SC-LC SM    10G September 2014  12  Xcon to AWS DirectConnect dxcon-fgit2je7 in London  
-GI/X-Connect/00342668       GTT investigating w/ equinix    AM3     transit transit transit         2013??? 10/01/16        
-GI/IP  TRANSIT/00337796     GTT investigating w/ equinix    AM3     transit transit transit         August 2014 24 months       
-investigating w/ equinix            10866711-A  AM3                         August 2013         
-investigating w/ equinix            10142073-A  AM3                         July 2013           
-
-*/
+-- used to do full text search on notes field
 CREATE VIRTUAL TABLE notes USING fts4(id, kind, hostname, note);
+
 COMMIT;
