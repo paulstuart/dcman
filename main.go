@@ -193,6 +193,12 @@ func searchDB(what string) []found {
 		return hits
 	}
 
+	q = "select distinct vmi as id, 'vm' as kind, hostname, note from vms_ips where ipv4=?"
+	hits = dbHits(q, what)
+	if len(hits) > 0 {
+		return hits
+	}
+
 	q = "select distinct iid as id, 'ip' as kind, '* reserved *' as hostname, note from ips_reserved where ipv4=?"
 	hits = dbHits(q, what)
 	if len(hits) > 0 {
