@@ -513,10 +513,11 @@ func webServer(handlers []hFunc) {
 			http.Handle(p, http.StripPrefix(p, h.Func))
 		}
 	}
+	http.HandleFunc("/favicon.ico", faviconPage)
+
 	if len(pathPrefix) > 0 {
 		http.HandleFunc("/", goHome)
 	}
-	http.HandleFunc("/favicon.ico", faviconPage)
 
 	logDir := cfg.Main.LogDir
 	if len(logDir) == 0 {
