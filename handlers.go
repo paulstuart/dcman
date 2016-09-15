@@ -186,8 +186,10 @@ func ipRange(w http.ResponseWriter, r *http.Request) {
 		from := ipFromString(obj.From)
 		to := ipFromString(obj.To)
 		log.Println("RANGE FROM:", from, "TO:", to)
-		dbDebug(true)
-		defer dbDebug(false)
+		/*
+			dbDebug(true)
+			defer dbDebug(false)
+		*/
 		list, err := dbObjectListQuery(ipAddr{}, "where ip32 >=? and ip32 <=?", from, to)
 		if err != nil {
 			log.Println("IP RANGE ERROR:", err)
@@ -197,7 +199,18 @@ func ipRange(w http.ResponseWriter, r *http.Request) {
 		ips := list.([]ipAddr)
 		if len(ips) > 0 {
 			log.Println("IP RANGE CONFLICT - USED:", len(ips))
-			jsonError(w, err, http.StatusNotAcceptable)
+			cnt := struct {
+				Error string
+				Count int
+			}{
+				Error: "range conflict",
+				Count: len(ips),
+			}
+			/*
+				w.WriteHeader(http.StatusNotAcceptable)
+				sendJSON(w, cnt)
+			*/
+			jsonError(w, cnt, http.StatusNotAcceptable)
 			return
 		}
 		add := make([][]interface{}, 0, to-from+1)
@@ -213,7 +226,6 @@ func ipRange(w http.ResponseWriter, r *http.Request) {
 		}
 		status := struct{ Status string }{"ok"}
 		sendJSON(w, status)
-		//sendJSON(w, list)
 	}
 }
 

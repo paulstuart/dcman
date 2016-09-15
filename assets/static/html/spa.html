@@ -1590,11 +1590,12 @@
                         <input type="text" id="Note" v-model="Note"/>
                     </div>
                 </div>
-                <div class="form-group">
-                    <div class="col-xs-2">
+
+                <div class="form-group" v-if="conflicted">
+                    <div class="col-xs-offset-2 col-xs-2 badentry">
+                        Error: there are {{conflicted}} IPs in that range
                     </div>
                 </div>
-
             </fieldset>
 
             <fieldset class="col-xs-12">
@@ -1948,15 +1949,15 @@
                 </div>
             </div>
             <div class="form-group">
-                <label for="new-hostname" class="control-label col-xs-2">Hostname</label>
+                <label for="hostname" class="control-label col-xs-2">Hostname</label>
                 <div class="col-xs-2">
-                    <input type="text" class="form-control" id="new-hostname" placeholder="required"  v-model="hostname" @change="findhost">
+                    <input type="text" class="form-control" v-bind:class="{badentry: badHost}" id="hostname" placeholder="required"  v-model="hostname" @change="findhost">
                 </div>
             </div>
             <div class="form-group">
-                <label for="new-other" class="control-label col-xs-2">Other</label>
+                <label for="other" class="control-label col-xs-2">Other</label>
                 <div class="col-xs-2">
-                    <input type="text" class="form-control" id="new-other" placeholder="if hostname is not applicable"  v-model="other">
+                    <input type="text" class="form-control" id="other" placeholder="if hostname is not applicable"  v-model="other">
                 </div>
             </div>
             <div class="form-group">
@@ -1964,7 +1965,7 @@
                     <button class="btn" v-on:click.prevent="showList">Cancel</button>
                 </div>
                 <div class="col-xs-1">
-                    <button id="use-btn" class="btn disabled" v-on:click.prevent="thisPart" disabled>Use Part</button>
+                    <button id="use-btn" class="btn" v-on:click.prevent="usePart" :disabled="unusable">Use Part</button>
                 </div>
             </div>
         </form>

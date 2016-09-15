@@ -616,9 +616,21 @@ func fullQuery(r *http.Request) (string, []interface{}, error) {
 }
 
 func jsonError(w http.ResponseWriter, what interface{}, code int) {
-	msg := fmt.Sprintf(`{"Error": "%v"}`, what)
+	var msg string
+	switch what.(type) {
+	case string:
+		msg = fmt.Sprintf(`{"Error": "%v"}`, what)
+	default:
+		j, err := json.MarshalIndent(what, " ", " ")
+		if err != nil {
+			log.Println("dang! error on error:", err)
+		}
+		msg = string(j)
+	}
 	w.Header().Set("Content-Type", "application/json")
-	http.Error(w, msg, code)
+	w.WriteHeader(code)
+	//http.Error(w, msg, code)
+	fmt.Fprint(w, msg)
 }
 
 // MakeREST will generate a REST handler for a DBObject

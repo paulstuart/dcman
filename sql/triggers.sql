@@ -12,6 +12,8 @@ BEGIN
     set ip32 = (select ipcalc from ips_calc where iid = NEW.iid)
     where iid=NEW.iid
     ;
+
+    insert or replace into notes values(NEW.iid, 'IP', NEW.ipv4, NEW.note);
 END;
 
 DROP TRIGGER IF EXISTS ips_update;
@@ -22,6 +24,8 @@ BEGIN
     set ip32 = (select ipcalc from ips_calc where iid = OLD.iid)
     where iid=OLD.iid
     ;
+
+    insert or replace into notes values(NEW.iid, 'IP', NEW.ipv4, NEW.note);
 END;
 
 
@@ -263,6 +267,13 @@ BEGIN
     ;
 END;
 
+-- add data for full text search
+DROP TRIGGER IF EXISTS racks_insert;
+CREATE TRIGGER racks_insert AFTER INSERT ON racks 
+BEGIN
+    insert or replace into notes values(NEW.rid, 'Rack', NEW.rack, NEW.note);
+END;
+
 DROP TRIGGER IF EXISTS racks_view_update;
 CREATE TRIGGER racks_view_update INSTEAD OF UPDATE ON racks_view 
 BEGIN
@@ -273,6 +284,8 @@ BEGIN
 	sti = ifnull(NEW.sti,OLD.sti)
     where rid = OLD.rid
     ;
+
+   insert or replace into notes values(NEW.rid, 'Rack', NEW.rack, NEW.note);
 END;
 
 DROP TRIGGER IF EXISTS racks_audit;
