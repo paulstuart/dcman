@@ -17,17 +17,16 @@ import (
 )
 
 var (
-	version        = "0.9.1"
-	sessionMinutes = time.Duration(time.Minute * 240)
-	masterMode     = true
-	hostname, _    = os.Hostname()
-	basedir, _     = os.Getwd() // get abs path now, as we will be changing dirs
-	execDir, _     = osext.ExecutableFolder()
-	startTime      = time.Now()
-	sqlDir         = "sql" // dir containing sql schemas, etc
-	sqlSchema      = sqlDir + "/schema.sql"
-	dbName         = execDir + "/data.db"
-	//dbFile            = "file:" + dbName + "?cache=shared&mode=rwc"
+	version           = "0.9.1"
+	sessionMinutes    = time.Duration(time.Minute * 240)
+	masterMode        = true
+	hostname, _       = os.Hostname()
+	basedir, _        = os.Getwd() // get abs path now, as we will be changing dirs
+	execDir, _        = osext.ExecutableFolder()
+	startTime         = time.Now()
+	sqlDir            = "sql" // dir containing sql schemas, etc
+	sqlSchema         = sqlDir + "/schema.sql"
+	dbName            = execDir + "/data.db"
 	dbFile            = "file://" + dbName //+ "?cache=shared&mode=rwc"
 	systemLocation, _ = time.LoadLocation("Local")
 	pingTimeout       = 3

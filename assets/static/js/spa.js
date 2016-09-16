@@ -25,7 +25,6 @@ var admin = function() {
 
 var get = function(url) {
   return new Promise(function(resolve, reject) {
-      console.log("get url debug:",urlDebug);
     if (urlDebug) {
         url += (url.indexOf('?') > 0) ? '&debug=true' : '?debug=true'
     }
@@ -498,10 +497,11 @@ var Device = function() {
         'Site',
         'DID',
         'DTI',
-        'DevType',
         'Height',
         'Hostname',
-        'ID',
+        'MID',
+        'Mfgr',
+        'Model',
         'Note',
         'PartNo',
         'Profile',
@@ -511,6 +511,7 @@ var Device = function() {
         'SerialNo',
         'STI',
         'TID',
+        'Type',
         'Version',
     ])
 }
@@ -1500,6 +1501,7 @@ var deviceEditVue = {
         return {
             sites: [],
             device_types: [],
+            mfgrs: [],
             tags: [],
             ipTypes: [],
             newIP: '',
@@ -1521,6 +1523,7 @@ var deviceEditVue = {
                 getDeviceTypes(), 
                 getTagList(),
                 getIPTypes(),
+                getMfgr(),
                 completeDevice(this.$route.params.DID), 
            ]).then(function (data) {
               return {
@@ -1528,7 +1531,8 @@ var deviceEditVue = {
                 device_types: data[1],
                 tags: data[2],
                 ipTypes:  data[3],
-                Device: data[4],
+                mfgrs:  data[4],
+                Device: data[5],
                }
             })
           }
@@ -1559,7 +1563,7 @@ var deviceEditVue = {
             router.go('/device/list')
         },
         portLabel: function(ipinfo) {
-            if (this.Device.DevType === 'server') {
+            if (this.Device.Type === 'server') {
                 return ipinfo.Mgmt ? 'IPMI' : 'Eth' + ipinfo.Port
             } 
             return (ipinfo.Mgmt ? 'Mgmt' : 'Port') + ipinfo.Port
@@ -1595,6 +1599,7 @@ var deviceAddMIX = {
           data: function (transition) {
             var device = new(Device);
             device.DID     = 0;
+            device.MID     = 0;
             device.TID     = 1;
             device.Height  = 1;
             device.Rack    = 0;
@@ -1910,29 +1915,32 @@ var deviceList = Vue.component('device-list', {
     template: '#tmpl-device-list',
     mixins: [pagedCommon, commonListMIX],
     data: function() {
-      console.log('device data returning')
-      return {
-          STI: 1,
-          RID: 0,
-          sites: [],
-          racks: [],
-          searchQuery: '',
-          rows: [],
-          filename: "servers",
-          columns: [
-               "Site",
-               "Rack",
-               "RU",
-               "Hostname",
-               "IPs",
-               "Mgmt",
-               "DevType",
-               "Tag",
-               "Profile",
-               "SerialNo",
-               "AssetTag",
-               "Assigned",
-               "Note",
+        return {
+            STI: 1,
+            RID: 0,
+            DTI: 0,
+            sites: [],
+            racks: [],
+            searchQuery: '',
+            rows: [],
+            filename: "servers",
+            types: [],
+            columns: [
+                 "Site",
+                 "Rack",
+                 "RU",
+                 "Hostname",
+                 "IPs",
+                 "Mgmt",
+                 "Type",
+                 "Tag",
+                 "Profile",
+                 "Make",
+                 "Model",
+                 "SerialNo",
+                 "AssetTag",
+                 "Assigned",
+                 "Note",
             ],
         }
     },
@@ -1945,6 +1953,14 @@ var deviceList = Vue.component('device-list', {
             return data.filter(function(obj) {
                 if (obj.RID == self.RID) return obj
             });
+        },
+        typeFilter: function(data) {
+            if (this.DTI == 0) return data;
+
+            var self = this;
+            return data.filter(function(obj) {
+                if (obj.DTI == self.DTI) return obj
+            });
         }
     },
     route: { 
@@ -1954,7 +1970,8 @@ var deviceList = Vue.component('device-list', {
             return Promise.all([
                 getSiteLIST(true), 
                 self.STI > 0 ? getDeviceLIST(self.STI, '?sti=') : getDeviceLIST(), 
-                getRack(), 
+                self.STI > 0 ? getRack(self.STI, '?sti=') : getRack(), 
+                getDeviceTypes(),
            ]).then(function (data) {
                 console.log('device list promises returning')
                 var racks =  data[2]
@@ -1963,6 +1980,7 @@ var deviceList = Vue.component('device-list', {
                 sites: data[0],
                 rows: data[1],
                 racks: data[2],
+                types: data[3],
               }
             })
           }
@@ -3462,7 +3480,7 @@ var makeLumps = function(racks, units) {
 
         // for units greater than 1 RU, hide the slots consumed above
         // work our way up from the bottom
-        for (var k=these.length - 1; k >= 0; k--) {
+        for (var k=these.length - 1; k > 0; k--) {
             for (var j=these[k].Height; j > 1; j--) {
                 var x = k-j+1
                 if (!these[x]) { continue }
@@ -3753,7 +3771,7 @@ var rackLayout = Vue.component('rack-layout', {
 
              if (self.RID > 0) {
                  url += "?rid=" + self.RID
-             } else if (self.DID > 0) {
+             } else if (self.STI > 0) {
                  url += "?sti=" + self.STI
              }
 

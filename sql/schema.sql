@@ -181,12 +181,13 @@ CREATE TABLE "devices" (
     did integer primary key,
     rid integer,    -- rack ID
     dti integer,    -- device type ID
-    kid integer,    -- vendor sku ID
+    mid integer,    -- mfgr ID
     tid integer,    -- tag ID
     ru  integer default 0,
     height    int default 1,
     hostname  text not null COLLATE NOCASE,
     alias     text,
+    model     text,
     asset_tag text,
     sn        text,
     profile   text,
@@ -197,7 +198,7 @@ CREATE TABLE "devices" (
     ts  date DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(rid) REFERENCES racks(rid)
     FOREIGN KEY(dti) REFERENCES device_types(dti)
-    FOREIGN KEY(kid) REFERENCES skus(kid)
+    FOREIGN KEY(mid) REFERENCES mfgrs(mid)
     FOREIGN KEY(tid) REFERENCES tags(tid)
 );
 
@@ -206,12 +207,13 @@ CREATE TABLE "audit_devices" (
     did integer,
     rid integer,
     dti integer,
-    kid integer,
+    mid integer,
     tid integer,
     ru  integer,
     height    integer,
     hostname  text,
     alias     text,
+    model     text,
     asset_tag text,
     sn        text,
     profile   text,
@@ -305,26 +307,6 @@ create index ips_ip32 on ips(ip32);
 
 drop index if exists ips_ipv4;
 create index ips_ipv4 on ips(ipv4);
-
-drop table if exists x_devices;
-CREATE TABLE "x_devices" (
-    did integer,
-    kid integer,    -- vendor sku ID
-    rid integer,    -- rack ID
-    dti integer,    -- device type ID
-    tid integer,    -- tag ID
-    ru  integer,
-    height integer,
-    hostname  text,
-    alias     text,
-    asset_tag text,
-    sn        text,
-    profile   text,
-    assigned  text,
-    note      text,
-    usr   integer,
-    ts  date
-);
 
 DROP TABLE IF EXISTS users;
 CREATE TABLE users (

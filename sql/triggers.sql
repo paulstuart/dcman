@@ -37,10 +37,12 @@ DROP TRIGGER IF EXISTS devices_view_insert;
 CREATE TRIGGER devices_view_insert INSTEAD OF INSERT ON devices_view 
 BEGIN
     insert into devices
-        (usr, rid, dti, tid, ru, height, hostname, alias, sn, profile, asset_tag, assigned, note)
+        (usr, rid, dti, tid, ru, height, hostname, alias, model, sn, profile, asset_tag, assigned, note, mid)
         values
-        (NEW.usr, NEW.rid, NEW.dti, NEW.tid, NEW.ru, NEW.height, NEW.hostname, NEW.alias, 
-            NEW.sn, NEW.profile, NEW.asset_tag, NEW.assigned, NEW.note)
+        (NEW.usr, NEW.rid, nullif(NEW.dti,0), NEW.tid, NEW.ru, NEW.height, NEW.hostname, NEW.alias, 
+            NEW.model, NEW.sn, NEW.profile, NEW.asset_tag, NEW.assigned, NEW.note,
+            (select mid from mfgrs where name=new.make)
+        )
         ;
 END;
 
@@ -52,13 +54,14 @@ BEGIN
 	rid = ifnull(nullif(NEW.rid,0),OLD.rid),
 	usr = ifnull(nullif(NEW.usr,0),OLD.usr),
 	dti = ifnull(nullif(NEW.dti,0),OLD.dti),
-	kid = ifnull(nullif(NEW.kid,0),OLD.kid),
+	mid = ifnull(nullif(NEW.mid,0),OLD.mid),
 	tid = ifnull(nullif(NEW.tid,0),OLD.tid),
     ru =  ifnull(NEW.ru, OLD.ru),
     height = ifnull(NEW.height, OLD.height),
     hostname = ifnull(NEW.hostname, OLD.hostname),
     alias = ifnull(NEW.alias, OLD.alias),
     sn = ifnull(NEW.sn, OLD.sn),
+    model = ifnull(NEW.model, OLD.model),
     profile = ifnull(NEW.profile, OLD.profile),
     asset_tag = ifnull(NEW.asset_tag, OLD.asset_tag),
     assigned = ifnull(NEW.assigned, OLD.assigned),

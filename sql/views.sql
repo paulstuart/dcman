@@ -93,13 +93,13 @@ create view ips_next as
    ;
 
 
-
 drop view if exists devices_view;
 create view devices_view as
-    select r.sti, r.site, r.rack, d.*, dt.name as devtype, t.tag
+    select r.sti, r.site, r.rack, d.*, dt.name as devtype, t.tag, m.name as make
     from devices d
     left outer join racks_view r on d.rid = r.rid
     left outer join device_types dt on d.dti = dt.dti
+    left outer join mfgrs m on d.mid = m.mid
     left outer join tags t on d.tid = t.tid
     ;
 
@@ -113,7 +113,6 @@ create view interfaces_view as
 
 DROP VIEW IF EXISTS skus_view;
 CREATE VIEW skus_view as 
-  --select k.kid, k.vid, k.pti, k.mid, t.name as part_type, k.part_no, k.description, v.name as vendor, m.name as mfgr
   select k.*, t.name as part_type, v.name as vendor, m.name as mfgr
   from  skus k
   left outer join mfgrs m on k.mid = m.mid

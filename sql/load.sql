@@ -9,6 +9,9 @@ insert into users (usr, login, firstname, lastname, email, admin)
 INSERT INTO sites (sti,name,address,city,state,phone,web,usr)
    select id,name,address,city,state,phone,web,user_id from olddb.datacenters;
 
+INSERT INTO "mfgrs" (name) values('Cisco');
+INSERT INTO "mfgrs" (name) values('Juniper');
+
 INSERT INTO "vendors" (name) values('SuperMicro');
 INSERT INTO "vendors" (name) values('Amax');
 INSERT INTO "vendors" (name) values('Hyve');
@@ -18,6 +21,7 @@ insert into device_types (name) values('Switch');
 insert into device_types (name) values('Router');
 insert into device_types (name) values('Firewall');
 insert into device_types (name) values('PDU');
+insert into device_types (name) values('Cable Manager');
 
 insert into ip_types (name, mgmt) values('IPMI', 1);
 insert into ip_types (name) values('Internal');
@@ -67,7 +71,7 @@ select
     (select dti from device_types where name='Server')
 from olddb.servers;
 
-insert into devices
+insert into devices_view
     (
     rid,
     ru,
@@ -75,8 +79,11 @@ insert into devices
     hostname,
     asset_tag,
     sn,
+    make,
+    model,
     note,
-    dti)
+    dti
+)
 select
     rid,
     ru,
@@ -84,6 +91,8 @@ select
     hostname,
     asset_tag,
     sn,
+    make,
+    model,
     note,
     (select dti from device_types where name='Switch')
 from olddb.routers;

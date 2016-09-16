@@ -34,9 +34,11 @@
             <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
                 {{ app.auth.user.name }} <span class="caret"></span></a>
             <ul class="dropdown-menu">
+            <!--
                 <li><a href="#">Profile</a></li>
                 <li><a href="#">Account settings</a></li>
                 <li role="separator" class="divider"></li>
+            -->
                 <li><a v-link="{ path: '/auth/logout' }">Logout</a></li>
             </ul>
         </li>
@@ -467,6 +469,14 @@
                 </option>
             </select>
 
+            <label for="DTI">Type</label>
+            <select id="DTI" v-model="DTI" number>
+                <option value="0"></option>
+                <option v-for="type in types" v-bind:value="type.DTI">
+                    {{ type.Name }}
+                </option>
+            </select>
+
             <label for="query">Filter</label>
             <input name="query" v-model="searchQuery" @keyup="resetStartRow">
 
@@ -478,7 +488,7 @@
             </select>
 
             <paged-grid 
-                :data="rows | rackFilter | filterBy searchQuery" 
+                :data="rows | filterBy searchQuery | rackFilter | typeFilter" 
                 :columns="columns" 
                 :linkable="canLink"
                 :linkPath="linkFN"
@@ -734,6 +744,25 @@
                     <label for="Height" class="control-label col-xs-2">Unit Height</label>
                     <div class="col-xs-2">
                         <input type="text" id="Height" v-model="Device.Height" number/>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="Model" class="control-label col-xs-2">Model</label>
+                    <div class="col-xs-2">
+                        <input type="text" id="Model" v-model="Device.Model"/>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="MID" class="control-label col-xs-2">Make</label>
+                    <div class="col-xs-2">
+                        <select id="MID" v-model="Device.MID" number>
+                            <option value="0"></option>
+                            <option v-for="mfgr in mfgrs" v-bind:value="mfgr.MID">
+                                {{ mfgr.Name }}
+                            </option>
+                        </select>
                     </div>
                 </div>
 

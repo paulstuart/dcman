@@ -454,7 +454,7 @@ type deviceType struct {
 type device struct {
 	DID      int64     `sql:"did" key:"true" table:"devices"`
 	RID      *int64    `sql:"rid"` // Rack ID
-	KID      *int64    `sql:"kid"` // SKU ID
+	MID      *int64    `sql:"mid"` // Mfgr ID
 	DTI      *int64    `sql:"dti"` // Device type ID
 	TID      *int64    `sql:"tid"` // Tag ID
 	RU       int       `sql:"ru"`
@@ -462,6 +462,7 @@ type device struct {
 	Hostname *string   `sql:"hostname"`
 	Alias    *string   `sql:"alias"`
 	Profile  *string   `sql:"profile"`
+	Model    *string   `sql:"model"`
 	SerialNo *string   `sql:"sn"`
 	AssetTag *string   `sql:"asset_tag"`
 	Assigned *string   `sql:"assigned"`
@@ -474,7 +475,7 @@ type device struct {
 type deviceView struct {
 	DID      int64     `sql:"did" key:"true" table:"devices_view"`
 	STI      *int64    `sql:"sti"` // Site ID
-	KID      *int64    `sql:"kid"` // SKU ID
+	MID      *int64    `sql:"mid"` // Mfgr ID
 	RID      *int64    `sql:"rid"` // Rack ID
 	DTI      *int64    `sql:"dti"` // Device type ID
 	TID      *int64    `sql:"tid"` // Tag ID
@@ -483,12 +484,14 @@ type deviceView struct {
 	Height   int       `sql:"height"`
 	Hostname *string   `sql:"hostname"`
 	Alias    *string   `sql:"alias"`
+	Model    *string   `sql:"model"`
+	Make     *string   `sql:"make"`
 	Profile  *string   `sql:"profile"`
 	SerialNo *string   `sql:"sn"`
 	AssetTag *string   `sql:"asset_tag"`
 	Assigned *string   `sql:"assigned"`
 	Note     *string   `sql:"note"`
-	DevType  *string   `sql:"devtype"`
+	Type     *string   `sql:"devtype"`
 	Tag      *string   `sql:"tag"`
 	Site     *string   `sql:"site"`
 	Version  *int      `sql:"version"`
@@ -514,7 +517,7 @@ type deviceHistory struct {
 	AssetTag *string   `sql:"asset_tag"`
 	Assigned *string   `sql:"assigned"`
 	Note     *string   `sql:"note"`
-	DevType  *string   `sql:"devtype"`
+	Type     *string   `sql:"devtype"`
 	Tag      *string   `sql:"tag"`
 	Site     *string   `sql:"site"`
 	Login    *string   `sql:"login"`
@@ -523,13 +526,12 @@ type deviceHistory struct {
 	TS       time.Time `sql:"ts"`
 }
 
-//did|rid|dti|kid|tid|ru|height|hostname|alias|asset_tag|sn|profile|assigned|note|version|usr|ts|sti|site|rack|devtype|tag|login
 // deviceIPs merges IP info into the DeviceView
 type deviceIPs struct {
 	DID      int64     `sql:"did" key:"true" table:"devices_list"`
 	STI      *int64    `sql:"sti"` // Site ID
 	RID      *int64    `sql:"rid"` // Rack ID
-	KID      *int64    `sql:"kid"` // SKU ID
+	MID      *int64    `sql:"mid"` // Mfgr ID
 	DTI      *int64    `sql:"dti"` // Device type ID
 	TID      *int64    `sql:"tid"` // Tag ID
 	Rack     *int      `sql:"rack"`
@@ -540,12 +542,13 @@ type deviceIPs struct {
 	Mgmt     *string   `sql:"mgmt"`
 	Alias    *string   `sql:"alias"`
 	Profile  *string   `sql:"profile"`
+	Model    *string   `sql:"model"`
 	SerialNo *string   `sql:"sn"`
 	AssetTag *string   `sql:"asset_tag"`
 	Assigned *string   `sql:"assigned"`
 	Tag      *string   `sql:"tag"`
 	Note     *string   `sql:"note"`
-	DevType  *string   `sql:"devtype"`
+	Type     *string   `sql:"devtype"`
 	Site     *string   `sql:"site"`
 	USR      *int64    `sql:"usr"`
 	TS       time.Time `sql:"ts"`
