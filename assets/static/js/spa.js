@@ -1383,7 +1383,7 @@ var ipMIX = {
             var ip  = row.IP
             var ipt = row.IPT
             var ifd = row.IFD
-            var data = {IFD:ifd, IID: iid, IPT: ipt, IPv4: ip}
+            var data = {IFD:ifd, IID: iid, IPT: ipt, IP: ip}
             console.log('update IP:', ip, ' IID:', iid)
             posty(ipURL + iid, data, null, 'PATCH')
             return false
@@ -1398,10 +1398,9 @@ var ipMIX = {
         },
         addIP: function() {
             var self = this;
-            var data = {IFD: this.newIFD, IPT: this.newIPT, IPv4: this.newIP}
+            var data = {IFD: this.newIFD, IPT: this.newIPT, IP: this.newIP}
             console.log("we will add IP info:", data)
             posty(ipURL, data).then(function(ip) {
-                ip.IP = ip.IPv4 // naming is inconsistent
                 self.rows.push(ip)
                 self.newIP = ''
                 self.newIPT = 0
@@ -1716,7 +1715,6 @@ var vmips = Vue.component('vm-ips', {
     methods: {
         loadSelf: function() {
             var self = this;
-            console.log('MY VMI:', this.VMI)
             var url = ipURL + '?VMI=' + this.VMI;
             get(url).then(function(data) {
                  self.rows = data
@@ -1729,9 +1727,9 @@ var vmips = Vue.component('vm-ips', {
         updateIP(i) {
             var row = this.rows[i]
             var iid = row.IID
-            var ip = row.IPv4
+            var ip = row.IP
             var ipt = row.IPT
-            var data = {VMI:this.VMI, IID: iid, IPT: ipt, IPv4: ip}
+            var data = {VMI:this.VMI, IID: iid, IPT: ipt, IP: ip}
             console.log('update IP:', ip, ' IID:', iid)
             posty(ipURL + iid, data, null, 'PATCH')
             return false
@@ -1746,7 +1744,7 @@ var vmips = Vue.component('vm-ips', {
         },
         addIP: function() {
             var self = this;
-            var data = {VMI: this.VMI, IPT: this.newIPT, IPv4: this.newIP}
+            var data = {VMI: this.VMI, IPT: this.newIPT, IP: this.newIP}
             posty(ipURL, data, function(xhr) {
                 if (xhr.readyState == 4 && (xhr.status == 200 || xhr.status == 201)) {
                     self.rows.push(data)
@@ -3431,13 +3429,14 @@ var makeLumps = function(racks, units) {
     // for faster lookups
     var lookup = {}
     var byRID = {}
+    var unracked = {}
     for (var k=0; k<racks.length; k++) {
         var rack = racks[k]
         lookup[rack.RID] = rack
 
         // pre-populate empty rack
-        var size = rack.RUs;
         var these = [];
+        var size = rack.RUs;
         while(size--) these.push({
             DID:0, 
             RID:0, 
@@ -3468,7 +3467,15 @@ var makeLumps = function(racks, units) {
         unit.badIP = false
         var rack = lookup[unit.RID];
         if (rack) {
-            byRID[unit.RID][rack.RUs - unit.RU] = unit
+            if (unit.RU > 0) {
+                byRID[unit.RID][rack.RUs - unit.RU] = unit
+            } else {
+                // PDUs and other rack items w/o an RU
+                if (! unracked[unit.RID]) {
+                    unracked[unit.RID] = []
+                }
+                unracked[unit.RID].push(unit)
+            }
         }
     }
 
@@ -3489,7 +3496,7 @@ var makeLumps = function(racks, units) {
             these[k]['pingMgmt'] = ''
             these[k]['pingIP'] = ''
         }
-        lumps.push({rack: rack, units: these})
+        lumps.push({rack: rack, units: these, other: unracked[rack.RID]})
     }
     return lumps
 }
@@ -3594,7 +3601,7 @@ var rackView = Vue.component('rack-view', {
                 // TODO add error handling
                 var ipinfo = data[0]
                 console.log("IPINFO:", ipinfo);
-                var ip = {IID: ipinfo.IID, IPv4: lay.newIP}
+                var ip = {IID: ipinfo.IID, IP: lay.newIP}
                 posty(ipURL + ipinfo.IID, ip, 'PATCH').then(function(updated) {
                     console.log("UPDATED:",updated)
                     lay.badIP = false;
@@ -3618,7 +3625,7 @@ var rackView = Vue.component('rack-view', {
                 }
                 var ipinfo = data[0]
                 console.log("IPINFO:", ipinfo);
-                var ip = {IID: ipinfo.IID, IPv4: lay.newMgmt}
+                var ip = {IID: ipinfo.IID, IP: lay.newMgmt}
                 posty(ipURL + ipinfo.IID, ip, 'PATCH').then(function(updated) {
                     console.log("UPDATED:",updated)
                     lay.badMgmt = false;

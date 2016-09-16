@@ -1283,6 +1283,20 @@
                     <button v-if="okDown(lay)" v-on:click.prevent="moveDown(lay)">&darr;</button>
                 </td>
             </tr>
+            <tr v-for="lay in layouts.other" class="rackrow">
+                <td></td>
+                <td>
+                    <a v-if="lay.DID" v-link="{ path: '/device/edit/' + lay.DID}">{{ lay.Hostname }}</a>
+                </td>
+                <td>
+                    {{ lay.IPs }}
+                </td>
+                <td></td>
+                <td>
+                    {{ lay.Mgmt }}
+                </td>
+                <td></td>
+            </tr>
         </table>
     </div>
     </div>
