@@ -459,3 +459,30 @@ BEGIN
     where rmd = OLD.rmd;
 END;
 
+drop trigger if exists users_view_insert;
+CREATE TRIGGER users_view_insert INSTEAD OF INSERT ON users_view 
+BEGIN
+    insert into users 
+        (login, firstname, lastname, email, admin)
+        values(NEW.login, NEW.firstname, NEW.lastname, NEW.email, NEW.admin)
+        ;
+END;
+
+drop trigger if exists users_view_update;
+CREATE TRIGGER users_view_update INSTEAD OF UPDATE ON users_view 
+BEGIN
+    update users set 
+        login = ifnull(new.login,old.login), 
+        firstname = ifnull(new.firstname,old.lastname),
+        lastname = ifnull(new.lastname,old.lastname), 
+        email = ifnull(new.email,old.email), 
+        admin = ifnull(new.admin,old.admin)
+    where usr = OLD.usr
+    ;
+END;
+
+drop trigger if exists users_view_delete;
+CREATE TRIGGER users_view_delete INSTEAD OF DELETE ON users_view 
+BEGIN
+    delete from users where usr = OLD.usr;
+END;

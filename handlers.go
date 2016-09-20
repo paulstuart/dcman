@@ -12,6 +12,13 @@ import (
 	"time"
 )
 
+func notNull(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
 func homePage(w http.ResponseWriter, r *http.Request) {
 	name := filepath.Join(assetDir, "static/html/spa.html")
 	file, err := os.Open(name)
@@ -60,7 +67,7 @@ func loginFailHandler(w http.ResponseWriter, r *http.Request) {
 
 func logoutPage(w http.ResponseWriter, r *http.Request) {
 	user := currentUser(r)
-	auditLog(user.USR, remoteHost(r), "Logout", user.Email)
+	auditLog(user.USR, remoteHost(r), "Logout", notNull(user.Email))
 	isAuthorized(w, false)
 	remember(w, nil)
 	redirect(w, r, "/", 302)
@@ -288,7 +295,7 @@ func userLogin(w http.ResponseWriter, r *http.Request) (*user, error) {
 			Name:    "X-API-KEY",
 			Path:    "/",
 			Expires: time.Now().Add(4 * time.Hour),
-			Value:   user.APIKey,
+			Value:   notNull(user.APIKey),
 		}
 		http.SetCookie(w, c)
 		remember(w, user)
@@ -339,7 +346,7 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 			Name:    "X-API-KEY",
 			Path:    "/",
 			Expires: time.Now().Add(4 * time.Hour),
-			Value:   user.APIKey,
+			Value:   notNull(user.APIKey),
 		}
 		http.SetCookie(w, c)
 		remember(w, user)
@@ -444,13 +451,14 @@ func assumeUser(w http.ResponseWriter, r *http.Request) {
 			jsonError(w, err, http.StatusInternalServerError)
 			return
 		}
-		auditLog(u.USR, remoteHost(r), "Assumed", "Assumed identity for "+assumed.Login+" by "+u.Login)
+		msg := "Assumed identity for " + notNull(assumed.Login) + " by " + notNull(u.Login)
+		auditLog(u.USR, remoteHost(r), "Assumed", msg)
 		cors(w)
 		c := &http.Cookie{
 			Name:    "X-API-KEY",
 			Path:    "/",
 			Expires: time.Now().Add(4 * time.Hour),
-			Value:   assumed.APIKey,
+			Value:   notNull(assumed.APIKey),
 		}
 		http.SetCookie(w, c)
 		remember(w, assumed)
@@ -460,7 +468,7 @@ func assumeUser(w http.ResponseWriter, r *http.Request) {
 		s := &session{
 			USR:    &u.USR,
 			Remote: remoteHost(r),
-			Event:  "assumed identity of: " + assumed.Login,
+			Event:  "assumed identity of: " + notNull(assumed.Login),
 			TS:     &now,
 		}
 		dbAdd(s)

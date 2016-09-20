@@ -69,14 +69,14 @@ type summary struct {
 }
 
 type user struct {
-	USR    int64  `sql:"usr" key:"true" table:"users"`
-	RealID int64  // when emulating another user, retain real identity
-	Login  string `sql:"login"`
-	First  string `sql:"firstname"`
-	Last   string `sql:"lastname"`
-	Email  string `sql:"email"`
-	APIKey string `sql:"apikey"`
-	Level  int    `sql:"admin"`
+	USR    int64   `sql:"usr" key:"true" table:"users_view"`
+	RealID int64   // when emulating another user, retain real identity
+	Login  *string `sql:"login"`
+	First  *string `sql:"firstname"`
+	Last   *string `sql:"lastname"`
+	Email  *string `sql:"email"`
+	APIKey *string `sql:"apikey" update:"false"`
+	Level  int     `sql:"admin"`
 }
 
 // FullUser has *all* user fields exposed
@@ -484,8 +484,8 @@ type deviceView struct {
 	Height   int       `sql:"height"`
 	Hostname *string   `sql:"hostname"`
 	Alias    *string   `sql:"alias"`
-	Model    *string   `sql:"model"`
 	Make     *string   `sql:"make"`
+	Model    *string   `sql:"model"`
 	Profile  *string   `sql:"profile"`
 	SerialNo *string   `sql:"sn"`
 	AssetTag *string   `sql:"asset_tag"`
@@ -542,6 +542,7 @@ type deviceIPs struct {
 	Mgmt     *string   `sql:"mgmt"`
 	Alias    *string   `sql:"alias"`
 	Profile  *string   `sql:"profile"`
+	Make     *string   `sql:"make"`
 	Model    *string   `sql:"model"`
 	SerialNo *string   `sql:"sn"`
 	AssetTag *string   `sql:"asset_tag"`

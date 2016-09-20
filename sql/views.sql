@@ -241,6 +241,7 @@ CREATE VIEW devices_list as
   from devices_view d 
     left outer join devices_ips as i on d.did = i.did
     left outer join devices_mgmt as m on d.did = m.did 
+    order by sti, rack, ru desc
     ;
 
 drop view if exists devices_public_ips;
@@ -355,3 +356,6 @@ CREATE VIEW vms_history as
     order by vmi asc, version desc
     ;
 
+-- view mirrors users table, used to filter updates via view trigger
+DROP VIEW IF EXISTS users_view;
+CREATE VIEW users_view as select * from users;
