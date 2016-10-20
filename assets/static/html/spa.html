@@ -52,8 +52,11 @@
             <li><a v-link="{ path: '/device/list' }">Device List</a></li>
             <li><a v-link="{ path: '/vm/list' }">VM List</a></li>
             <li role="separator" class="divider"></li>
+            <li><a v-link="{ path: '/device/load' }">Device Load</a></li>
+            <li role="separator" class="divider"></li>
             <li><a v-link="{ path: '/rack/layout' }">Rack Layout</a></li>
             <li><a v-link="{ path: '/rack/list' }">Rack List</a></li>
+            <li><a v-link="{ path: '/rack/edit/0' }">Add Rack</a></li>
             <li role="separator" class="divider"></li>
             <li><a v-link="{ path: '/device/types' }">Device Types</a></li>
           </ul>
@@ -834,7 +837,7 @@
                 </div>
             </fieldset>
 
-            <fieldset class="col-xs-12">
+            <fieldset class="col-xs-12" v-if="Device.DID">
                 <legend>IP Networking</legend>
                 <network-grid
                     :ports="Device.interfaces"
@@ -845,7 +848,7 @@
                 </network-grid>
             </fieldset>
 
-            <fieldset class="col-xs-12">
+            <fieldset class="col-xs-12" v-if="Device.DID">
                 <legend>Network Interfaces</legend>
                 <interface-grid
                     :DID="Device.DID"
@@ -988,6 +991,46 @@
                 </div>
                 <div class="col-xs-1">
                     <button class="btn btn-primary" v-on:click.prevent="saveParts">Load</button>
+                </div>
+            </div>
+        </fieldset>
+    </form>
+    </div>
+</script>
+
+<script type="text/x-template" id="tmpl-device-load">
+    <form role="form" class="form-horizontal">
+        <h2>Paste and save tab delimited device list</h2>
+        <fieldset class="col-xs-12">
+            <legend>Load Parts</legend>
+
+            <div class="form-group">
+                <label for="STI" class="control-label col-xs-2">Site</label>
+                <div class="col-xs-2">
+                    <select id="STI" v-model="STI" number>
+                        <option v-for="site in sites" v-bind:value="site.STI">
+                            {{ site.Name }}
+                        </option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="Devices" class="control-label col-xs-2">Devices</label>
+                <div class="col-xs-2">
+                    <textarea cols="80" rows="20" name="Note" v-model="Devices">
+                    </textarea>
+                </div>
+            </div>
+        </fieldset>
+
+        <fieldset class="col-xs-12">
+            <div class="form-group">
+                <div class="col-xs-offset-1 col-xs-1">
+                    <button class="btn" v-on:click.prevent="showList">Cancel</button>
+                </div>
+                <div class="col-xs-1">
+                    <button class="btn btn-primary" v-on:click.prevent="saveDevices">Load</button>
                 </div>
             </div>
         </fieldset>

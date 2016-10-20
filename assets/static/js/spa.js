@@ -111,6 +111,55 @@ var posty = function(url, data, method) {
   });
 }
 
+var postText = function(url, data) {
+    return new Promise(function(resolve, reject) {
+    // Do the usual XHR stuff
+    var method = 'POST';
+    var req = new XMLHttpRequest();
+    if (urlDebug) {
+        url += (url.indexOf('?') > 0) ? '&debug=true' : '?debug=true'
+    }
+    req.open(method, url);
+    var key = apikey();
+    if (key.length > 0) {
+	    req.setRequestHeader("X-API-KEY", key)
+    }
+	req.setRequestHeader("Content-Type", "text/plain")
+
+    req.onload = function() {
+        // This is called even on 404 etc
+        // so check the status
+        //console.log('get status:', req.status, 'txt:', req.statusText)
+        if (req.status >= 200 && req.status < 300) {
+            if (req.responseText.length > 0) {
+                resolve(JSON.parse(req.responseText))
+            } else {
+                resolve(null)
+            }
+        }
+        else {
+            // Otherwise reject with the status text
+            // which will hopefully be a meaningful error
+            console.log('rejecting!!! ack:',req.status, 'txt:', req.statusText)
+            if (req.getResponseHeader("Content-Type") === "application/json") {
+                reject(JSON.parse(req.responseText));
+            } else {
+                reject(Error(req.statusText));
+            }
+        }
+    };
+
+    // Handle network errors
+    req.onerror = function() {
+        console.log('posty network error');
+        reject(Error("Network Error"));
+    };
+
+    // Make the request
+    req.send(data);
+  });
+}
+
 // convenience wrapper
 var deleteIt = function(url, fn) {
     if (fn) {
@@ -524,7 +573,8 @@ var deviceAuditURL  = '/dcman/api/device/audit/';
 var deviceListURL   = '/dcman/api/device/ips/';
 var deviceNetworkURL = '/dcman/api/device/network/';
 var deviceTypesURL  = '/dcman/api/device/type/';
-var deviceURL       = '/dcman/api/device/view/';
+var deviceURL       = '/dcman/api/device/';
+var deviceViewURL   = '/dcman/api/device/view/';
 var ifaceURL        = '/dcman/api/interface/';
 var ifaceViewURL    = '/dcman/api/interface/view/';
 var inURL           = "/dcman/api/inventory/";
@@ -624,7 +674,7 @@ var getIPTypes = getIt(iptypesURL, 'ip types');
 var getDeviceLIST = getIt(deviceListURL, 'device list');
 var getDeviceAudit = getIt(deviceAuditURL, 'device audit');
 var getTagList = getIt(tagURL, 'tags');
-var getDevice = getIt(deviceURL, 'device');
+var getDevice = getIt(deviceViewURL, 'device');
 var getMfgr = getIt(mfgrURL, 'mfgr');
 var getVM = getIt(vmViewURL, 'vm');
 var getVMAudit = getIt(vmAuditURL, 'vm audit');
@@ -1531,15 +1581,15 @@ var deviceEditVue = {
             delete device['ips'];
 
             if (device.DID == 0) {
-                posty(deviceURL, device).then(this.showList)
+                posty(deviceViewURL, device).then(this.showList)
                 return
             }
-            var url = deviceURL + this.Device.DID;
+            var url = deviceViewURL + this.Device.DID;
             posty(url, device, 'PATCH').then(this.showList)
         },
         deleteSelf: function(event) {
             var url = deviceURL + this.Device.DID;
-            posty(url, device, 'DELETE').then(this.showList)
+            posty(url, null, 'DELETE').then(this.showList)
         },
         showList: function(ev) {
             router.go('/device/list')
@@ -1598,6 +1648,161 @@ var deviceAddMIX = {
 var deviceAdd = Vue.component('device-add', {
     template: '#tmpl-device-edit',
     mixins: [deviceEditVue, deviceAddMIX],
+})
+
+//
+// DEVICE LOAD
+//
+//
+var deviceLoad = Vue.component('device-load', {
+    template: '#tmpl-device-load',
+    data: function() {
+        return {
+            Devices: '',
+            racks: [],
+            sites: [],
+            STI: 2,
+        }
+    },
+    route: {
+        data: function (transition) {
+            return {
+                racks: getRack(this.STI, '?sti='),
+                sites: getSiteLIST(),
+            }
+        }
+    },
+    methods: {
+        showList: function(ev) {
+            router.go('/device/list/' + this.STI)
+        },
+        // TODO: copied from device edit -- merge functionality?
+        addInterface: function(DID, Port, Mgmt, MAC, SwitchPort, CableTag, callBack) {
+            var self = this
+            Port = port.replace(/[^\d]*/g, '');
+            Port = (port.length) ? parseInt(Port) : 0
+            var data = {
+                DID: DID,
+                Port: Port,
+                Mgmt: Mgmt,
+                MAC: MAC,
+                SwitchPort: SwitchPort,
+                CableTag: CableTag,
+            }
+            if (callBack) {
+                posty(ifaceURL, data).then(callBack)
+            } else {
+                posty(ifaceURL, data)
+            }
+        },
+        addNetwork: function(DID, Port, Mgmt, MAC, SwitchPort, CableTag, IP) {
+            var self = this;
+            Port = Port.replace(/[^\d]*/g, '');
+            Port = (Port.length) ? parseInt(Port) : 0
+            var data = {
+                DID: DID,
+                Port: Port,
+                Mgmt: Mgmt,
+                MAC: MAC,
+                SwitchPort: SwitchPort,
+                CableTag: CableTag,
+            }
+            posty(ifaceURL, data).then(function(iface) {
+                var ipinfo = {IFD: iface.IFD, IP: IP}
+                posty(ipURL, ipinfo)
+            })
+        },
+        saveDevices: function() {
+            // normalize column names
+            var normalize = function(col) {
+                switch (col) {
+                    case "ip address":      return "IP";
+                    case "ipmi address":    return "IPMI";
+                    case "ipmi cable":      return "IPMICable";
+                    case "ipmi port":       return "IPMIPort";
+                    case "asset-tag":       return "AssetTag";
+                    case "rack":            return "Rack";
+                    case "ru":              return "RU";
+                    case "hostname":        return "Hostname";
+                    case "height":          return "Height";
+                    case "alias":           return "Alias";
+                    case "profile":         return "Profile";
+                    case "note":            return "Note";
+                }
+            }
+            var lines = this.Devices.split("\n");
+            var cols = {};      // Device specific columns
+            var lookup = {};    // All columns
+            var intVals = ["Height", "Rack", "RU", "Version"];
+
+            // parse column headers
+            var line = lines[0].split("\t");
+            for (var k=0; k < line.length; k++) {
+                var head = line[k].toLowerCase();
+                var col = normalize(head)
+                if (col) {
+                    cols[k] = col
+                }
+                lookup[head] = k
+            }
+
+            var self = this;
+            for (var i=1; i < lines.length; i++) {
+                if (lines[i].trim().length == 0) {
+                    continue
+                }
+                var line = lines[i].split("\t");
+                if (line.length < 1) {
+                    continue
+                }
+
+                var device = new(Device);
+                device.Version = null;
+                device.DID = null;
+                device.RID = null;
+                device.MID = null;
+                device.DTI = null;
+                device.TID = null;
+                device.STI = this.STI;
+                for (var j in cols) {
+                    var col = cols[j];
+                    if (intVals.indexOf(col) > -1) {
+                        device[col] = parseInt(line[j]);
+                    } else {
+                        device[col] = line[j];
+                    }
+                }
+                for (var r in this.racks) {
+                    if (device.Rack == this.racks[r].Label) {
+                        device.RID = this.racks[r].RID
+                        break
+                    }
+                }
+                var url = deviceURL;
+                posty(url, device).then(function(added) {
+                    // dc   rack    id  ru  height  asset_tag   vendor_sku  sn  profile hostname    ip_internal ip_ipmi port_eth0   port_eth1   port_ipmi   cable_eth0  cable_eth1  cable_ipmi  cpu memory  mac_eth0    mac_eth1    mac_ipmi    pdu_a   pdu_b   outlet  note    ip_public   alias   assigned
+                    console.log("added hostname:",  added.Hostname, " DID:", added.DID)
+                    var ip   = line[lookup["ip_ipmi"]];
+                    var port = line[lookup["port_ipmi"]];
+                    var mac  = line[lookup["mac_ipmi"]];
+                    var cable  = line[lookup["cable_ipmi"]];
+                    self.addNetwork(added.DID, port, true, mac, port, cable, ip)
+
+                    var ip   = line[lookup["ip_internal"]];
+                    var port = line[lookup["port_eth0"]];
+                    var mac  = line[lookup["mac_eth0"]];
+                    var cable  = line[lookup["cable_eth0"]];
+                    self.addNetwork(added.DID, port, false, mac, port, cable, ip)
+                })
+            }
+            this.showList()
+        },
+    },
+    watch: {
+        "STI": function() {
+            racks: getRack(this.STI, '?sti=')
+       }
+   }
 })
 
 
@@ -2472,7 +2677,7 @@ var partUse = Vue.component('part-use', {
                 return
             }
             var self = this;
-            var url = deviceURL + "?hostname=" + this.hostname;
+            var url = deviceViewURL + "?hostname=" + this.hostname;
             get(url).then(function(hosts) {
                 if (hosts && hosts.length == 1) {
                     self.DID = hosts[0].DID
@@ -2956,7 +3161,7 @@ var partEdit = Vue.component('part-edit', {
                 return
             }
             var self = this;
-            var url = deviceURL + "?hostname=" + this.Part.Hostname;
+            var url = deviceViewURL + "?hostname=" + this.Part.Hostname;
             get(url).then(function(hosts) {
                 if (hosts && hosts.length == 1) {
                     self.Part.DID = hosts[0].DID
@@ -3005,7 +3210,7 @@ var rmaCommon = {
                 return
             }
             var self = this;
-            var url = deviceURL + "?hostname=" + this.RMA.Hostname;
+            var url = deviceViewURL + "?hostname=" + this.RMA.Hostname;
             get(url).then(function(hosts) {
                 if (hosts && hosts.length == 1) {
                     self.RMA.DID = hosts[0].DID
@@ -3586,7 +3791,7 @@ var rackView = Vue.component('rack-view', {
             getDevice(lay.newHostname,'?hostname=').then(function(device) {
                 if (! device) {
                     var newname = {DID: lay.DID, Hostname: lay.newHostname}
-                    posty(deviceURL + lay.DID, newname, 'PATCH').then(function(good) {
+                    posty(deviceViewURL + lay.DID, newname, 'PATCH').then(function(good) {
                         lay.badHostname = false;
                     }).catch(function(fail) {
                         console.log('rename patch fail:', fail)
@@ -4107,6 +4312,9 @@ router.map({
     },
     '/device/list': {
         component:  Vue.component('device-list')
+    },
+    '/device/load': {
+        component:  Vue.component('device-load')
     },
     '/device/types': {
         component:  Vue.component('device-types')

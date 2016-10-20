@@ -70,6 +70,7 @@ BEGIN
     ;
 END;
 
+
 -- add data for full text search
 DROP TRIGGER IF EXISTS devices_insert;
 CREATE TRIGGER devices_insert AFTER INSERT ON devices 

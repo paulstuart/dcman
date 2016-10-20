@@ -101,7 +101,11 @@ func remember(w http.ResponseWriter, u *user) {
 	}
 	if u != nil {
 		c.Expires = time.Now().Add(sessionMinutes)
-		c.Value = b64(fmt.Sprintf(`{"username": "%s", "admin": %d}`, u.Login, u.Level))
+		login := "no name"
+		if u.Login != nil {
+			login = *u.Login
+		}
+		c.Value = b64(fmt.Sprintf(`{"username": "%s", "admin": %d}`, login, u.Level))
 	}
 	http.SetCookie(w, c)
 }

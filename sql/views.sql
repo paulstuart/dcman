@@ -192,10 +192,11 @@ create view rackspace as select *,ru+height-1 as top from devices_view;
 --
 drop view if exists summary;
 create view summary as
-with vcnt as (select sti, count(*) as vms from vms_view group by sti),
-     scnt as (select sti, site, count(*) as servers from devices_view group by sti)
+   with vcnt as (select sti, count(*) as vms from vms_view group by sti),
+        scnt as (select sti, site, count(*) as servers from devices_view group by sti)
    select s.*, ifnull(v.vms,0) as vms from scnt s
-  left outer join vcnt v on s.sti = v.sti
+      left outer join vcnt v on s.sti = v.sti
+      where s.sti is not null
   ;
 
 drop view if exists devices_network;
