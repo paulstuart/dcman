@@ -482,7 +482,8 @@ func assumeUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func deviceDump(w http.ResponseWriter, r *http.Request) {
-	const q = "mac,hostname,site,ip,ipmi,rack,ru from pxedevice order by site,rack,ru desc"
+	const q = "select mac,hostname,site,ip,ipmi,rack,ru from pxedevice order by site,rack,ru desc"
+	w.Header().Set("Content-Type", "text/plain")
 	dbStreamTab(w, q)
 }
 
