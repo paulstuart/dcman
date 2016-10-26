@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	//	"io"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -207,6 +207,13 @@ func dbStream(fn func([]string, int, []interface{}), query string, args ...inter
 		return err
 	}
 	return datastore.Stream(fn, query, args...)
+}
+
+func dbStreamTab(w io.Writer, query string, args ...interface{}) error {
+	if err := readable(); err != nil {
+		return err
+	}
+	return datastore.StreamTab(w, query, args...)
 }
 
 func dbTable(query string, args ...interface{}) (*dbutil.Table, error) {

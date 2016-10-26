@@ -481,6 +481,11 @@ func assumeUser(w http.ResponseWriter, r *http.Request) {
 	jsonError(w, "invalid method:"+method, http.StatusBadRequest)
 }
 
+func deviceDump(w http.ResponseWriter, r *http.Request) {
+	const q = "mac,hostname,site,ip,ipmi,rack,ru from pxedevice order by site,rack,ru desc"
+	dbStreamTab(w, q)
+}
+
 func deviceAudit(w http.ResponseWriter, r *http.Request) {
 	dbDebug(true)
 	defer dbDebug(false)
@@ -508,6 +513,7 @@ func vmAudit(w http.ResponseWriter, r *http.Request) {
 var webHandlers = []hFunc{
 	{"/static/", StaticPage},
 	{"/ping", pingPage},
+	{"/servers", deviceDump},
 	{"/api/db/pragmas", apiPragmas},
 	{"/api/device/adjust/", MakeREST(deviceAdjust{})},
 	{"/api/device/audit/", deviceAudit},
