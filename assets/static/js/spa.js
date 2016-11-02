@@ -1445,7 +1445,7 @@ var ipMIX = {
             var ipt = row.IPT
             var ifd = row.IFD
             var data = {IFD:ifd, IID: iid, IPT: ipt, IP: ip}
-            posty(ipURL + iid, data, null, 'PATCH')
+            posty(ipURL + iid, data, 'PATCH')
             return false
         },
         deleteIP(i) {
@@ -1522,18 +1522,18 @@ var interfaceMIX = {
                 .then(() => this.rows.splice(i, 1))
                 .catch(ack => console.log('============= ACK!:', ack))
         },
-        addInterface: function(ev) {
+        addInterface: function() {
             var port = this.newPort.replace(/[^\d]*/g, '');
             port = (port.length) ? parseInt(port) : 0
             var data = {
-                did: this.did,
+                did: this.DID,
                 port: port,
-                mgmt: this.newmgmt,
-                mac: this.newmac,
-                switchport: this.newswitchport,
-                cabletag: this.newcabletag,
+                mgmt: this.newMgmt,
+                mac: this.newMAC,
+                switchport: this.newSwitchPort,
+                cabletag: this.newCableTag,
             }
-            posty(ifaceurl, data).then(iface => {
+            posty(ifaceURL, data).then(iface => {
                 if (! iface.Mgmt) {
                     iface.Port = 'Eth' + iface.Port
                 }
@@ -1601,7 +1601,6 @@ var deviceEditVue = {
                 for (let ip of d.ips) {
                     if (ip.Mgmt) {
                         this.IPMI = ip.IP
-                        console.log("MY IPMI:", ip.IP)
                         break;
                     }
                 }

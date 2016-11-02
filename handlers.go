@@ -142,7 +142,6 @@ func apiUnknown(w http.ResponseWriter, r *http.Request) {
 }
 
 func pingMany(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("PING!")
 	r.ParseForm()
 	timeout := pingTimeout
 	if text := r.Form.Get("timeout"); len(text) > 0 {
@@ -159,7 +158,6 @@ func pingMany(w http.ResponseWriter, r *http.Request) {
 	}
 	if iplist := r.FormValue("iplist"); len(iplist) > 0 {
 		ips := strings.Split(iplist, ",")
-		fmt.Println("BULK PING:", len(ips))
 		pings := bulkPing(timeout, ips...)
 		j, _ := json.MarshalIndent(pings, " ", " ")
 		w.Header().Set("Content-Type", "application/json")
