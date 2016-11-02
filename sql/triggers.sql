@@ -266,7 +266,8 @@ BEGIN
 	gateway = ifnull(NEW.gateway,OLD.gateway),
 	profile = ifnull(NEW.profile,OLD.profile),
 	route = ifnull(NEW.route,OLD.route),
-	netmask = ifnull(NEW.netmask,OLD.netmask)
+	netmask = ifnull(NEW.netmask,OLD.netmask),
+	starting = ifnull(NEW.starting,OLD.starting)
     where vli = OLD.vli
     ;
 END;

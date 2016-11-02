@@ -109,5 +109,9 @@ func userAuth(username, password string) (*user, error) {
 
 // TODO: should probably cache results in a safe map
 func userFromAPIKey(key string) (user, error) {
+	if cfg.Main.NoKey {
+		login := "open acccess"
+		return user{Login: &login, Level: 2}, nil
+	}
 	return getUser("where apikey=?", key)
 }

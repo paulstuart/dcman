@@ -710,30 +710,32 @@ type vlanProfile struct {
 }
 
 type vlan struct {
-	VLI     int64     `sql:"vli" key:"true" table:"vlans"`
-	STI     int64     `sql:"sti"`
-	Name    int       `sql:"name"`
-	Profile *string   `sql:"profile"`
-	Gateway *string   `sql:"gateway"`
-	Route   *string   `sql:"route"`
-	Netmask *string   `sql:"netmask"`
-	Note    *string   `sql:"note"`
-	TS      time.Time `sql:"ts" audit:"time"`
-	USR     *int64    `sql:"usr"  audit:"user"`
+	VLI      int64     `sql:"vli" key:"true" table:"vlans"`
+	STI      int64     `sql:"sti"`
+	Name     int       `sql:"name"`
+	Profile  *string   `sql:"profile"`
+	Gateway  *string   `sql:"gateway"`
+	Route    *string   `sql:"route"`
+	Netmask  *string   `sql:"netmask"`
+	Starting *string   `sql:"starting"`
+	Note     *string   `sql:"note"`
+	TS       time.Time `sql:"ts" audit:"time"`
+	USR      *int64    `sql:"usr"  audit:"user"`
 }
 
 type vlanView struct {
-	VLI     int64     `sql:"vli" key:"true" table:"vlans_view"`
-	STI     int64     `sql:"sti"`
-	Name    int       `sql:"name"`
-	Site    *string   `sql:"site"`
-	Profile *string   `sql:"profile"`
-	Gateway *string   `sql:"gateway"`
-	Route   *string   `sql:"route"`
-	Netmask *string   `sql:"netmask"`
-	Note    *string   `sql:"note"`
-	TS      time.Time `sql:"ts" audit:"time"`
-	USR     *int64    `sql:"usr"  audit:"user"`
+	VLI      int64     `sql:"vli" key:"true" table:"vlans_view"`
+	STI      int64     `sql:"sti"`
+	Name     int       `sql:"name"`
+	Site     *string   `sql:"site"`
+	Profile  *string   `sql:"profile"`
+	Gateway  *string   `sql:"gateway"`
+	Route    *string   `sql:"route"`
+	Netmask  *string   `sql:"netmask"`
+	Starting *string   `sql:"starting"`
+	Note     *string   `sql:"note"`
+	TS       time.Time `sql:"ts" audit:"time"`
+	USR      *int64    `sql:"usr"  audit:"user"`
 }
 
 type pxeDevice struct {

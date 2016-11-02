@@ -1,7 +1,83 @@
 'use strict';
 
+var fromCookie = function() {
+    // reload existing auth from cookie
+    var cookies = document.cookie.split("; ");
+    var key = "";
+    for (var i=0; i < cookies.length; i++) {
+        var tuple = cookies[i].split('=')
+        if (tuple[0] == 'userinfo') {
+            if (tuple[1].length > 0) {
+                let u = atob(tuple[1]);
+                return JSON.parse(atob(tuple[1]));
+            }
+            break
+        }
+    }
+    return null
+}
 
-var userInfo = {};
+const store = new Vuex.Store({
+    state: {
+        apiKey: '',
+        level: 0,
+        active: false,
+        login: '', 
+        USR: null,
+    },
+    getters: {
+        canEdit: state => {
+            return (state.level > 0)
+        },
+        isAdmin: state => {
+            return (state.level > 1)
+        },
+        userName: state => {
+            return state.login
+        },
+        apiKey: state => {
+            return state.apiKey
+        },
+        loggedIn: state => {
+            return state.active 
+        },
+    }, 
+    mutations: {
+        setUser(state, user) {
+            state.level = user.Level
+            state.apiKey = user.APIKey
+            state.login = user.Login
+            state.USR = user.USR
+            state.active = true
+        },
+        logOut(state) {
+            state.level = 0
+            state.apiKey = ''
+            state.login = ''
+            state.active = false
+            state.USR = null
+        },
+    },
+})
+
+const checkUser = fromCookie();
+if (checkUser) {
+    store.commit('setUser', checkUser)
+}
+
+const authVue = {
+    computed: {
+        canEdit: function() {
+            return this.$store.getters.canEdit
+        },
+    },
+    created: function() {
+        if (! this.$store.getters.loggedIn) {
+            router.push('/auth/login')
+        }
+    }
+}
+
 var urlDebug = false;
 
 var toggleDebug = function() {
@@ -9,38 +85,26 @@ var toggleDebug = function() {
     console.log('server-side debugging: ' + urlDebug);
 }
 
-var apikey = function() {
-    if (userInfo && userInfo.APIKey && userInfo.APIKey.length > 0) {
-        return userInfo.APIKey
-    }
-    return ""
-}
-
-var admin = function() {
-    if (userInfo && userInfo.Level) {
-        return userInfo.Level
-    }
-    return 0 
-}
-
 var get = function(url) {
   return new Promise(function(resolve, reject) {
     if (urlDebug) {
-        url += (url.indexOf('?') > 0) ? '&debug=true' : '?debug=true'
+        url += ((url.indexOf('?') > 0) ? '&' : '?') + 'debug=true'
     }
     // Do the usual XHR stuff
     var req = new XMLHttpRequest();
     req.open('GET', url);
-    var key = apikey();
+    var key = store.getters.apiKey; 
     if (key.length > 0) {
 	    req.setRequestHeader("X-API-KEY", key)
+    } else {
+        //console.log('no api key set')
     }
 
     req.onload = function() {
       // This is called even on 404 etc, so check the status
       if (req.status == 200) {
         // Resolve the promise with the response text
-        var obj = JSON.parse(req.responseText)
+        var obj = (req.responseText.length > 0) ? JSON.parse(req.responseText) : null;
         resolve(obj)
       }
       else {
@@ -70,8 +134,11 @@ var posty = function(url, data, method) {
     if (urlDebug) {
         url += (url.indexOf('?') > 0) ? '&debug=true' : '?debug=true'
     }
-    req.open(method, url);
-    var key = apikey();
+    req.open(method, url) /*.catch(err => 
+        console.log("error opening url (" + url + "):" + err)
+    )*/
+    //var key = apikey();
+    var key = store.getters.apiKey; 
     if (key.length > 0) {
 	    req.setRequestHeader("X-API-KEY", key)
     }
@@ -221,28 +288,28 @@ var buttonEnable = function(btn, enable) {
 }
 
 
-var Maker = function(self, names, fresh) {
-    self.Columns = function() {
+var Maker = function(obj, names, fresh) {
+    obj.Columns = function() {
         return names
     }
 
-    self.Load = function(data) {
+    obj.Load = function(data) {
         for (var i=0; i < names.length; i++) {
             var column = names[i];
-            self[column] = data[column]
+            obj[column] = data[column]
         }
     }
 
     fresh = fresh || function(name) { return '' };
 
-    self.Init = function() {
+    obj.Init = function() {
         for (var i=0; i < names.length; i++) {
             var column = names[i];
-            self[column] = fresh(column)
+            obj[column] = fresh(column)
         }
     }
 
-    self.Init()
+    obj.Init()
 }
 
 var newTable = function(name, template, mixins) {
@@ -294,10 +361,7 @@ var makeTable = function(template, mixins) {
       mixins: mixins,
       watch: {
           'columns': function(val, oldVal) {
-              var self = this;
-              this.columns.forEach(function (key) {
-                  self.sortOrders[key] = 1
-              })
+              this.columns.forEach(key => this.sortOrders[key] = 1)
           }
       },
     })
@@ -324,10 +388,7 @@ var makeNewTable = function(name, template, mixins) {
       mixins: mixins,
       watch: {
           'columns': function(val, oldVal) {
-              var self = this;
-              this.columns.forEach(function (key) {
-                  self.sortOrders[key] = 1
-              })
+              this.columns.forEach(key => this.sortOrders[key] = 1)
           }
       },
     })
@@ -359,20 +420,6 @@ var childTable = function(name, template, mixins) {
         },
         mixins: mixins,
     })
-}
-
-
-var menuMIX = {
-  data: {
-      myapp: {
-        auth: {
-            loggedIn: true,
-            user: {
-                name: "Waldo"
-            }
-        },
-      },
-    }
 }
 
 var Site = function() {
@@ -564,7 +611,8 @@ var Device = function() {
     ])
 }
 
-var pingURL         = "http://10.100.182.16:8080/dcman/api/pings";
+//var pingURL         = "http://10.100.182.16:8080/dcman/api/pings";
+var pingURL         = "/dcman/api/ping";
 var macURL          = 'http://10.100.182.16:8080/dcman/data/server/discover/';
 
 var adjustURL       = '/dcman/api/device/adjust/';
@@ -574,6 +622,7 @@ var deviceListURL   = '/dcman/api/device/ips/';
 var deviceNetworkURL = '/dcman/api/device/network/';
 var deviceTypesURL  = '/dcman/api/device/type/';
 var deviceURL       = '/dcman/api/device/';
+var deviceMacURL    = '/dcman/api/device/mac/';
 var deviceViewURL   = '/dcman/api/device/view/';
 var ifaceURL        = '/dcman/api/interface/';
 var ifaceViewURL    = '/dcman/api/interface/view/';
@@ -599,7 +648,7 @@ var summaryURL      = '/dcman/api/summary/';
 var tagURL          = "/dcman/api/tag/";
 var userURL         = "/dcman/api/user/" ; 
 var vendorURL       = "/dcman/api/vendor/" ; 
-var vlanURL         = "/dcman/api/vlan/view/" ; 
+var vlanURL         = "/dcman/api/vlan/" ; 
 var vlanViewURL     = "/dcman/api/vlan/view/";
 var vmAuditURL      = '/dcman/api/vm/audit/'
 var vmIPsURL        = "/dcman/api/vm/ips/";
@@ -737,33 +786,24 @@ var deviceRacks = function(device) {
     })
 }
 
-var deviceVMs = function(device) {
+var deviceVMlist = function(device) {
     var url = vmIPsURL + '?DID=' + device.DID; 
-    return get(url).then(function(vms) {
-        device.vms = vms
+    return get(url).then(function(v) {
+        device.vms = v;
         return device
     })
 }
 
-
 // device info with associated interface / IPs
 var completeDevice = function(DID) {
-   return getDevice(DID).then(getInterfaces).then(deviceRacks).then(deviceVMs); 
+   return getDevice(DID).then(getInterfaces).then(deviceRacks).then(deviceVMlist); 
 }
 
 
 var siteMIX = {
-    route: { 
-          data: function (transition) {
-            return Promise.all([
-                getSiteLIST(0), 
-           ]).then(function (data) {
-              return {
-                sites: data[0],
-              }
-            })
-          }
-    },
+    created: function() { 
+        getSiteLIST(true).then(s => this.sites = s);
+    }
 }
 
 var validIP = function(ip) {
@@ -808,6 +848,30 @@ var saveMe = function(url, data, id, fn) {
     }
 }
 
+var commonSearch = {
+    computed: {
+        filteredRows: function() {
+            return this.searchData(this.rows)
+        },
+    },
+    methods: {
+        searchData: function(data) {
+            if (this.searchQuery.length == 0) {
+                return data
+            }
+            return data.filter(obj => {
+                for (let k of this.columns) {
+                    const value = obj[k];
+                    if (_.isString(value) && value.indexOf(this.searchQuery) >= 0) {
+                        return true
+                    }
+                }
+                return false
+            })
+        }
+    }
+}
+
 // Create the view-model
 var pagedCommon = {
     data: function() {
@@ -820,6 +884,7 @@ var pagedCommon = {
             sizes: [10, 25, 50, 100, 'all'],
         }
     },
+    mixins: [commonSearch],
     computed: {
         rowsPerPage: function() {
             if (this.pagerows == 'all') return null;
@@ -833,17 +898,6 @@ var pagedCommon = {
     },
 }
 
-var authVue = {
-    computed: {
-        canEdit: function() {
-            return (admin() > 0)
-        },
-        isAdmin: function() {
-            return (admin() > 1)
-        },
-    },
-}
-
 // common stuff for edits 
 var editVue = {
     mixins: [authVue],
@@ -852,16 +906,16 @@ var editVue = {
             var data = this.myself()
             var id = this.myID()
             if (id > 0) {
-                posty(this.dataURL + id, data, 'PATCH').then(this.showList)
+                posty(this.dataURL + id, data, 'PATCH').then(router.go(-1))
             } else {
-                posty(this.dataURL, data).then(this.showList)
+                posty(this.dataURL, data).then(router.go(-1))
             }
         },
-        deleteSelf: function(event) {
-            posty(this.dataURL + this.myID(), null, 'DELETE').then(this.showList)
+        deleteSelf: function() {
+            posty(this.dataURL + this.myID(), null, 'DELETE').then(this.showList())
         },
         showList: function(ev) {
-            router.go(this.listURL)
+            router.push(this.listURL)
         },
     }
 }
@@ -892,7 +946,7 @@ var tableTmpl = {
 }
 
 
-var fList = Vue.component('found-list', {
+var foundList = Vue.component('found-list', {
     template: '#tmpl-base-table',
     props: ['columns', 'rows'],
     data: function () {
@@ -901,7 +955,12 @@ var fList = Vue.component('found-list', {
             sortOrders: []
         }
     },
+    created: function() {
+        eventHub.$on('search-results',this.results)
+    },
     methods: {
+        results: function(data) {
+        },
         sortBy: function (key) {
             this.sortKey = key
             this.sortOrders[key] = this.sortOrders[key] * -1
@@ -947,46 +1006,36 @@ var searchFor = Vue.component('search-for', {
             found: [],
         }
     },
-    route: { 
-        data: function (transition) {
-            this.search(this.$route.params.searchText)
-        }
+    created: function() {
+        this.search()
     },
     methods: {
-        search: function(what) {
-            this.searchText = what
-            var self = this;
-            if (what.length === 0) { 
+        search: function() {
+            this.searchText = this.$route.params.searchText
+            if (this.searchText.length === 0) { 
                 return
             }
-            var url = searchURL + what;
-            get(url).then(function(data) {
+            var url = searchURL + this.searchText;
+            get(url).then(data => {
                 if (data) {
                     if (data.length == 1) {
                         var link = foundLink(data[0].Kind) + data[0].ID
-                        router.go(link)
+                        router.push(link)
                     } else {
-                        self.found = data
+                        this.found = data
                     }
                 } else {
-                    self.found = []
+                    this.found = []
                 }
             })
         }
     },
-    events: {
-        'search-again': function(text) {
-            this.searchText = text;
-            this.search(text)
-        },
-    },
 })
 
-
-Vue.component('my-nav', {
+Vue.component('main-menu', {
     template: '#tmpl-main-menu',
-    mixins: [authVue],
-    props: ['app', 'msg'],
+    //mixins: [authVue],
+    //props: ['app', 'msg'],
     data: function() {
        return {
            searchText: '',
@@ -994,7 +1043,9 @@ Vue.component('my-nav', {
        }
     },
     created: function() {
-        this.userinfo()
+        //this.userinfo()
+        eventHub.$on('logged-out',this.loggedOut)
+        eventHub.$on('logged-in',this.loggedIn)
     },
     computed: {
         'debugAction': function() {
@@ -1002,64 +1053,40 @@ Vue.component('my-nav', {
         },
     },
     methods: {
-        'doSearch': function(ev) {
+        loggedOut: function() {
+            console.log("logging out user:", this.$store.getters.login)
+            this.$store.commit('logOut')
+            get(logoutURL)
+            router.push('/')
+        },
+        loggedIn: function(user) {
+            this.$store.commit('setUser', user)
+            router.push('/')
+        },
+        doSearch: function() {
             var text = cleanText(this.searchText);
-            if (text.length > 0) {
-                if (this.$route.name == 'search') {
-                    // already on search page
-                    this.$dispatch('search-again', text)
-                    return
-                }
-                router.go({name: 'search', params: { searchText: text }})
+            if (text.length == 0) {
+                return
             }
+            router.push({name: 'searcher', params: { searchText: text }})
         },
         'toggleDebug': function() {
             this.debug = ! this.debug
             urlDebug = this.debug
         },
         'userinfo': function() {
-            // reload existing auth from cookie
-            var cookies = document.cookie.split("; ");
-            var key = "";
-            for (var i=0; i < cookies.length; i++) {
-                var tuple = cookies[i].split('=')
-                if (tuple[0] == 'X-API-KEY') {
-                    key=tuple[1]
-                    continue
-                }
-                if (tuple[0] != 'userinfo') continue;
-                if (tuple[1].length == 0) break; // no cookie value so don't bother
-                var user = JSON.parse(atob(tuple[1]));
-                this.$dispatch('user-info', user, key)
-                break
+            const user = fromCookie();
+            if (user) {
+                store.commit('setUser', user)
             }
         },
     }
 })
 
-var ipload = {
-    methods: {
-        loadData: function() {
-            var self = this,
-                 url = networkURL;
-            if (self.STI > 0) {
-                url +=  "?STI=" + self.STI;
-            }
-
-            get(url).then(function(data) {
-                if (data) {
-                    self.rows = data
-                }
-            })
-        },
-    }
-}
-
-
 
 var ipList = Vue.component('ip-list', {
     template: '#tmpl-ip-list',
-    mixins: [ipload, pagedCommon, commonListMIX],
+    mixins: [pagedCommon, commonListMIX],
     created: function(ev) {
         this.loadData()
         this.title = "IP Addresses in Use"
@@ -1094,23 +1121,26 @@ var ipList = Vue.component('ip-list', {
             ],
         }
     },
-    route: { 
-          data: function (transition) {
-            var self = this;
-            return Promise.all([
-                getSiteLIST(true), 
-                getIPTypes(),
-           ]).then(function (data) {
-              var types = data[1];
-              types.unshift({IPT:0, Name: 'All'})
-              return {
-                sites: data[0],
-                typelist: types,
-              }
-            })
-          }
+    created () {
+        this.loadData()
     },
     methods: {
+          loadData: function () {
+              var url = networkURL;
+              if (this.STI > 0) {
+                  url +=  "?STI=" + this.STI;
+              }
+              get(url).then(data => {
+                  if (data) {
+                      this.rows = data
+                  }
+              })
+              getSiteLIST(true).then(s => this.sites = s)
+              getIPTypes().then(t => {
+                    t.unshift({IPT:0, Name: 'All'})
+                    this.typelist = t
+              })
+        },
         linkable: function(key) {
             return (key == 'Hostname')
         },
@@ -1121,24 +1151,35 @@ var ipList = Vue.component('ip-list', {
             return '/vm/edit/' + entry['ID']
         },
     },
-    filters: {
-        ipFilter: function(data) {
-            if (! this.IPT && ! this.Host) {
-                return data
+    computed: {
+        filteredRows: function() {
+            var data;
+            if (this.IPT || this.Host) {
+                data = this.rows.filter(obj => {
+                    if (this.IPT == obj.IPT && ! this.Host) {
+                        return true
+                    }
+                    if (this.Host == obj.Host && ! this.IPT) {
+                        return true
+                    }
+                    return (this.Host == obj.Host && this.IPT == obj.IPT) 
+                });
+            } else {
+                data = this.rows
             }
-
-            var self = this;
-            return data.filter(function(obj) {
-                if (self.IPT == obj.IPT && ! self.Host) {
-                    return obj
-                }
-                if (self.Host == obj.Host && ! self.IPT) {
-                    return obj
-                }
-                if (self.Host == obj.Host && self.IPT == obj.IPT) {
-                    return obj
-                }
-            });
+            if (this.searchQuery.length > 0) {
+                return data.filter(obj => {
+                    //for (let [key, value] of obj) {
+                    for (let k of this.columns) {
+                        let value = obj[k];
+                        if (value.indexOf(this.searchQuery) >= 0) {
+                            return true
+                        }
+                    }
+                    return false
+                })
+            }
+            return data
         },
     },
     watch: {
@@ -1169,21 +1210,14 @@ var reservedIPs = Vue.component('reserved-ips', {
             sites: [],
         }
     },
-    route: { 
-        data: function (transition) {
-        var self = this;
-        return Promise.all([
-            getSiteLIST(true), 
-            get(reservedURL),
-        ]).then(function (data) {
-            return {
-                sites: data[0],
-                rows: data[1],
-            }
-        })
-        }
+    created: function() { 
+        this.common()
     },
     methods: {
+        common: function () {
+            getSiteLIST(true).then(s => this.sites = s);
+            get(reservedURL).then(r => this.rows = r || []);
+        },
         linkable: function(key) {
             return (key == 'IP')
         },
@@ -1191,18 +1225,24 @@ var reservedIPs = Vue.component('reserved-ips', {
             return '/ip/edit/' + entry['IID']
         },
     },
-    filters: {
-        siteFilter: function(data) {
-            if (! this.STI > 0) {
-                return data
+    computed: {
+        filteredRows: function() {
+            var data;
+            if (this.STI > 0) {
+                data = this.rows.filter(obj => (this.STI == obj.STI)) 
+            } else {
+                data = this.rows
             }
-
-            var self = this;
-            return data.filter(function(obj) {
-                if (self.STI == obj.STI) {
-                    return obj
-                }
-            });
+            if (this.searchQuery.length > 0) {
+                return data.filter(obj => {
+                    for (let [key, value] of obj) {
+                        if (value.indexOf(this.searchQuery) >= 0) {
+                            return true
+                        }
+                    }
+                })
+            }
+            return data
         },
     },
 })
@@ -1213,29 +1253,23 @@ var reservedIPs = Vue.component('reserved-ips', {
 //
 var ipTypes = Vue.component('ip-types', {
     template: '#tmpl-ip-types',
-    mixins: [pagedCommon],
+    mixins: [pagedCommon, commonSearch],
     data: function() {
         return {
-            data: [],
+            rows: [],
             columns: [
                 "Name",
                 "Multi"
             ],
         }
     },
-    route: { 
-        data: function (transition) {
-            var self = this;
-            return Promise.all([
-                getIPTypes(), 
-            ]).then(function (data) {
-                return {
-                    data: data[0],
-                }
-            })
-        }
+    created: function() { 
+        this.loadSelf()
     },
     methods: {
+        loadSelf: function () {
+            getIPTypes().then(t => this.rows = t)
+        },
         linkable: function(key) {
             return (key == 'Name')
         },
@@ -1251,28 +1285,27 @@ var ipTypes = Vue.component('ip-types', {
 })
 
 
-var iptypeEdit = Vue.component('iptype-edit', {
+var ipTypeEdit = Vue.component('iptype-edit', {
     template: '#tmpl-iptype-edit',
+    mixins: [authVue],
     data: function() {
         return {
             IPType: new(IPType)
         }
     },
-    route: {
-        data: function (transition) {
-            if (transition.to.params.IPT > 0) {
-                return {
-                    IPType: getIPTypes(transition.to.params.IPT)
-                }
-            }
-            var ipType = new(IPType);
-            ipType.IPT = 0
-            return {
-                IPType: ipType
-            }
-        }
+    created: function() {
+        this.loadSelf()
     },
     methods: {
+        loadSelf: function () {
+            if (this.$route.params.IPT > 0) {
+                getIPTypes(this.$route.params.IPT).then(t => this.IPType = t)
+            } else {
+                var ipType = new(IPType);
+                ipType.IPT = 0
+                this.IPType = ipType
+            }
+        },
         newname: function() {
             console.log('my name is:', this.IPType.Name)
         },
@@ -1281,15 +1314,15 @@ var iptypeEdit = Vue.component('iptype-edit', {
             var id = data.IPT;
             var url = iptypesURL;
             if (id > 0) {
-                posty(url + id, data, this.showList, 'PATCH')
+                posty(url + id, data, 'PATCH').then(x => this.showList())
             } else {
-                posty(url + id, data, this.showList)
+                posty(url + id, data).then(x => this.showList())
             }
         },
         deleteSelf: function() {
         },
         showList: function() {
-            router.go('/ip/types')
+            router.push('/ip/types')
         },
     },
 })
@@ -1301,7 +1334,7 @@ var iptypeEdit = Vue.component('iptype-edit', {
 
 var userList = Vue.component('user-list', {
     template: '#tmpl-user-list',
-    mixins: [authVue, pagedCommon],
+    mixins: [pagedCommon, commonSearch],
     data: function() {
         return {
             columns: ['Login', 'First', 'Last', 'Level'],
@@ -1315,13 +1348,7 @@ var userList = Vue.component('user-list', {
     },
     methods: {
         loadData: function() {
-            var self = this;
-
-            get(this.url).then(function(data) {
-                if (data) {
-                    self.rows = data
-                }
-            })
+            get(this.url).then(data => this.rows = data || [])
         },
         linkable: function(key) {
             return (key == 'Login')
@@ -1344,7 +1371,6 @@ var userEdit = Vue.component('user-edit', {
             User: new(User),
             dataURL: userURL,
             listURL: '/user/list',
-            current: userInfo,
 
             // TODO: pull levels data from server
             levels: [
@@ -1354,30 +1380,28 @@ var userEdit = Vue.component('user-edit', {
             ],
         }
     },
-    route: {
-        data: function (transition) {
-            if (transition.to.params.USR > 0) {
-                return {
-                    User: getUser(transition.to.params.USR)
-                }
-            }
-            var user = new(User);
-            user.USR = 0
-            user.Level = 0
-            return {
-                User: user
-            }
-        }
+    created: function() {
+        this.loadSelf()
     },
     computed: {
+        loadSelf: function () {
+            if (this.$route.params.USR > 0) {
+                getUser(this.$route.params.USR).then(u => this.User = u)
+            } else {
+                var user = new(User);
+                user.USR = 0
+                user.Level = 0
+                this.User = user
+            }
+        },
         canAssume: function() {
-            return (this.User.USR > 0 && userInfo.Level > 1)
+            return this.$store.getters.isAdmin
         },
         disableAdd: function() {
             return (!(this.User.First && this.User.Last && this.User.Login && this.User.Level == 0))
         },
         showKey: function() {
-            return (this.User.USR && (admin() > 1 || (userInfo && userInfo.USR == this.user.USR)));
+            return (this.User.USR && (admin() > 1 || (this.$store.getters.USR == this.user.USR)));
         },
     },
     methods: {
@@ -1387,17 +1411,11 @@ var userEdit = Vue.component('user-edit', {
         myself: function() {
             return this.User
         },
-            /*
-        addSelf: function() {
-            return this.User
-        },
-        */
         assumeUser: function() {
-            var self = this;
             var url = assumeURL + this.User.USR;
-            posty(url, null).then(function(user) {
-                self.$dispatch('user-auth', user)
-                router.go('/')
+            posty(url, null).then(user => {
+                this.$dispatch('user-auth', user)
+                router.push('/')
             })
         },
     },
@@ -1406,7 +1424,6 @@ var userEdit = Vue.component('user-edit', {
 
 
 var ipMIX = {
-    mixins: [authVue],
     props: ['iptypes', 'ports'],
     data: function() {
         return {
@@ -1432,31 +1449,26 @@ var ipMIX = {
             return false
         },
         deleteIP(i) {
-            var self = this;
             var iid = this.rows[i].IID
-            posty(ipURL + iid, null, 'DELETE').then(function() {
-                self.rows.splice(i, 1)
-            })
+            posty(ipURL + iid, null, 'DELETE').then(() => this.rows.splice(i, 1))
         },
         addIP: function() {
-            var self = this;
             var data = {IFD: this.newIFD, IPT: this.newIPT, IP: this.newIP}
-            posty(ipURL, data).then(function(ip) {
-                self.rows.push(ip)
-                self.newIP = ''
-                self.newIPT = 0
-                self.newIFD = 0
+            posty(ipURL, data).then(ip => {
+                this.rows.push(ip)
+                this.newIP = ''
+                this.newIPT = 0
+                this.newIFD = 0
             })
             return false
         }
     }
 }
 
-var netgrid = childTable("network-grid", "#tmpl-network-grid", [ipMIX, authVue])
+var netgrid = childTable("network-grid", "#tmpl-network-grid", [ipMIX])
 
 var interfaceMIX = {
-    mixins: [authVue],
-    props: ['DID'],
+    props: ['DID', 'IPMI'],
     data: function() {
         return {
             newPort: '',
@@ -1472,6 +1484,21 @@ var interfaceMIX = {
         }
     },
     methods: {
+        findMAC(i) {
+            get(deviceMacURL + this.DID).then(mac => {
+                var row = this.rows[i]
+                row.MAC = mac.MAC
+                var data = {
+                    IFD: row.IFD,
+                    MAC: row.MAC,
+                }
+                posty(ifaceURL + row.IFD, data, 'PATCH')
+            })
+        },
+        needsMAC(i) {
+            let iface = this.rows[i];
+            return (iface.Port == "Eth0" && iface.MAC.length == 0 && ! iface.Mgmt)
+        },
         updateInterface(i) {
             var row = this.rows[i]
             var ifd = row.IFD
@@ -1487,43 +1514,37 @@ var interfaceMIX = {
                 SwitchPort: row.SwitchPort,
                 CableTag: row.CableTag,
             }
-
-            posty(ifaceURL + ifd, data, null, 'PATCH')
+            posty(ifaceURL + ifd, data, 'PATCH')
         },
         deleteInterface(i) {
-            var self = this;
             var ifd = this.rows[i].IFD
-            posty(ifaceURL + ifd, null, 'DELETE').then(function() {
-                self.rows.splice(i, 1)
-            }).catch(function(ack) {
-                console.log('=============> ACK!:', ack)
-            })
+            posty(ifaceURL + ifd, null, 'DELETE')
+                .then(() => this.rows.splice(i, 1))
+                .catch(ack => console.log('============= ACK!:', ack))
         },
         addInterface: function(ev) {
-            var self = this
             var port = this.newPort.replace(/[^\d]*/g, '');
             port = (port.length) ? parseInt(port) : 0
             var data = {
-                DID: this.DID,
-                Port: port,
-                Mgmt: this.newMgmt,
-                MAC: this.newMAC,
-                SwitchPort: this.newSwitchPort,
-                CableTag: this.newCableTag,
+                did: this.did,
+                port: port,
+                mgmt: this.newmgmt,
+                mac: this.newmac,
+                switchport: this.newswitchport,
+                cabletag: this.newcabletag,
             }
-            posty(ifaceURL, data).then(function(iface) {
+            posty(ifaceurl, data).then(iface => {
                 if (! iface.Mgmt) {
                     iface.Port = 'Eth' + iface.Port
                 }
-                self.rows.push(iface)
+                this.rows.push(iface)
 
-                self.newPort = ''
-                self.newMgmt = ''
-                self.newMAC = ''
-                self.newSwitchPort = ''
-                self.newCableTag = ''
+                this.newPort = ''
+                this.newMgmt = ''
+                this.newMAC = ''
+                this.newSwitchPort = ''
+                this.newCableTag = ''
             })
-            return false
         }
     }
 }
@@ -1537,43 +1558,59 @@ var deviceEditVue = {
     mixins: [editVue],
     data: function() {
         return {
+            adding: false,
             sites: [],
             device_types: [],
             mfgrs: [],
             tags: [],
             ipTypes: [],
             newIP: '',
+            IPMI: 'huh',
             newIPD: 0,
             newIFD: 0,
             netColumns: ['IP', 'Type', 'Port'],
             ifaceColumns: ['Port', 'Mgmt', 'MAC', 'CableTag', 'SwitchPort'],
             Description: '',
             Device: new(Device),
+            pageRows: 10,
+            startRow: 0,
             vmColumns: ['Hostname', 'IPs', 'Profile', 'Note'], 
         }
     },
-    route: { 
-          data: function (transition) {
-            return Promise.all([
-                getSiteLIST(false), 
-                getDeviceTypes(), 
-                getTagList(),
-                getIPTypes(),
-                getMfgr(),
-                completeDevice(this.$route.params.DID), 
-           ]).then(function (data) {
-              return {
-                sites: data[0],
-                device_types: data[1],
-                tags: data[2],
-                ipTypes:  data[3],
-                mfgrs:  data[4],
-                Device: data[5],
-               }
-            })
-          }
+    computed: {
+        urlSuffix: function() {
+            return this.Device.DC + "/" + this.Device.RID
+        }
+    },
+    created: function() { 
+        if (! this.adding) {
+            this.loadDevice()
+        }
+        this.loadCommon()
     },
     methods: {
+        loadCommon: function() {
+            getSiteLIST(false).then(s => this.sites = s)
+            getDeviceTypes().then(t => this.device_types = t)
+            getTagList().then(l => this.tags = l)
+            getIPTypes().then(t => this.ipTypes = t)
+            getMfgr().then(m => this.mfgrs = m)
+        },
+        loadDevice: function() {
+            completeDevice(this.$route.params.DID).then(d => this.Device = d).then(d => {
+                for (let ip of d.ips) {
+                    if (ip.Mgmt) {
+                        this.IPMI = ip.IP
+                        console.log("MY IPMI:", ip.IP)
+                        break;
+                    }
+                }
+            })
+        },
+        loadRacks: function() {
+            const url = rackURL + '?STI=' + this.Device.STI; 
+            get(url).then(r => this.Device.racks = r)
+        },
         saveSelf: function(event) {
             var device = this.Device;
             delete device['racks'];
@@ -1581,18 +1618,19 @@ var deviceEditVue = {
             delete device['ips'];
 
             if (device.DID == 0) {
-                posty(deviceViewURL, device).then(this.showList)
+                posty(deviceViewURL, device).then(router.go(-1))
                 return
             }
             var url = deviceViewURL + this.Device.DID;
-            posty(url, device, 'PATCH').then(this.showList)
+            posty(url, device, 'PATCH').then(router.go(-1))
         },
         deleteSelf: function(event) {
-            var url = deviceURL + this.Device.DID;
-            posty(url, null, 'DELETE').then(this.showList)
+            const url = deviceURL + this.Device.DID;
+            posty(url, null, 'DELETE').then(router.go(-1))
         },
         showList: function(ev) {
-            router.go('/device/list')
+            //router.push('/device/list')
+            router.go(-1)
         },
         portLabel: function(ipinfo) {
             if (this.Device.Type === 'server') {
@@ -1601,11 +1639,8 @@ var deviceEditVue = {
             return (ipinfo.Mgmt ? 'Mgmt' : 'Port') + ipinfo.Port
         },
         getMacAddr: function(ev) {
-            var url = macURL + this.Server.IPIpmi;
-            var self = this
-            get(url).then(function(data) {
-                self.Device.MacPort0 = data.MacEth0
-             })
+            const url = macURL + this.Server.IPIpmi;
+            get(url).then(data => this.Device.MacPort0 = data.MacEth0)
         },
         vmLinkable: function(key) {
             return (key == 'Hostname')
@@ -1614,9 +1649,14 @@ var deviceEditVue = {
             if (key == 'Hostname') return '/vm/edit/' + entry['VMI']
         },
         audit: function() {
-            router.go('/device/audit/' + this.Device.DID)
+            router.push('/device/audit/' + this.Device.DID)
         }
     },
+    watch: {
+        'Device.STI': function() {
+            this.loadRacks()
+        }
+    }
 }
 
 var deviceEdit = Vue.component('device-edit', {
@@ -1625,9 +1665,20 @@ var deviceEdit = Vue.component('device-edit', {
 })
 
 
-var deviceAddMIX = {
-    route: { 
-          data: function (transition) {
+
+var deviceAdd = Vue.component('device-add', {
+    template: '#tmpl-device-edit',
+    mixins: [deviceEditVue],
+    created: function() {
+        this.newDevice()
+    },
+    data: function() {
+        return {
+            adding: true
+        }
+    },
+    methods: { 
+        newDevice: function() {
             var device = new(Device);
             device.DID     = 0;
             device.MID     = 0;
@@ -1638,17 +1689,13 @@ var deviceAddMIX = {
             device.STI     = parseInt(this.$route.params.STI);
             device.RID     = parseInt(this.$route.params.RID);
             device.RU      = parseInt(this.$route.params.RU);
-            return {
-                Device: deviceRacks(device)
-            }
-          },
-    },
-}
 
-var deviceAdd = Vue.component('device-add', {
-    template: '#tmpl-device-edit',
-    mixins: [deviceEditVue, deviceAddMIX],
+            deviceRacks(device).then(d => this.Device = d)
+        },
+    },
 })
+
+var deviceVMs = childTable("device-vms", "#tmpl-base-table")
 
 //
 // DEVICE LOAD
@@ -1661,24 +1708,26 @@ var deviceLoad = Vue.component('device-load', {
             Devices: '',
             racks: [],
             sites: [],
-            STI: 2,
+            STI: 0,
         }
     },
-    route: {
-        data: function (transition) {
-            return {
-                racks: getRack(this.STI, '?sti='),
-                sites: getSiteLIST(),
-            }
-        }
+    created: function() {
+        this.loadCommon()
     },
     methods: {
+        loadCommon: function () {
+            getSiteLIST().then(s => this.sites = s)
+            if (this.STI > 0) { 
+                getRack(this.STI, '?sti=').then(r => this.racks = r)
+            } else {
+                this.racks = []
+            }
+        },
         showList: function(ev) {
-            router.go('/device/list/' + this.STI)
+            router.push('/device/list/' + this.STI)
         },
         // TODO: copied from device edit -- merge functionality?
         addInterface: function(DID, Port, Mgmt, MAC, SwitchPort, CableTag, callBack) {
-            var self = this
             Port = port.replace(/[^\d]*/g, '');
             Port = (port.length) ? parseInt(Port) : 0
             var data = {
@@ -1696,7 +1745,6 @@ var deviceLoad = Vue.component('device-load', {
             }
         },
         addNetwork: function(DID, Port, Mgmt, MAC, SwitchPort, CableTag, IP) {
-            var self = this;
             Port = Port.replace(/[^\d]*/g, '');
             Port = (Port.length) ? parseInt(Port) : 0
             var data = {
@@ -1746,7 +1794,6 @@ var deviceLoad = Vue.component('device-load', {
                 lookup[head] = k
             }
 
-            var self = this;
             for (var i=1; i < lines.length; i++) {
                 if (lines[i].trim().length == 0) {
                     continue
@@ -1779,20 +1826,19 @@ var deviceLoad = Vue.component('device-load', {
                     }
                 }
                 var url = deviceURL;
-                posty(url, device).then(function(added) {
-                    // dc   rack    id  ru  height  asset_tag   vendor_sku  sn  profile hostname    ip_internal ip_ipmi port_eth0   port_eth1   port_ipmi   cable_eth0  cable_eth1  cable_ipmi  cpu memory  mac_eth0    mac_eth1    mac_ipmi    pdu_a   pdu_b   outlet  note    ip_public   alias   assigned
+                posty(url, device).then(added => {
                     console.log("added hostname:",  added.Hostname, " DID:", added.DID)
                     var ip   = line[lookup["ip_ipmi"]];
                     var port = line[lookup["port_ipmi"]];
                     var mac  = line[lookup["mac_ipmi"]];
                     var cable  = line[lookup["cable_ipmi"]];
-                    self.addNetwork(added.DID, port, true, mac, port, cable, ip)
+                    this.addNetwork(added.DID, port, true, mac, port, cable, ip)
 
                     var ip   = line[lookup["ip_internal"]];
                     var port = line[lookup["port_eth0"]];
                     var mac  = line[lookup["mac_eth0"]];
                     var cable  = line[lookup["cable_eth0"]];
-                    self.addNetwork(added.DID, port, false, mac, port, cable, ip)
+                    this.addNetwork(added.DID, port, false, mac, port, cable, ip)
                 })
             }
             this.showList()
@@ -1849,18 +1895,14 @@ var deviceAudit = Vue.component('device-audit', {
             ],
         }
     },
-    route: { 
-        data: function (transition) {
-            var self = this;
-            var ignore = ["TS", "Version", "Login", "USR", "RID", "TID", "KID", "DTI"];
-            return {
-                rows: getDeviceAudit(transition.to.params.DID).then(function(fix) {
-                    return deltas(ignore, fix)
-                })
-            }
-        }
+    created: function() { 
+        this.loadSelf()
     },
     methods: {
+        loadSelf: function () {
+            const ignore = ["TS", "Version", "Login", "USR", "RID", "TID", "KID", "DTI"];
+            getDeviceAudit(this.$route.params.DID).then(fix => rows = deltas(ignore, fix))
+        },
         linkable: function(key) {
             //return (key == 'Name')
         },
@@ -1881,7 +1923,6 @@ var deviceAudit = Vue.component('device-audit', {
 //
 var vmips = Vue.component('vm-ips', {
     template: '#tmpl-vm-ips',
-    mixins: [authVue],
     props: ['VMI'],
     data: function() {
         return {
@@ -1901,14 +1942,9 @@ var vmips = Vue.component('vm-ips', {
     },
     methods: {
         loadSelf: function() {
-            var self = this;
-            var url = ipURL + '?VMI=' + this.VMI;
-            get(url).then(function(data) {
-                 self.rows = data
-            })
-            get(iptypesURL).then(function(data) {
-                 self.types = data
-            })
+            const url = ipURL + '?VMI=' + this.VMI;
+            get(url).then(data => this.rows = data)
+            get(iptypesURL).then(data => this.types = data)
         },
         updateIP(i) {
             var row = this.rows[i]
@@ -1916,27 +1952,20 @@ var vmips = Vue.component('vm-ips', {
             var ip = row.IP
             var ipt = row.IPT
             var data = {VMI:this.VMI, IID: iid, IPT: ipt, IP: ip}
-            posty(ipURL + iid, data, null, 'PATCH')
-            return false
+            posty(ipURL + iid, data, 'PATCH')
         },
         deleteIP(i) {
-            var self = this;
             var iid = this.rows[i].IID
-            posty(ipURL + iid, null, 'DELETE').then(function() {
-                self.rows.splice(i, 1)
-            })
+            posty(ipURL + iid, null, 'DELETE')
+                .then(() => this.rows.splice(i, 1))
         },
         addIP: function() {
-            var self = this;
             var data = {VMI: this.VMI, IPT: this.newIPT, IP: this.newIP}
-            posty(ipURL, data, function(xhr) {
-                if (xhr.readyState == 4 && (xhr.status == 200 || xhr.status == 201)) {
-                    self.rows.push(data)
-                    self.newIP = ''
-                    self.newIPT = 0
-                }
+            posty(ipURL, data).then(ips => {
+                this.rows.push(data)
+                this.newIP = ''
+                this.newIPT = 0
             })
-            return false
         }
     },
     watch: {
@@ -1952,7 +1981,7 @@ var vmips = Vue.component('vm-ips', {
 //
 var vmEdit = Vue.component('vm-edit', {
     template: '#tmpl-vm-edit',
-    mixins: [authVue, siteMIX],
+    mixins: [siteMIX],
     data: function() {
         return {
             url: vmViewURL,
@@ -1967,22 +1996,21 @@ var vmEdit = Vue.component('vm-edit', {
             VM: new(VM),
         }
     },
-    route: { 
-          data: function (transition) {
-            return {
-                VM: getVM(this.$route.params.VMI)
-            }
-          },
+    created: function() { 
+       this.loadSelf() 
     },
     methods: {
+        loadSelf: function() {
+            getVM(this.$route.params.VMI).then(v => this.VM = v)
+        },
         saveSelf: function() {
-            posty(this.url + this.VM.VMI, this.VM, 'PATCH').then(this.showList)
+            posty(this.url + this.VM.VMI, this.VM, 'PATCH').then(() => this.showList)
         },
         deleteSelf: function() {
-            posty(this.url + this.VM.VMI, null, 'DELETE').then(this.showList)
+            posty(this.url + this.VM.VMI, null, 'DELETE').then(() => this.showList)
         },
         showList: function(ev) {
-            router.go('/vm/list')
+            router.push('/vm/list')
         },
     },
 })
@@ -1992,7 +2020,7 @@ var vmEdit = Vue.component('vm-edit', {
 // this will create our standard row with named fields
 var vmAudit = Vue.component('vm-audit', {
     template: '#tmpl-audit',
-    mixins: [pagedCommon],
+    mixins: [pagedCommon, commonSearch],
     data: function() {
         return {
             filename: "audit",
@@ -2007,18 +2035,16 @@ var vmAudit = Vue.component('vm-audit', {
             ],
         }
     },
-    route: { 
-        data: function (transition) {
-            //var self = this;
-            return {
-                rows: getVMAudit(transition.to.params.VMI, "?vmi=").then(function(fix) {
-                    var ignore = ["TS", "Version", "Login", "USR", "RID", "TID", "KID", "DTI"];
-                    return deltas(ignore, fix)
-                })
-            }
-        }
+    created: function() { 
+        this.loadSelf()
     },
     methods: {
+        loadSelf: function() {
+            getVMAudit(this.$route.params.VMI, "?vmi=").then(fix => {
+                const ignore = ["TS", "Version", "Login", "USR", "RID", "TID", "KID", "DTI"];
+                this.rows = deltas(ignore, fix)
+            })
+        },
         linkable: function(key) {
             //return (key == 'Name')
         },
@@ -2029,54 +2055,7 @@ var vmAudit = Vue.component('vm-audit', {
 })
 
 
-// Base APP component, this is the root of the app
-var App = Vue.extend({
-    data: function(){
-        return {
-            myapp: {
-                auth: {
-                    // TODO: unify this with 'userInfo'
-                    loggedIn: false,
-                    user: {
-                        name: null, 
-                        admin: 0,
-                    }
-                },
-            },
-        }
-    },
-    events: {
-        'server-found': function (ev) {
-            this.$broadcast('server-reload', 'gotcha!')
-        },
-        'user-info': function (user, key) {
-            this.myapp.auth.user.name = user.username;
-            this.myapp.auth.user.admin = user.admin;
-            this.myapp.auth.loggedIn = true;
-            userInfo.Login = user.username;
-            userInfo.Level = user.admin;
-            userInfo.APIKey = key;
-        },
-        'user-auth': function (user) {
-            this.myapp.auth.loggedIn = true;
-            this.myapp.auth.user.name = user.Login;
-            this.myapp.auth.user.admin = user.Level;
-            userInfo = user;
-        },
-        'logged-out': function () {
-            this.myapp.auth.loggedIn = false
-            this.myapp.auth.user.name = null
-            this.myapp.auth.user.admin = 0
-            userInfo = {};
-            get(logoutURL)
-        },
-        'search-again': function(text) {
-            // relay event from navbar search
-            this.$broadcast('search-again', text)
-        },
-    },
-})
-
+var eventHub = new Vue();
 
 //
 // DEVICE LIST
@@ -2101,6 +2080,7 @@ var deviceList = Vue.component('device-list', {
                  "Rack",
                  "RU",
                  "Hostname",
+                 "Alias",
                  "IPs",
                  "Mgmt",
                  "Type",
@@ -2115,61 +2095,37 @@ var deviceList = Vue.component('device-list', {
             ],
         }
     },
-    filters: {
-        rackFilter: function(data) {
-            if (this.STI == 0) return data;
-            if (this.RID == 0) return data;
+    computed: {
+        filteredRows: function() {
+            var data = this.searchData(this.rows);
 
-            var self = this;
-            return data.filter(function(obj) {
-                if (obj.RID == self.RID) return obj
-            });
-        },
-        typeFilter: function(data) {
-            if (this.DTI == 0) return data;
-
-            var self = this;
-            return data.filter(function(obj) {
-                if (obj.DTI == self.DTI) return obj
-            });
+            if (this.STI > 0 && this.RID > 0) {
+                data = data.filter(obj => (obj.RID == this.RID))
+            }
+            if (this.DTI > 0) {
+                data =  data.filter(obj = (obj.DTI == this.DTI))
+            }
+            return data
         }
     },
-    route: { 
-          data: function (transition) {
-            var self = this;
-            return Promise.all([
-                getSiteLIST(true), 
-                self.STI > 0 ? getDeviceLIST(self.STI, '?sti=') : getDeviceLIST(), 
-                self.STI > 0 ? getRack(self.STI, '?sti=') : getRack(), 
-                getDeviceTypes(),
-           ]).then(function (data) {
-                var racks =  data[2]
-                racks.unshift({RID:0, Label:'All'})
-             return {
-                sites: data[0],
-                rows: data[1],
-                racks: data[2],
-                types: data[3],
-              }
-            })
-          }
+    created () {
+        this.loadDevices()
+        this.loadData()
     },
     methods: {
-        reload: function() {
-            this.RID = 0;
-            var self = this;
-            if (self.STI > 0) {
-                getDeviceLIST(self.STI, '?sti=').then(function(devices) {
-                    self.rows = devices
-                })
-                getRack(self.STI, '?sti=').then(function(racks) {
-                    self.racks = racks
-                })
+        loadDevices: function() {
+            if (this.STI > 0) {
+                getDeviceLIST(this.STI, '?sti=').then(devices => this.rows = devices)
+                getRack(this.STI, '?sti=').then(r => this.racks = r)
             } else {
-                getDeviceLIST().then(function(devices) {
-                    self.rows = devices
-                })
+                getDeviceLIST().then(d => this.rows = d)
+                this.racks = []
             }
+        },
+        loadData: function() {
+            this.RID = 0;
+            getSiteLIST(true).then(s => this.sites = s)
+            getDeviceTypes().then(t => this.types = t)
         },
         canLink: function(column) {
             return column === 'Hostname'
@@ -2179,9 +2135,9 @@ var deviceList = Vue.component('device-list', {
         }
     },
     watch: {
-    'STI': function(val, oldVal){
+        'STI': function(val, oldVal) {
             mySTI = val
-            this.reload()
+            this.loadDevices()
         },
     },
 })
@@ -2203,16 +2159,15 @@ var deviceTypes = Vue.component('device-types', {
             ],
         }
     },
-    route: { 
-          data: function (transition) {
-              return {
-                  rows: getDeviceTypes()
-              }
-          }
+    created: function() {
+        this.loadSelf()
     },
     methods: {
+        loadSelf: function() {
+            getDeviceTypes().then(t => this.rows = t)
+        },
         addType: function() {
-            router.go('/device/type/edit/0')
+            router.push('/device/type/edit/0')
         },
         linkable: function(column) {
             return column === 'Name'
@@ -2230,37 +2185,30 @@ var deviceTypeEdit = Vue.component('device-type-edit', {
             DeviceType: new(DeviceType)
         }
     },
-    route: { 
-          data: function (transition) {
-              if (transition.to.params.DTI > 0) {
-                  return {
-                      DeviceType: getDeviceTypes(transition.to.params.DTI)
-                  }
-              }
-              var dtype = new(DeviceType);
-              dtype.DTI = 0;
-              return {
-                  DeviceType: dtype
-              }
-          }
+    created: function() { 
+        this.loadSelf()
     },
     methods: {
+        loadSelf: function() {
+              if (this.$route.params.DTI > 0) {
+                  getDeviceTypes(this.$route.params.DTI).then(dt => this.DeviceType = dt)
+              } else {
+                  var dtype = new(DeviceType);
+                  dtype.DTI = 0;
+                  this.DeviceType = dtype
+              }
+        },
         saveSelf: function() {
-            var self = this;
             var url = deviceTypesURL;
             if (this.DeviceType.DTI > 0) {
                 url += this.DeviceType.DTI
-                posty(url, this.DeviceType, 'PATCH').then(function() {
-                    self.showList()
-                });
+                posty(url, this.DeviceType, 'PATCH').then(() => this.showList())
             } else {
-                posty(url, this.DeviceType).then(function() {
-                    self.showList()
-                })
+                posty(url, this.DeviceType).then(() => this.showList())
             }
         },
         showList: function() {
-            router.go('/device/types')
+            router.push('/device/types')
         },
         deleteSelf: function() {
             var url = deviceTypesURL + this.DeviceType.DTI
@@ -2285,31 +2233,27 @@ var vlanList = Vue.component('vlan-list', {
             STI: 0,
             sites: [],
             searchQuery: '',
-            data: [],
+            rows: [],
             columns: [
                 "Site",
                 "Name",
                 "Profile",
+                "Netmask",
                 "Gateway",
                 "Route",
-                "Netmask",
+                "Starting",
+                "Note",
             ]
          }
     },
     created: function () {
         this.loadSelf()
-        var self = this;
-        getSiteLIST(true).then(function(data) {
-            self.sites = data
-        })
+        getSiteLIST(true).then(s => this.sites = s)
     },
     methods: {
         loadSelf: function () {
-            var self = this;
-            var url = this.dataURL;
-            get(url).then(function(data) {
-                self.data = data
-            })
+            const url = this.dataURL;
+            get(url).then(data => this.rows = data)
         },
         linkable: function(key) {
             return (key == 'Name')
@@ -2318,14 +2262,12 @@ var vlanList = Vue.component('vlan-list', {
             return '/vlan/edit/' + entry['VLI']
         },
     },
-    filters: {
-        siteFilter: function(data) {
-            if (! this.STI) return data;
-
-            var self = this;
-            return data.filter(function(obj) {
-                 if (obj.STI == self.STI) return obj
-            });
+    computed: {
+        filteredRows: function() {
+            if (this.STI > 0) {
+                return this.rows.filter(obj => (obj.STI == this.STI))
+            }
+            return this.rows
         }
     }
 })
@@ -2340,19 +2282,23 @@ var vlanEdit = Vue.component('vlan-edit', {
     mixins: [editVue, commonListMIX, siteMIX],
     data: function() {
         return {
+            dataURL: vlanURL,
             sites: [],
-            VLAN: new(VLAN),
-            dataURL: vlanViewURL,
+            VLAN: {}, //new(VLAN),
+            STI: 0,
         }
     },
-    route: { 
-          data: function (transition) {
-            return {
-                VLAN: getVLAN(this.$route.params.VLI)
-            }
-          },
+    created: function() { 
+        this.loadSelf()
     },
     methods: {
+        loadSelf() {
+            getVLAN(this.$route.params.VLI).then(v => {
+                this.VLAN = v
+                this.STI = this.VLAN.STI
+            })
+            getSiteLIST(true).then(s => this.sites = s)
+        },
         myID: function() {
               return this.VLAN.VLI
         },
@@ -2360,7 +2306,7 @@ var vlanEdit = Vue.component('vlan-edit', {
               return this.VLAN
         },
         showList: function(ev) {
-              router.go('/vlan/list')
+              router.push('/vlan/list')
         },
     },
 })
@@ -2371,7 +2317,7 @@ var vlanEdit = Vue.component('vlan-edit', {
 //
 var ipReserve = Vue.component('ip-reserve', {
     template: '#tmpl-ip-reserve',
-    mixins: [ authVue, siteMIX],
+    //mixins: [ siteMIX],
     data: function() {
         return {
             conflicted: 0,
@@ -2404,12 +2350,18 @@ var ipReserve = Vue.component('ip-reserve', {
             return false
         }
     },
+    //created: () => {
+    created: function() {
+        this.common()
+    },
     methods: {
+        common: function() {
+            getSiteLIST().then(s => this.sites = s);
+        },
         showList: function() {
-            router.go('/ip/reserved')
+            router.push('/ip/reserved')
         },
         reserveIPs: function() {
-            var self = this;
             var url = ipReserveURL;
             var data = {
                 From: this.From,
@@ -2417,10 +2369,10 @@ var ipReserve = Vue.component('ip-reserve', {
                 VLI: this.VLI,
                 Note: this.Note,
             }
-            posty(url, data).then(this.showList).catch(function(fail) {
+            posty(url, data).then(this.showList).catch(fail => {
                 var count=fail['Count'];
                 if (count > 0) {
-                    self.conflicted = count;
+                    this.conflicted = count;
                 }
             })
         },
@@ -2437,11 +2389,8 @@ var ipReserve = Vue.component('ip-reserve', {
     },
     watch: {
         STI: function() {
-            var self = this;
-            var url = vlanURL + "?STI=" + this.STI
-            get(url).then(function(data) {
-                self.vlans = data
-            })
+            const url = vlanURL + "?STI=" + this.STI
+            get(url).then(data => this.vlans = data)
         },
         VLI: function() {
             for (var i=0; i < this.vlans.length; i++) {
@@ -2480,18 +2429,17 @@ var ipEdit = Vue.component('ip-edit', {
             return ((this.IP.VMI > 0) || (this.IP.IFD > 0))
         }
     },
-    route: { 
-        data: function (transition) {
-            var url = ipViewURL + transition.to.params.IID;
-            return {
-                IP: get(url),
-                iptypes: get(iptypesURL)
-            }
-        }
+    created: function() { 
+        this.loadSelf()
     },
     methods: {
+        loadSelf: function () {
+            const url = ipViewURL + this.$route.params.IID;
+            get(url).then(ip => this.IP = ip)
+            get(iptypesURL).then(t => this.iptypes = t)
+        },
         showList: function() {
-            router.go('/ip/list')
+            router.push('/ip/list')
         },
         saveSelf: function(event) {
             var url = ipURL + this.IP.IID
@@ -2511,15 +2459,15 @@ var ipEdit = Vue.component('ip-edit', {
 
 var vmList = Vue.component('vm-list', {
     template: '#tmpl-vm-list',
-    mixins: [pagedCommon, siteMIX, commonListMIX],
+    mixins: [pagedCommon, siteMIX, commonListMIX, commonSearch],
     data: function() {
         return {
             filename: "vms",
             STI: 1,
             sites: [],
-            site: 'blah',
+            site: '',
             searchQuery: '',
-            data: [],
+            rows: [],
             columns: [
                  "Site",
                  "Server",
@@ -2535,23 +2483,20 @@ var vmList = Vue.component('vm-list', {
     },
     methods: {
         loadSelf: function () {
-             var self = this
-
-             var url = vmIPsURL;
-             if (self.STI > 0) {
-                 url += "?sti=" + self.STI
-             } 
-             get(url).then(function(data) {
-                 self.data = data
-             })
-            },
-            linkable: function(key) {
-                return (key == 'Hostname' || key == 'Server')
-            },
-            linkpath: function(entry, key) {
-                if (key == 'Server') return '/device/edit/' + entry['DID']
-                if (key == 'Hostname') return '/vm/edit/' + entry['VMI']
-            }
+            getSiteLIST(true).then(f => this.sites = f)
+            var url = vmIPsURL;
+            if (this.STI > 0) {
+                url += "?sti=" + this.STI
+            } 
+            get(url).then(data => this.rows = data || [])
+        },
+        linkable: function(key) {
+            return (key == 'Hostname' || key == 'Server')
+        },
+        linkpath: function(entry, key) {
+            if (key == 'Server')   return '/device/edit/' + entry['DID']
+            if (key == 'Hostname') return '/vm/edit/' + entry['VMI']
+        }
   },
   watch: {
     'STI': function(val, oldVal){
@@ -2567,7 +2512,7 @@ var vmList = Vue.component('vm-list', {
 
 var partInventory = Vue.component('part-inventory', {
     template: '#tmpl-part-inventory',
-    mixins: [pagedCommon, commonListMIX, siteMIX],
+    mixins: [pagedCommon, commonListMIX, siteMIX, commonSearch],
     data: function() {
         return {
             DID: 0,
@@ -2578,25 +2523,22 @@ var partInventory = Vue.component('part-inventory', {
             hostname: '',
             other: '',
             searchQuery: '',
-            partData: [],
+            rows: [],
             columns: ['Site', 'Description', 'PartNumber', 'Mfgr', 'Qty', 'Price'],
         }
     },
-    route: {
-        data: function (transition) {
-            if (this.STI > 0) {
-                return {
-                    partData: getInventory(this.STI, '?sti='),
-                    sites: getSiteLIST(true), 
-                }
-            }
-            return {
-                partData: getInventory(),
-                sites: getSiteLIST(true), 
-            }
-        }
+    created: function() {
+        this.loadSelf()
     },
     methods: {
+        loadSelf: function () {
+            if (this.STI > 0) {
+                getInventory(this.STI, '?sti=').then(r => this.rows = r || [])
+            } else {
+                getInventory().then(r => this.rows = r || [])
+            }
+            getSiteLIST(true).then(s => this.sites = s)
+        },
         updated: function(event) {
             console.log('the event: ' + event)
         },
@@ -2609,16 +2551,7 @@ var partInventory = Vue.component('part-inventory', {
     },
     watch: {
         'STI': function(val, oldVal){
-             var self = this;
-             if (this.STI > 0) {
-                 getInventory(this.STI, '?sti=').then(function(data) {
-                     self.partData = data
-                 })
-             } else {
-                 getInventory().then(function(data) {
-                     self.partData = data
-                 })
-             }
+            this.loadSelf()
         },
     },
 })
@@ -2650,16 +2583,13 @@ var partUse = Vue.component('part-use', {
     },
     methods: {
         showList: function() {
-            router.go('/part/inventory')
+            router.push('/part/inventory')
         },
         loadData: function () {
-            var self = this
             var kid = this.$route.params.KID;
             var sti = this.$route.params.STI;
             var url = partURL + "?unused=1&bad=0&kid=" + kid + "&sti=" + sti
-            get(url).then(function(data) {
-                self.available = data
-            })
+            get(url).then(data => this.available = data)
         },
         usePart: function(ev) {
             var pid = document.getElementById("PID").value
@@ -2676,14 +2606,13 @@ var partUse = Vue.component('part-use', {
                 this.badHost = false
                 return
             }
-            var self = this;
             var url = deviceViewURL + "?hostname=" + this.hostname;
-            get(url).then(function(hosts) {
+            get(url).then(hosts => {
                 if (hosts && hosts.length == 1) {
-                    self.DID = hosts[0].DID
-                    self.badHost = false;
+                    this.DID = hosts[0].DID
+                    this.badHost = false;
                 } else {
-                    self.badHost = true;
+                    this.badHost = true;
                 }
             })
         },
@@ -2732,35 +2661,35 @@ var partList = Vue.component('part-list', {
             ]
         }
     },
-    route: { 
-          data: function (transition) {
-            var self = this;
-            var STI = parseInt(transition.to.params.STI);
-            return Promise.all([
-                getSiteLIST(true), 
-                (STI > 0 ? getPart(STI, '?sti=') : getPart()), 
-           ]).then(function (data) {
-                var parts = data[1];
-                if (parts) {
-                    for (var i=0; i<parts.length; i++) {
-                        parts[i].Price = parts[i].Price.toFixed(2);
-                    }
-                }
-             return {
-                sites: data[0],
-                rows: parts,
-                STI: STI,
-              }
-            })
-        }
+    created: function() { 
+        this.loadData()
     },
     methods: {
+        fixPrices: function(parts) {
+            for (var i=0; i<parts.length; i++) {
+                parts[i].Price = parts[i].Price.toFixed(2);
+            }
+        },
+        setRows: function(data) {
+            this.rows = data || []
+        },
+        loadData: function() {
+            this.STI = parseInt(this.$route.params.STI);
+            getSiteLIST(true).then(s => this.sites = s)
+            if (this.STI > 0) {
+                //getPart(STI, '?sti=').then(p => this.rows = p.map(x => x.Price = Price.toFixed(2)))
+                //getPart(STI, '?sti=').then(p => this.rows = (p || []))
+                getPart(this.STI, '?sti=').then(p => this.setRows(p))
+            } else {        
+                //getPart().then(p => this.rows = p.map(x => x.Price = Price.toFixed(2)))
+                getPart().then(p => this.setRows(p))
+            }
+      },
       findhost: function(ev) {
-          var self = this;
-          get("api/server/hostname/" + this.hostname).then(function(data, status) {
-               var enable = (status == 200);
+          get("api/server/hostname/" + this.hostname).then((data, status) => {
+               const enable = (status == 200);
                buttonEnable(document.getElementById('use-btn'), enable)
-               self.DID = enable ? data.ID : 0;
+               this.DID = enable ? data.ID : 0;
             })
         },
         newPart: function(ev) {
@@ -2775,22 +2704,23 @@ var partList = Vue.component('part-list', {
     },
     watch: {
         'STI': function(newVal,oldVal) {
-            router.go('/part/list/' + newVal)
+            router.push('/part/list/' + newVal)
+        },
+        $route () {
+            this.loadData()
         }
     },
-    filters: {
-        partFilter: function(data) {
+    computed: {
+        filteredParts: function() {
+            var data = this.searchData(this.rows)
             if (this.ktype == 1) {
                 return data
             }
-            var self = this;
-            return data.filter(function(obj) {
-                if (self.ktype == 2 && ! obj.Bad) {
-                    return obj 
+            return data.filter(obj => {
+                if (this.ktype == 2 && ! obj.Bad) {
+                    return true 
                 }
-                if (self.ktype == 3 && obj.Bad) {
-                    return obj
-                }
+                return (this.ktype == 3 && obj.Bad) 
             });
         },
     }
@@ -2803,7 +2733,7 @@ var partList = Vue.component('part-list', {
 
 var partTypes = Vue.component('part-types', {
     template: '#tmpl-part-types',
-    mixins: [pagedCommon, commonListMIX],
+    mixins: [pagedCommon, commonListMIX, commonSearch],
     data: function() {
         return {
             searchQuery: '',
@@ -2813,14 +2743,13 @@ var partTypes = Vue.component('part-types', {
             ]
         }
     },
-    route: { 
-          data: function (transition) {
-            return {
-              rows: getPartTypes(),
-            }
-          }
+    created: function() { 
+        this.loadSelf()
     },
     methods: {
+        loadSelf: function() {
+            getPartTypes().then(p => this.rows = p)
+        },
         linkable: function(key) {
             return (key == 'Name')
         },
@@ -2871,19 +2800,12 @@ var rmaList = Vue.component('rma-list', {
     },
     methods: {
         loadSelf: function () {
-             var self = this;
              var url = rmaviewURL;
-             if (self.STI > 0) {
-                 url += "?STI=" + self.STI
+             if (this.STI > 0) {
+                 url += "?STI=" + this.STI
              }
-             get(url).then(function(data) {
-                 if (! data) data = [];
-                 self.rmas = data
-             })
-             getSiteLIST(true).then(function(sites) {
-                 self.sites = sites
-             })
-
+             get(url).then(data => this.rmas = data || [])
+             getSiteLIST(true).then(s => this.sites = s)
         },
         linkable: function(key) {
             switch(key) {
@@ -2901,19 +2823,16 @@ var rmaList = Vue.component('rma-list', {
             }
         },
     },
-    filters: {
-        rmaFilter: function(data) {
+    computed: {
+        rmaFiltered: function() {
             if (this.rmaType == 1) {
-                return data
+                return this.rmas
             }
-            var self = this;
-            return data.filter(function(obj) {
-                if (self.rmaType == 2 && ! obj.Closed) {
-                    return obj
+            return this.rmas.filter(obj => {
+                if (this.rmaType == 2 && ! obj.Closed) {
+                    return true
                 }
-                if (self.rmaType == 3 && obj.Closed) {
-                    return obj
-                }
+                return (this.rmaType == 3 && obj.Closed) 
             })
         },
     },
@@ -2931,7 +2850,7 @@ var rmaList = Vue.component('rma-list', {
 
 var vendorList = Vue.component('vendor-list', {
     template: '#tmpl-vendor-list',
-    mixins: [pagedCommon],
+    mixins: [pagedCommon, commonSearch],
     data: function() {
         return {
             sites: [],
@@ -2957,10 +2876,7 @@ var vendorList = Vue.component('vendor-list', {
     },
     methods: {
         loadSelf: function () {
-            var self = this;
-            get(vendorURL).then(function(data) {
-                self.rows = data
-            })
+            get(vendorURL).then(data => this.rows = data)
         },
         linkable: function(key) {
             return (key == 'Name')
@@ -2984,21 +2900,19 @@ var vendorEdit = Vue.component('vendor-edit', {
             listURL: '/vendor/list',
         }
     },
-    route: { 
-        data: function (transition) {
+    created: function() { 
+        this.loadSelf()
+    },
+    methods: {
+        loadSelf: function () {
             if (this.$route.params.VID > 0) {
-                return {
-                    Vendor: getVendor(this.$route.params.VID)
-                }
+                getVendor(this.$route.params.VID).then(v => this.Vendor = v)
+                return
             }
             var vendor = new(Vendor);
             vendor.VID = 0
-            return {
-                Vendor: vendor
-            }
-          },
-    },
-    methods: {
+            this.Vendor =  vendor
+        },
         myID: function() {
             return this.Vendor.VID
         },
@@ -3006,7 +2920,7 @@ var vendorEdit = Vue.component('vendor-edit', {
             return this.Vendor
         },
         showList: function() {
-            router.go('/vendor/list')
+            router.push('/vendor/list')
         },
     },
 })
@@ -3018,7 +2932,7 @@ var vendorEdit = Vue.component('vendor-edit', {
 
 var mfgrList = Vue.component('mfgr-list', {
     template: '#tmpl-mfgr-list',
-    mixins: [authVue],
+    mixins: [commonSearch, pagedCommon],
     data: function() {
         return {
             sites: [],
@@ -3035,10 +2949,7 @@ var mfgrList = Vue.component('mfgr-list', {
     },
     methods: {
         loadSelf: function () {
-            var self = this;
-            get(mfgrURL).then(function(data) {
-                self.rows = data
-            })
+            get(mfgrURL).then(data => this.rows = data)
         },
         linkable: function(key) {
             return (key == 'Name')
@@ -3053,15 +2964,26 @@ var mfgrList = Vue.component('mfgr-list', {
 
 var mfgrEdit = Vue.component('mfgr-edit', {
     template: '#tmpl-mfgr-edit',
-    mixins: [authVue],
     data: function() {
         return {
-            Mfgr: {},
+            Mfgr: new(Mfgr) //{},
         }
     },
+    created: function () {
+        this.loadSelf()
+    },
     methods: {
+        loadSelf: function() {
+            if (this.$route.params.MID > 0) {
+                getMfgr(this.$route.params.MID).then(m => this.Mfgr = m)
+            } else {
+                var mfgr = new(Mfgr);
+                mfgr.MID = 0
+                this.Mfgr = mfgr
+            }
+        },
         showList: function(xhr) {
-            router.go('/mfgr/list')
+            router.push('/mfgr/list')
         },
         deleteSelf: function() {
             deleteIt(mfgrURL + this.Mfgr.MID, this.showList)
@@ -3070,19 +2992,9 @@ var mfgrEdit = Vue.component('mfgr-edit', {
             saveMe(mfgrURL, this.Mfgr, this.Mfgr.MID, this.showList)
         } 
     },
-    route: { 
-        data: function (transition) {
-            if (transition.to.params.MID > 0) {
-                return {
-                    Mfgr: getMfgr(transition.to.params.MID)
-                }
-            }
-            var mfgr = new(Mfgr);
-            mfgr.MID = 0
-            return {
-                Mfgr: mfgr,
-            }
-        }
+    watch: {
+        // call again the method if the route changes
+        '$route': 'loadSelf'
     },
 })
 
@@ -3091,24 +3003,14 @@ var mfgrEdit = Vue.component('mfgr-edit', {
 // PART EDIT
 //
 var partEdit = Vue.component('part-edit', {
-    mixins: [authVue],
     template: '#tmpl-part-edit',
     data: function() {
-        var part = new(Part);
-        part.PID = 0;
-        part.DID = 0;
-        part.STI = 0;
-        part.PTI = 0;
-        part.VID = 0;
-        part.Bad = false;
-        part.Used = false;
-
         return {
             badHost: false,
             sites: [],
             types: [],
             vendors: [],
-            Part: part,
+            Part: {},
        }
     },
     computed: {
@@ -3121,22 +3023,36 @@ var partEdit = Vue.component('part-edit', {
             return false
         }
     },
-    route: { 
-        data: function (transition) {
-            return {
-                Part: getPart(transition.to.params.PID),
-                sites: getSiteLIST(),
-                types: getPartTypes(),
-                vendors: getVendor().then(function(list) {
-                    list.unshift({VID:0, Name:''})
-                    return list
-                }),
-            }
-        }
+    created: function() {
+        this.loadCommon()
+        this.loadSelf()
     },
     methods: {
+        loadSelf: function() {
+            if (this.$route.params.PID > 0) {
+                getPart(this.$route.params.PID).then(p => this.Part = p)
+            } else {
+                var part = new(Part);
+                part.PID = 0;
+                part.DID = 0;
+                part.STI = 0;
+                part.PTI = 0;
+                part.VID = 0;
+                part.Bad = false;
+                part.Used = false;
+                this.Part = part
+            }
+        },
+        loadCommon: function() {
+            getSiteLIST().then(s => this.sites = s)
+            getPartTypes().then(t => this.types = t)
+            getVendor().then(list => {
+                list.unshift({VID:0, Name:''})
+                this.vendors = list
+            })
+        },
         showList: function(ev) {
-            router.go('/part/list/' + this.Part.STI)
+            router.push('/part/list/' + this.Part.STI)
         },
         validprice: function() {
         },
@@ -3152,7 +3068,7 @@ var partEdit = Vue.component('part-edit', {
             }
         },
         doRMA: function(ev) {
-            router.go('/rma/create/' + this.Part.PID)
+            router.push('/rma/create/' + this.Part.PID)
         },
         findhost: function() {
             if (this.Part.Hostname.length === 0) {
@@ -3160,14 +3076,13 @@ var partEdit = Vue.component('part-edit', {
                 this.badHost = false
                 return
             }
-            var self = this;
             var url = deviceViewURL + "?hostname=" + this.Part.Hostname;
-            get(url).then(function(hosts) {
+            get(url).then(hosts => {
                 if (hosts && hosts.length == 1) {
-                    self.Part.DID = hosts[0].DID
-                    self.badHost = false;
+                    this.Part.DID = hosts[0].DID
+                    this.badHost = false;
                 } else {
-                    self.badHost = true;
+                    this.badHost = true;
                 }
             })
         },
@@ -3201,7 +3116,7 @@ var rmaCommon = {
             }
         },
         showList: function() {
-            router.go('/rma/list')
+            router.push('/rma/list')
         },
         findhost: function() {
             if (this.RMA.Hostname.length === 0) {
@@ -3209,14 +3124,13 @@ var rmaCommon = {
                 this.badHost = false
                 return
             }
-            var self = this;
             var url = deviceViewURL + "?hostname=" + this.RMA.Hostname;
-            get(url).then(function(hosts) {
+            get(url).then(hosts => {
                 if (hosts && hosts.length == 1) {
-                    self.RMA.DID = hosts[0].DID
-                    self.badHost = false;
+                    this.RMA.DID = hosts[0].DID
+                    this.badHost = false;
                 } else {
-                    self.badHost = true;
+                    this.badHost = true;
                 }
             })
         },
@@ -3229,15 +3143,14 @@ var rmaCommon = {
 
 var rmaEdit = Vue.component('rma-edit', {
     template: '#tmpl-rma-edit',
-    mixins: [authVue, rmaCommon],
-    route: { 
-        data: function (transition) {
-            return {
-                RMA: getRMA(this.$route.params.RMD),
-            }
-        }
+    mixins: [rmaCommon],
+    created: function() {
+        this.loadSelf()
     },
     methods: {
+        loadSelf: function() {
+            getRMA(this.$route.params.RMD).then(r => this.RMA = r)
+        },
         deleteSelf: function(event) {
             var url = this.dataURL + this.myID();
             posty(url, null, 'DELETE').then(this.showList)
@@ -3252,35 +3165,31 @@ var rmaEdit = Vue.component('rma-edit', {
 
 var rmaCreate = Vue.component('rma-create', {
     template: '#tmpl-rma-edit',
-    mixins: [rmaCommon, authVue],
-    route: { 
-        data: function (transition) {
-            var part = getPart(this.$route.params.PID);
+    mixins: [rmaCommon],
+    methods: { 
+        loadSelf: function () {
+            getPart(this.$route.params.PID).then(part => {
+                const now = new Date();
+                const dd = now.getDate();
+                const mm = now.getMonth()+1; //January is 0!
+                const yyyy = now.getFullYear();
+                const today = yyyy + '/' + mm + '/' + dd;
 
-            var now = new Date();
-            var dd = now.getDate();
-            var mm = now.getMonth()+1; //January is 0!
-            var yyyy = now.getFullYear();
-            var today = yyyy + '/' + mm + '/' + dd;
+                var rma = new(RMA);
+                rma.RMD = 0
+                rma.DID = part.DID
+                rma.VID = part.VID
+                rma.STI = part.STI
+                rma.OldPID = part.PID
+                rma.NewPID = 0
+                rma.Description = part.Description
+                rma.PartNumber = part.PartNumber
+                rma.Hostname = part.Hostname
+                rma.PartSN = part.Serial
+                rma.Created = today
 
-            return {
-                RMA: getPart(this.$route.params.PID).then(function(part) {
-                        // TODO: this is goofy -- where to initialize RMA?
-                        var rma = new(RMA);
-                        rma.RMD = 0
-                        rma.DID = part.DID
-                        rma.VID = part.VID
-                        rma.STI = part.STI
-                        rma.OldPID = part.PID
-                        rma.NewPID = 0
-                        rma.Description = part.Description
-                        rma.PartNumber = part.PartNumber
-                        rma.Hostname = part.Hostname
-                        rma.PartSN = part.Serial
-                        rma.Created = today
-                        return(rma)
-                }),
-            }
+                this.RMA = rma
+            })
         },
     },
 })
@@ -3299,16 +3208,15 @@ var partLoad = Vue.component('part-load', {
             STI: 2,
         }
     },
-    route: {
-        data: function (transition) {
-            return {
-                sites: getSiteLIST()
-            }
-        }
+    created: function() {
+        this.loadSelf()
     },
     methods: {
+        loadSelf: function() {
+            getSiteLIST().then(s => this.sites = s)
+        },
         showList: function(ev) {
-            router.go('/part/list/' + this.STI)
+            router.push('/part/list/' + this.STI)
         },
         saveParts: function() {
             // normalize column names
@@ -3353,8 +3261,8 @@ var partLoad = Vue.component('part-load', {
                     var col = cols[j];
                     part[col] = line[j];
                 }
-                var qty = parseInt(part["Qty"]);
-                if (qty === 0) qty = 1;
+                const qty = parseInt(part["Qty"]) || 1
+                //if (qty === 0) qty = 1;
                 if (part.Price) {
                     part.Price = part.Price.replace(/[^0-9.]*/g,'')
                     part.Price = parseFloat(part.Price)
@@ -3390,25 +3298,16 @@ var tagEdit = Vue.component('tag-edit', {
             sites: [],
         }
     },
-    route: { 
-          data: function (transition) {
-            return {
-              sites: getSiteLIST(), 
-            }
-          }
-    },
     created: function() {
         this.loadSelf()
     },
     methods: {
         showList: function() {
-            router.go('/')
+            router.push('/')
         },
         loadSelf: function () {
-             var self = this;
-             get(this.url).then(function(data) {
-                 self.tags = data
-             })
+             getSiteLIST().then(s => this.sites = s)
+             get(this.url).then(data => this.tags = data)
         },
         deleteSelf: function(ev) {
             if (! this.tag) {
@@ -3425,31 +3324,21 @@ var tagEdit = Vue.component('tag-edit', {
             this.tag.TID = 0
             ev.preventDefault()
         },
-        saveSelf: function(event) {
-            var self = this;
-            var saved = function(xreq) {
-                if (xreq.readyState == 4) {
-                    if (xreq.status != 201) {
-                        alert("Oops: ("+xreq.status+") " + xreq.responseText);
-                        return
-                    }
-                    self.tag = JSON.parse(xreq.responseText)
-                    self.loadSelf()
-                }
-            }
+        saveSelf: function() {
             if (this.tag.TID > 0) {
-                var self = this
-                var refresh = function() {
-                    for (var i=0; i < self.tags.length; i++) {
-                        if (self.tags[i].TID == self.tag.TID) {
-                            self.tags[i].Name = self.tag.Name
+                posty(this.url + this.tag.TID, this.tag, 'PATCH').then(() => {
+                    for (var i=0; i < this.tags.length; i++) {
+                        if (this.tags[i].TID == this.tag.TID) {
+                            this.tags[i].Name = this.tag.Name
                             break
                         }
                     }
-                }
-                posty(this.url + this.tag.TID, this.tag, refresh, 'PATCH')
+                })
             } else {
-                posty(this.url, this.tag, saved)
+                posty(this.url, this.tag).then(t => {
+                    this.tag = t
+                    this.loadSelf()
+                })
             }
         },
     },
@@ -3476,6 +3365,8 @@ var rackEdit = Vue.component('rack-edit', {
     data: function() {
         var rack = new(Rack);
         rack.RID = 0;
+        rack.STI = 0;
+        //rack.STX = 0;
         return {
             sites: [],
             id: 'RID',
@@ -3493,25 +3384,21 @@ var rackEdit = Vue.component('rack-edit', {
             return false
         },
     },
-    route: {
-        data: function (transition) {
-            if (transition.to.params.RID > 0) {
-                return {
-                    Rack: getRack(transition.to.params.RID)
-                }
-            }
-            var rack = new(Rack);
-            rack.RID = 0
-            rack.STI = 0
-            return {
-                Rack: rack 
-            }
-        },
+    created: function() {
+        this.loadSelf()
+        getSiteLIST(false).then(s => this.sites = s)
     },
     methods: {
-          showList: function(ev) {
-              router.go('/rack/list')
-          },
+        loadSelf: function () {
+            if (this.$route.params.RID > 0) {
+                getRack(this.$route.params.RID).then(r => this.Rack = r)
+            } else {
+                this.rack = new(Rack);
+            }
+        },
+        showList: function() {
+            router.push('/rack/list')
+        },
         myself: function() {
             return this.Rack
         },
@@ -3528,7 +3415,7 @@ var rackEdit = Vue.component('rack-edit', {
 
 var rackList = Vue.component('rack-list', {
     template: '#tmpl-rack-list',
-    mixins: [pagedCommon, siteMIX, commonListMIX],
+    mixins: [pagedCommon, siteMIX, commonListMIX, commonSearch],
     data: function() {
         return {
             dataURL: rackURL,
@@ -3550,15 +3437,11 @@ var rackList = Vue.component('rack-list', {
     },
     methods: {
         loadSelf: function () {
-             var self = this
-
              var url = this.dataURL;
-             if (self.STI > 0) {
-                 url += "?sti=" + self.STI
+             if (this.STI > 0) {
+                 url += "?sti=" + this.STI
              }
-             get(url).then(function(data) {
-                 self.rows = data
-             })
+             get(url).then(data => this.rows = data)
         },
         linkable: function(key) {
             return (key == 'Label')
@@ -3706,32 +3589,30 @@ var rackView = Vue.component('rack-view', {
         },
         moveUp: function(lay) {
             var ru = lay.RU + 1;
-            var self = this;
             var url = adjustURL + lay.DID;
             var adjust = {DID: lay.DID, RID: lay.RID, RU: ru, Height: lay.Height};
-            posty(url, adjust, 'PUT').then(function(moved) {
+            posty(url, adjust, 'PUT').then(moved => {
                 if (moved.RU == ru) {
-                    if (lay.Height > 1) self.zero(lay.RU + lay.Height)
-                    self.copy(lay, ru)
-                    self.zero(lay.RU)
-                    self.rusize(lay.RU, 1)
+                    if (lay.Height > 1) this.zero(lay.RU + lay.Height)
+                    this.copy(lay, ru)
+                    this.zero(lay.RU)
+                    this.rusize(lay.RU, 1)
                 }
             })
         },
         moveDown: function(lay) {
             var ru = lay.RU - 1;
-            var self = this;
             var url = adjustURL + lay.DID;
             var adjust = {DID: lay.DID, RID: lay.RID, RU: ru, Height: lay.Height};
-            posty(url, adjust, 'PUT').then(function(moved) {
+            posty(url, adjust, 'PUT').then(moved => {
                 if (moved.RU == ru) {
-                    self.copy(lay, ru)
+                    this.copy(lay, ru)
                     if (lay.Height > 1) {
-                        self.rusize(ru + lay.Height, 1)
+                        this.rusize(ru + lay.Height, 1)
                     } else {
-                        self.rusize(lay.RU, 1)
+                        this.rusize(lay.RU, 1)
                     }
-                    self.zero(lay.RU)
+                    this.zero(lay.RU)
                 }
             })
         },
@@ -3808,31 +3689,29 @@ var rackView = Vue.component('rack-view', {
                 lay.badHeight = true;
                 return
             }
-            var self = this;
-            var url = adjustURL + lay.DID;
-            var newsize = {DID: lay.DID, RID: lay.RID, RU: lay.RU, Height: lay.newHeight}
-            var resized = function(adjusted) {
+            const url = adjustURL + lay.DID;
+            const newsize = {DID: lay.DID, RID: lay.RID, RU: lay.RU, Height: lay.newHeight}
+            posty(url, newsize, 'PUT').then(adjusted => {
                 if (adjusted.Height == lay.Height) {
                     lay.badHeight = true;
                     return
                 }
                 if (lay.newHeight > lay.Height) {
-                    var to = self.layouts.rack.RUs - lay.RU;
-                    var from = to - lay.newHeight + 1;
+                    const to = this.layouts.rack.RUs - lay.RU;
+                    const from = to - lay.newHeight + 1;
                     for (var i=from; i < to; i++ ) {
-                        self.layouts.units[i].Height = 0;
+                        this.layouts.units[i].Height = 0;
                     }
                 } else if (lay.newHeight < lay.Height) {
-                    var from = self.layouts.rack.RUs - lay.RU - lay.Height;
-                    var to   = from + (lay.Height - lay.newHeight) + 1
+                    const from = this.layouts.rack.RUs - lay.RU - lay.Height;
+                    const to   = from + (lay.Height - lay.newHeight) + 1
                     for (var i=from; i < to; i++ ) {
-                        self.layouts.units[i].Height = 1;
+                        this.layouts.units[i].Height = 1;
                     }
                 }
                 lay.Height = lay.newHeight
                 lay.badHeight = false;
-            }
-            posty(url, newsize, 'PUT').then(resized);
+            })
         },
         okUp: function(lay) {
             if (! lay) return false;
@@ -3879,11 +3758,11 @@ var rackView = Vue.component('rack-view', {
 
 var rackLayout = Vue.component('rack-layout', {
     template: '#tmpl-rack-layout',
-    mixins: [authVue, commonListMIX],
+    mixins: [commonListMIX],
     data: function() {
         return {
             dataURL: deviceListURL,
-            STI: 1,
+            STI: 0,
             RID: 0,
             sites: [], 
             racks: [],
@@ -3896,41 +3775,38 @@ var rackLayout = Vue.component('rack-layout', {
     created: function () {
         this.loadSelf()
     },
-    route: { 
-        data: function (transition) {
-            return {
-                sites: getSiteLIST()
+    computed: {
+        filteredRacks: function() {
+            if (this.RID == 0) {
+                return this.lumpy 
             }
-        }
+            return this.lumpy.filter(obj => (this.RID == obj.rack.RID))
+        },
     },
     methods: {
-        rfilter: function(a, b, c) {
-            if (this.RID == 0) {
-                return a
-            }
-            if (this.RID == a.rack.RID) {
-                    return a
-            }
-        },
         loadSelf: function () {
-             var self = this
+            var url = this.dataURL;
+            if (this.$route.params.STI > 0) {
+                this.STI = this.$route.params.STI
+            } else {
+                this.RID = 0
+                this.STI = 0
+            }
 
-             var url = this.dataURL;
-
-             if (self.RID > 0) {
-                 url += "?rid=" + self.RID
-             } else if (self.STI > 0) {
-                 url += "?sti=" + self.STI
+             if (this.RID > 0) {
+                 url += "?rid=" + this.RID
+             } else if (this.STI > 0) {
+                 url += "?sti=" + this.STI
              }
 
-             get(url).then(function(units) {
-                 url = rackURL + "?STI=" + self.STI;
-
-                 get(url).then(function(racks) {
+             getSiteLIST().then(s => this.sites = s)
+             get(url).then(units => {
+                 url = rackURL + "?STI=" + this.STI;
+                 get(url).then(racks => {
                      if (racks) {
                          racks.unshift({RID:0, Label:''})
-                         self.racks = racks
-                         self.lumpy = makeLumps(racks, units)
+                         this.racks = racks
+                         this.lumpy = makeLumps(racks, units)
                      }
                  })
              })
@@ -3968,13 +3844,9 @@ var rackLayout = Vue.component('rack-layout', {
     },
     watch: {
         'STI': function(val, oldVal) {
-                this.RID = 0;
-                this.audit = false;
-                this.loadSelf()
+                router.push('/rack/layout/' + val)
         },
-        'RID': function(val, oldVal) {
-                console.log('RID is now:', val)
-        },
+        '$route': 'loadSelf'
     },
 })
 
@@ -3991,17 +3863,14 @@ var userLogin = Vue.component('user-login', {
     },
     methods: {
         cancel: function() {
-            router.go('/')
+            router.push('/')
         },
         login: function(ev) {
             var data = {Username: this.username, Password: this.password};
-            var self = this;
-            posty(loginURL, data).then(function(user) {
-                self.$dispatch('user-auth', user)
-                router.go('/')
-            }).catch(function(msg) {
-                self.errorMsg = msg.Error
-            })
+            posty(loginURL, data).then(user => {
+                this.$store.commit('setUser', user)
+                router.push('/')
+            }).catch(msg => this.errorMsg = msg.Error)
         },
     },
 })
@@ -4011,11 +3880,12 @@ var userLogout = Vue.component('user-logout', {
     template: '#tmpl-user-logout',
     methods: {
         cancel: function() {
-            router.go('/')
+            router.push('/')
         },
         logout: function(ev) {
-            this.$dispatch('logged-out')
-            router.go('/')
+            console.log("logout button selected")
+            eventHub.$emit('logged-out')
+            router.push('/auth/login')
         },
     }
 })
@@ -4043,6 +3913,7 @@ var pagedGrid = Vue.component('paged-grid', {
         return {
               sortKey: '',
               sortOrders: sortOrders,
+              currentRow: this.startRow
         }
     },
     computed: {
@@ -4052,7 +3923,7 @@ var pagedGrid = Vue.component('paged-grid', {
             }
             var status = 
                 ' Page ' +
-                (this.startRow / this.rowsPerPage + 1) +
+                (this.currentRow / this.rowsPerPage + 1) +
                 ' / ' +
                 (Math.ceil(this.data.length / this.rowsPerPage));
 
@@ -4064,16 +3935,24 @@ var pagedGrid = Vue.component('paged-grid', {
         canDownload: function() {
             return (this.data && (this.data.length > 0) && this.filename && (this.filename.length > 0))
         },
+        limitBy: function() {
+           return this.data.slice(this.currentRow, this.currentRow + this.rowsPerPage)
+        } 
     },
     methods: {
-        sortBy: function (key) {
-            this.sortKey = key
-            this.sortOrders[key] = this.sortOrders[key] * -1
+        fuckme: function(a, b) {
+            //console.log("fuck:",a,"me:",b)
+            return "http://www.google.com"
+        },
+        sortBy: function (column) {
+            console.log("sort by:",column)
+            this.sortKey = column
+            this.sortOrders[column] = this.sortOrders[column] * -1
         },
         movePages: function(amount) {
-            var newStartRow = this.startRow + (amount * this.rowsPerPage);
-            if (newStartRow >= 0 && newStartRow < this.data.length) {
-                this.startRow = newStartRow;
+            var row = this.currentRow + (amount * this.rowsPerPage);
+            if (row >= 0 && row < this.data.length) {
+                this.currentRow = row;
             }
         },
         download() {
@@ -4121,14 +4000,13 @@ var sessionList = Vue.component('session-list', {
             rows: [],
         }
     },
-    route: { 
-        data: function (transition) {
-            return {
-              rows: getSessions(), 
-            }
-        }
+    created: function() {
+        this.loadSelf()
     },
     methods: {
+        loadSelf: function() {
+            getSessions().then(s => this.rows = s)
+        },
         linkable: function(key) {
             return (key == 'Login')
         },
@@ -4144,7 +4022,7 @@ var sessionList = Vue.component('session-list', {
 //
 var siteList = Vue.component('site-list', {
     template: '#tmpl-site-list',
-    mixins: [authVue],
+    mixins: [commonSearch],
     data: function() {
         return {
             sites: [],
@@ -4163,10 +4041,7 @@ var siteList = Vue.component('site-list', {
     },
     methods: {
         loadSelf: function () {
-            var self = this;
-            get(sitesURL).then(function(data) {
-                self.rows = data
-            })
+            get(sitesURL).then(data => this.rows = data)
         },
         linkable: function(key) {
             return (key == 'Name')
@@ -4179,15 +4054,27 @@ var siteList = Vue.component('site-list', {
 
 var siteEdit = Vue.component('site-edit', {
     template: '#tmpl-site-edit',
-    mixins: [authVue],
     data: function() {
         return {
             Site: {},
         }
     },
+    created: function() {
+        this.loadSelf()
+    },
     methods: {
+        loadSelf: function () {
+            if (this.$route.params.STI > 0) {
+                var url = sitesURL + this.$route.params.STI;
+                get(url).then(s => this.Site = 1)
+            } else {
+                var site = new(Site);
+                site.STI = 0
+                this.Site = site
+            }
+        },
         showList: function() {
-            router.go('/site/list')
+            router.push('/site/list')
         },
         deleteSelf: function() {
             deleteIt(sitesURL + this.Site.STI, this.showList)
@@ -4195,21 +4082,6 @@ var siteEdit = Vue.component('site-edit', {
         saveSelf: function()  {
             saveMe(sitesURL, this.Site, this.Site.STI, this.showList)
         } 
-    },
-    route: { 
-        data: function (transition) {
-            if (transition.to.params.STI > 0) {
-                var url = sitesURL + transition.to.params.STI;
-                return {
-                    Site: get(url),
-                }
-            }
-            var site = new(Site);
-            site.STI = 0
-            return {
-                Site: site,
-            }
-        }
     },
 })
 
@@ -4226,14 +4098,15 @@ var homePage = Vue.component('home-page', {
         }
     },
     created: function() {
-        this.loadSelf()
+        if (this.$store.getters.loggedIn) {
+            this.loadSelf()
+        } else {
+            router.push('/auth/login')
+        }
     },
     methods: {
         loadSelf: function() {
-            var self = this;
-            get(summaryURL).then(function(data) {
-                self.rows = data
-            })
+            get(summaryURL).then(data => this.rows = data)
         },
         dl: function() {
             download('test.txt', this.testData)
@@ -4258,154 +4131,86 @@ var tallyMIX = {
 var tallyho = childTable("tally-table", "#tmpl-base-table", [tallyMIX])
 
 
+const routes = [
+{ path: '/auth/login',      component: userLogin },
+{ path: '/auth/logout',     component: userLogout },
+{ path: '/admin/sessions',  component: sessionList },
+{ path: '/admin/tags',      component: tagEdit },
+{ path: '/ip/edit/:IID',    component: ipEdit },
+{ path: '/ip/list',         component: ipList },
+{ path: '/ip/reserve',      component: ipReserve },
+{ path: '/ip/types',        component: ipTypes },
+{ path: '/ip/type/edit/:IPT', component:  ipTypeEdit },
+{ path: '/ip/reserved',     component:  reservedIPs},
+{ path: '/vlan/edit/:VLI',  component:  vlanEdit },
+{ path: '/vlan/list',       component: vlanList },
+{ path: '/device/add/:STI/:RID/:RU', component: deviceAdd, name: 'device-add' },
+{ path: '/device/audit/:DID', component: deviceAudit },
+{ path: '/device/edit/:DID', component: deviceEdit },
+{ path: '/device/list', component:  deviceList },
+{ path: '/device/load', component: deviceLoad },
+{ path: '/device/types', component:  deviceTypes },
+{ path: '/device/type/edit/:DTI', component:  deviceTypeEdit },
+{ path: '/vm/audit/:VMI', component: vmAudit },
+{ path: '/vm/edit/:VMI', component: vmEdit },
+
+{ path: '/vm/list',         component:  vmList },
+{ path: '/mfgr/edit/:MID',  component: mfgrEdit },
+{ path: '/mfgr/list',       component:  mfgrList },
+{ path: '/part/add',        component:  partEdit },
+{ path: '/part/edit/:PID',  component: partEdit },
+{ path: '/part/list/:STI',  component: partList },
+{ path: '/part/load',           component:  partLoad },
+{ path: '/part/types',          component:  partTypes },
+{ path: '/part/use/:STI/:KID', component: partUse },
+{ path: '/part/inventory', component: partInventory },
+{ path: '/rack/edit/:RID', component: rackEdit },
+{ path: '/rack/list', component: rackList },
+{ path: '/rack/layout/:STI', component: rackLayout },
+//{ path: '/rack/layout/0', component: rackLayout, alias: '/rack/layout' },
+{ path: '/rack/layout', redirect: '/rack/layout/0' },
+{ path: '/rma/create/:PID', component:  rmaCreate },
+{ path: '/rma/edit/:RMD', component:  rmaEdit },
+{ path: '/rma/list', component:  rmaList },
+{ path: '/site/edit/:STI', component:  siteEdit },
+{ path: '/site/list', component:  siteList },
+{ path: '/user/edit/:USR', component:  userEdit },
+{ path: '/user/list', component:  userList },
+{ path: '/vendor/edit/:VID', component:  vendorEdit }, 
+{ path: '/vendor/list', component:  vendorList }, 
+{ path: '/search/:searchText', component:  searchFor, name: 'searcher' },
+{ path: '/', component: homePage },
+]
+
+const router = new VueRouter({
+   routes // short for routes: routes
+})
+
+const app = new Vue({
+    router,
+    store
+}).$mount('#app')
+
+
+/*
+router.beforeEach((to, from, next) => {
+    if (store.getters.loggedIn || to.path == '/auth/login') {
+        next()
+    } else {
+        next('/auth/login')
+    }
+})
+*/
+
+/*
+
 // Assign the new router
 //var router = new VueRouter({history: true})
 var router = new VueRouter()
 
-// Assign your routes
-router.map({
-    '/auth/login': {
-        component: Vue.component('user-login')
-    },
-    '/auth/logout': {
-        component:  Vue.component('user-logout')
-    },
-    '/admin/sessions': {
-        component: Vue.component('session-list')
-    },
-    '/admin/tags': {
-        component: Vue.component('tag-edit')
-    },
-    '/ip/edit/:IID': {
-        component:  Vue.component('ip-edit')
-    },
-    '/ip/list': {
-        component:  Vue.component('ip-list')
-    },
-    '/ip/reserve': {
-        component:  Vue.component('ip-reserve')
-    },
-    '/ip/types': {
-        component:  Vue.component('ip-types')
-    },
-    '/ip/type/edit/:IPT': {
-        component:  Vue.component('iptype-edit')
-    },
-    '/ip/reserved': {
-        component:  Vue.component('reserved-ips')
-    },
-    '/vlan/edit/:VLI': {
-        component:  Vue.component('vlan-edit')
-    },
-    '/vlan/list': {
-        component:  Vue.component('vlan-list')
-    },
-    '/device/add/:STI/:RID/:RU': {
-        component: Vue.component('device-add'),
-        name: 'device-add'
-    },
-    '/device/audit/:DID': {
-        component: Vue.component('device-audit')
-    },
-    '/device/edit/:DID': {
-        component: Vue.component('device-edit')
-    },
-    '/device/list': {
-        component:  Vue.component('device-list')
-    },
-    '/device/load': {
-        component:  Vue.component('device-load')
-    },
-    '/device/types': {
-        component:  Vue.component('device-types')
-    },
-    '/device/type/edit/:DTI': {
-        component:  Vue.component('device-type-edit')
-    },
-    '/vm/audit/:VMI': {
-        component: Vue.component('vm-audit')
-    },
-    '/vm/edit/:VMI': {
-        component: Vue.component('vm-edit')
-    },
-    '/vm/list': {
-        component:  Vue.component('vm-list')
-    },
-    '/mfgr/edit/:MID': {
-        component: Vue.component('mfgr-edit')
-    },
-    '/mfgr/list': {
-        component:  Vue.component('mfgr-list')
-    },
-    '/part/add': {
-        component:  Vue.component('part-edit')
-    },
-    '/part/edit/:PID': {
-        component:  Vue.component('part-edit')
-    },
-    '/part/list/:STI': {
-        component:  Vue.component('part-list')
-    },
-    '/part/load': {
-        component:  Vue.component('part-load')
-    },
-    '/part/types': {
-        component:  Vue.component('part-types')
-    },
-    '/part/use/:STI/:KID': {
-        component:  Vue.component('part-use')
-    },
-    '/part/inventory': {
-        component:  Vue.component('part-inventory')
-    },
-    '/rack/edit/:RID': {
-        component:  Vue.component('rack-edit')
-    },
-    '/rack/list': {
-        component:  Vue.component('rack-list')
-    },
-    '/rack/layout': {
-        component:  Vue.component('rack-layout')
-    },
-    '/rma/create/:PID': {
-        component:  Vue.component('rma-create')
-    },
-    '/rma/edit/:RMD': {
-        component:  Vue.component('rma-edit')
-    },
-    '/rma/list': {
-        component:  Vue.component('rma-list')
-    },
-    '/site/edit/:STI': {
-        component:  Vue.component('site-edit')
-    },
-    '/site/list': {
-        component:  Vue.component('site-list')
-    },
-    '/user/edit/:USR': {
-        component:  Vue.component('user-edit')
-    },
-    '/user/list': {
-        component:  Vue.component('user-list')
-    },
-    '/vendor/edit/:VID': {
-        component:  Vue.component('vendor-edit')
-    },
-    '/vendor/list': {
-        component:  Vue.component('vendor-list')
-    },
-    '/search/:searchText': {
-        component:  Vue.component('search-for'),
-        name: 'search'
-    },
-    '/': {
-        component:  Vue.component('home-page')
-    },
-})
-
 router.beforeEach(function (transition) {
     if ((! userInfo.APIKey || userInfo.APIKey.length == 0) && transition.to.path !== '/auth/login') {
-        router.go('/auth/login')
+        router.push('/auth/login')
     } else {
         transition.next()
     }
@@ -4413,3 +4218,4 @@ router.beforeEach(function (transition) {
 
 
 router.start(App, '#app')
+*/

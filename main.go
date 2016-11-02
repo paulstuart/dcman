@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	version           = "0.9.1"
+	version           = "1.0.1"
 	sessionMinutes    = time.Duration(time.Minute * 240)
 	masterMode        = true
 	hostname, _       = os.Hostname()
@@ -35,7 +35,6 @@ var (
 	cfg               = struct {
 		Main    config
 		Backups backupConfig
-		Jira    jiraConfig
 		SAML    samlConfig
 	}{}
 )
@@ -50,6 +49,7 @@ type config struct {
 	LogDir   string `gcfg:"logdir"`
 	ReadOnly bool   `gcfg:"readonly"`
 	PXEBoot  bool   `gcfg:"pxeboot"`
+	NoKey    bool   `gcfg:"noKey"` // don't require API key for access (for testing only!!)
 }
 
 type backupConfig struct {
@@ -151,6 +151,7 @@ func bulkPing(timeout int, ips ...string) map[string]bool {
 	}
 	return hits
 }
+
 func myIP() string {
 	addrs, _ := net.InterfaceAddrs()
 	for _, addr := range addrs {
@@ -277,6 +278,30 @@ func init() {
 	}()
 }
 
+func checkMAC() {
+	m, e := findMAC("10.100.48.25")
+	log.Println("MAC:", m, "ERR:", e)
+}
+
+func dbtest() {
+	//rows, err := dbRows("select 23, atoip('10.100.32.0')")
+	rows, err := dbRows("select atoip('10.100.32.0')")
+	if err != nil {
+		panic(err)
+	}
+	for _, row := range rows {
+		log.Println("ROW:", row)
+	}
+	return
+	rows, err = dbRows("select 23, atoip '10.100.32.0' ")
+	if err != nil {
+		panic(err)
+	}
+	for _, row := range rows {
+		log.Println("ROW:", row)
+	}
+}
+
 func main() {
 	var err error
 
@@ -284,6 +309,11 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
+	/*
+		dbtest()
+		return
+	*/
+
 	if cfg.Backups.Freq > 0 {
 		log.Println("set up backups")
 		go backups(cfg.Backups.Freq, cfg.Backups.Dir)

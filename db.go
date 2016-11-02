@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	//	"io"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -209,127 +209,16 @@ func dbStream(fn func([]string, int, []interface{}), query string, args ...inter
 	return datastore.Stream(fn, query, args...)
 }
 
-func dbTable(query string, args ...interface{}) (*dbutil.Table, error) {
-	if err := readable(); err != nil {
-		return &dbutil.Table{}, err
-	}
-	return datastore.Table(query, args...)
-}
-
-/*
-//func (db DBU) Stream(fn func([]string, int, []interface{}), query string, args ...interface{}) error {
 func dbStreamTab(w io.Writer, query string, args ...interface{}) error {
 	if err := readable(); err != nil {
 		return err
 	}
 	return datastore.StreamTab(w, query, args...)
 }
-func dbBackedUp() {}
 
-func dbChanged() {}
-
-func dbCmd() {}
-
-func dbExec(query string, args ...interface{}) error {
-	if err := writable(); err != nil {
-		return err
-	}
-	_, err := datastore.DB.Exec(query, args...)
-	return err
-}
-
-func dbFind(o dbutil.DBObject, keys dbutil.QueryKeys) error {
-	return datastore.Find(o, keys)
-}
-
-func dbFindSelf(o dbutil.DBObject) error {
+func dbTable(query string, args ...interface{}) (*dbutil.Table, error) {
 	if err := readable(); err != nil {
-		return err
+		return &dbutil.Table{}, err
 	}
-	return datastore.FindSelf(o)
+	return datastore.Table(query, args...)
 }
-
-func dbLoad(o dbutil.DBObject) error {
-	if err := readable(); err != nil {
-		return err
-	}
-	return datastore.FindSelf(o)
-}
-
-func dbGetInt(q string, args ...interface{}) (int, error) {
-	if err := readable(); err != nil {
-		return -1, err
-	}
-	return datastore.GetInt(q, args...)
-}
-
-func dbInsert(q string, args ...interface{}) (i int64, e error) {
-	if err := writable(); err != nil {
-		return -1, err
-	}
-	return datastore.Insert(q, args...)
-}
-
-func dbObjectDelete(obj interface{}) error {
-	if err := writable(); err != nil {
-		return err
-	}
-	return datastore.ObjectDelete(obj)
-}
-
-func dbReplace(o dbutil.DBObject) error {
-	if err := writable(); err != nil {
-		return err
-	}
-	return datastore.Replace(o)
-}
-
-
-
-func dbStreamJSON(w io.Writer, query string, args ...interface{}) error {
-	if err := readable(); err != nil {
-		return err
-	}
-	return datastore.StreamJSON(w, query, args...)
-}
-func dbStreamCSV(w io.Writer, query string, args ...interface{}) error {
-	if err := readable(); err != nil {
-		return err
-	}
-	return datastore.StreamCSV(w, query, args...)
-}
-
-
-func dbUpdate(query string, args ...interface{}) (i int64, e error) {
-	if err := writable(); err != nil {
-		return -1, err
-	}
-	return datastore.Update(query, args...)
-}
-
-func dbVersion() {}
-
-func trimDate(s string) string {
-	const date = len(dateLayout)
-	if len(s) < date {
-		return s
-	}
-	s = s[:date]
-	if s == "0001-01-01" {
-		return ""
-	}
-	return s
-}
-
-func trimTime(s string) string {
-	const t = len(timeLayout)
-	if len(s) < t {
-		return s
-	}
-	s = s[:t]
-	if s == "0001-01-01" {
-		return ""
-	}
-	return s
-}
-*/

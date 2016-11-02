@@ -1,20 +1,25 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>DCMan Beta</title>
+    <title>DCMan</title>
     <link rel="stylesheet" type="text/css" href="/dcman/static/css/bootstrap.css">
     <link rel="stylesheet" type="text/css" href="/dcman/static/css/new.css">
 
-    <script src="/dcman/static/js/jquery-2.0.3.js"></script>
+    <script src="/dcman/static/js/jquery-3.1.1.js"></script>
+    <script src="/dcman/static/js/lodash.core.js"></script>
     <script src="/dcman/static/js/bootstrap.js"></script>
     <script src="/dcman/static/js/vue.js"></script>
+    <script src="/dcman/static/js/vuex.js"></script>
+    <!--
+    <script src="/dcman/static/js/vue.common.js"></script>
+    -->
     <script src="/dcman/static/js/vue-router.js"></script>
 
 </head>
 <body>
 
     <div id="app">
-        <my-nav :app="myapp"></my-nav>
+        <main-menu></main-menu>
         <div class="bodybox">
         <router-view>Loading...</router-view>
         </div>
@@ -27,66 +32,61 @@
 
 
 <script type="text/x-template" id="tmpl-main-menu">
-    <div>
+    <div v-if="$store.getters.loggedIn">
     <ul class="nav navbar-nav navbar-right">
-        <li v-show="!app.auth.loggedIn"><a v-link="{ path: '/auth/login' }">Log in</a></li>
-        <li class="dropdown" v-show="app.auth.loggedIn && app.auth.user">
+        <li v-show="! $store.getters.loggedIn"><router-link to='/auth/login' >Log in</router-link></li>
+        <li class="dropdown" v-show="$store.getters.loggedIn">
             <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
-                {{ app.auth.user.name }} <span class="caret"></span></a>
+                {{ $store.getters.userName }} <span class="caret"></span></a>
             <ul class="dropdown-menu">
-            <!--
-                <li><a href="#">Profile</a></li>
-                <li><a href="#">Account settings</a></li>
-                <li role="separator" class="divider"></li>
-            -->
-                <li><a v-link="{ path: '/auth/logout' }">Logout</a></li>
+                <li><router-link to='/auth/logout' >Logout</router-link></li>
             </ul>
         </li>
     </ul>
     <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
       <ul class="nav navbar-nav">
-        <li class="active"><a v-link="{ path: '/'}">Home <span class="sr-only">(current)</span></a></li>
+        <li class="active"><router-link to='/'>Home <span class="sr-only">(current)</span></router-link></li>
         <li class="dropdown">
           <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Servers<span class="caret"></span></a>
           <ul class="dropdown-menu">
-            <li><a v-link="{ path: '/device/list' }">Device List</a></li>
-            <li><a v-link="{ path: '/vm/list' }">VM List</a></li>
+            <li><router-link to='/device/list' >Device List</router-link></li>
+            <li><router-link to='/vm/list' >VM List</router-link></li>
             <li role="separator" class="divider"></li>
-            <li><a v-link="{ path: '/device/load' }">Device Load</a></li>
+            <li><router-link to='/device/load' >Device Load</router-link></li>
             <li role="separator" class="divider"></li>
-            <li><a v-link="{ path: '/rack/layout' }">Rack Layout</a></li>
-            <li><a v-link="{ path: '/rack/list' }">Rack List</a></li>
-            <li><a v-link="{ path: '/rack/edit/0' }">Add Rack</a></li>
+            <li><router-link to='/rack/layout' >Rack Layout</router-link></li>
+            <li><router-link to='/rack/list' >Rack List</router-link></li>
+            <li><router-link to='/rack/edit/0' >Add Rack</router-link></li>
             <li role="separator" class="divider"></li>
-            <li><a v-link="{ path: '/device/types' }">Device Types</a></li>
+            <li><router-link to='/device/types' >Device Types</router-link></li>
           </ul>
         <li class="dropdown">
           <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Parts<span class="caret"></span></a>
           <ul class="dropdown-menu">
-            <li><a v-link="{ path: '/part/inventory' }">Parts Inventory</a></li>
-            <li v-if="canEdit"><a v-link="{ path: '/part/load' }">Load Inventory</a></li>
-            <li><a v-link="{ path: '/part/list/0' }">All Parts</a></li>
-            <li v-if="canEdit"><a v-link="{ path: '/part/add' }">Add Part</a></li>
+            <li><router-link to='/part/inventory' >Parts Inventory</router-link></li>
+            <li v-if="$store.getters.canEdit"><router-link to='/part/load' >Load Inventory</router-link></li>
+            <li><router-link to='/part/list/0' >All Parts</router-link></li>
+            <li v-if="$store.getters.canEdit"><router-link to='/part/add' >Add Part</router-link></li>
             <li role="separator" class="divider"></li>
-            <li><a v-link="{ path: '/part/types' }">Part Types</a></li>
+            <li><router-link to='/part/types' >Part Types</router-link></li>
             <li role="separator" class="divider"></li>
-            <li><a v-link="{ path: '/rma/list' }">RMA List</a></li>
+            <li><router-link to='/rma/list' >RMA List</router-link></li>
             <li role="separator" class="divider"></li>
-            <li><a v-link="{ path: '/vendor/list' }">Vendor List</a></li>
-            <li v-if="canEdit"><a v-link="{ path: '/vendor/edit/0' }">Add Vendor</a></li>
+            <li><router-link to='/vendor/list' >Vendor List</router-link></li>
+            <li v-if="$store.getters.canEdit"><router-link to='/vendor/edit/0' >Add Vendor</router-link></li>
             <li role="separator" class="divider"></li>
-            <li><a v-link="{ path: '/mfgr/list' }">Manufactuer List</a></li>
+            <li><router-link to='/mfgr/list' >Manufactuer List</router-link></li>
           </ul>
         <li class="dropdown">
           <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Network<span class="caret"></span></a>
           <ul class="dropdown-menu">
-            <li><a v-link="{ path: '/ip/list' }">Network IPs</a></li>
-            <li><a v-link="{ path: '/vlan/list' }">VLANs</a></li>
+            <li><router-link to='/ip/list' >Network IPs</router-link></li>
+            <li><router-link to='/vlan/list' >VLANs</router-link></li>
             <li role="separator" class="divider"></li>
-            <li v-if="canEdit"><a v-link="{ path: '/ip/reserve' }">Reserve IPs</a></li>
-            <li><a v-link="{ path: '/ip/reserved' }">IPs Reserved</a></li>
+            <li v-if="$store.getters.canEdit"><router-link to='/ip/reserve' >Reserve IPs</router-link></li>
+            <li><router-link to='/ip/reserved' >IPs Reserved</router-link></li>
             <li role="separator" class="divider"></li>
-            <li><a v-link="{ path: '/ip/types' }">IP Types</a></li>
+            <li><router-link to='/ip/types' >IP Types</router-link></li>
           </ul>
         </li>
       </ul>
@@ -96,21 +96,21 @@
         </div>
         <button class="btn btn-default" v-on:click.prevent="doSearch">Search</button>
       </form>
-      <ul class="nav navbar-nav navbar-right" v-if="app.auth.user.admin > 1">
+      <ul class="nav navbar-nav navbar-right" v-if="$store.getters.isAdmin">
         <li class="dropdown">
           <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Admin<span class="caret"></span></a>
           <ul class="dropdown-menu">
-            <li><a v-link="{ path: '/site/list' }">Site List</a></li>
-            <li><a v-link="{ path: '/user/list' }">User List</a></li>
-            <li><a v-link="{ path: '/admin/tags' }">Manage Tags</a></li>
+            <li><router-link to='/site/list' >Site List</router-link></li>
+            <li><router-link to='/user/list' >User List</router-link></li>
+            <li><router-link to='/admin/tags' >Manage Tags</router-link></li>
             <li role="separator" class="divider"></li>
-            <li><a v-link="{ path: '/admin/sessions' }">Session Log</a></li>
+            <li><router-link to='/admin/sessions' >Session Log</router-link></li>
             <li><a v-on:click.prevent="toggleDebug">{{debugAction}} Debug</a></li>
           </ul>
         </li>
       </ul>
     </div>
-    <hr class=menubar"/>
+    <hr class="menubar"/>
     </div>
 </script>
 
@@ -119,14 +119,14 @@
     <div id="rma-list">
         <h1 class="mytitle">{{sitename}} RMAs</h1>
         <label for="STI">Site</label>
-        <select id="STI" v-model="STI" number>
+        <select id="STI" v-model.number="STI">
             <option v-for="site in sites" v-bind:value="site.STI">
                 {{ site.Name }}
             </option>
         </select>
 
         <label for="pfilter">Kind</label>
-        <select id="pfilter" name="pfilter" v-model="rmaType" number>
+        <select id="pfilter" name="pfilter" v-model.number="rmaType">
             <option v-for="kind in kinds" v-bind:value="kind.id">
                 {{ kind.name }}
             </option>
@@ -143,10 +143,10 @@
         </select>
 
         <paged-grid 
-            :data="rmas | rmaFilter" 
+            :data="rmasFiltered" 
             :columns="columns" 
             :linkable="linkable"
-            :linkPath="linkpath"
+            :linkpath="linkpath"
             :start-row="startRow" 
             :rows-per-page="rowsPerPage">
         </paged-grid>
@@ -162,7 +162,7 @@
         <th v-for="key in columns"
           @click.prevent="sortBy(key)"
           :class="{active: sortKey == key}">
-          {{key | capitalize}}
+          {{ key[0].toUpperCase() + key.slice(1) }}
           <span class="arrow"
             :class="sortOrders[key] > 0 ? 'asc' : 'dsc'">
           </span>
@@ -170,21 +170,16 @@
       </tr>
     </thead>
     <tbody>
-      <tr v-for="
-        entry in rows
-        | filterBy filterKey
-        | filterBy subFilter
-        | orderBy sortKey sortOrders[sortKey]" id="rowid(entry)"
-        >
+      <tr v-for="entry in rows">
         <td v-for="key in columns">
            <template v-if="linkable(key)">
-              <a v-link="{ path: linkpath(entry, key)}">{{ entry[key] }}</a>
+              <router-link :to="linkpath(entry, key)">{{ entry[key] }}</router-link>
            </template>
            <template v-else>
                <template v-if="linkable(key)">
-                  <a v-link="{ path: linkpath(entry, key)}">{{ entry[key] }}</a>
+                  <router-link :to="linkpath(entry, key)">{{ entry[key] }}</router-link>
                </template>
-              {{* entry[key] }}
+              {{ entry[key] }}
            </template>
         </td>
       </tr>
@@ -219,12 +214,11 @@
             </option>
         </select>
         <paged-grid 
-            :data="rows | filterBy searchQuery | partFilter " 
+            :data="filteredParts " 
             :filename="filename" 
             :columns="columns" 
             :linkable="linkable"
-            :linkPath="linkpath"
-            :move-pages="movePages" 
+            :linkpath="linkpath"
             :start-row="startRow" 
             :rows-per-page="rowsPerPage">
         </paged-grid>
@@ -237,11 +231,10 @@
         <label for="query">Search</label>
         <input id="query" name="query" v-model="searchQuery">
         <paged-grid 
-            :data="rows | filterBy searchQuery" 
+            :data="filteredRows" 
             :columns="columns" 
             :linkable="linkable"
-            :linkPath="linkpath"
-            :move-pages="movePages" 
+            :linkpath="linkpath"
             :start-row="startRow" 
             :rows-per-page="rowsPerPage">
         </paged-grid>
@@ -255,31 +248,31 @@
         <th>IP</th>
         <th>Type</th>
         <th>Port</th>
-        <th v-if="canEdit">Action</th>
+        <th v-if="$store.getters.canEdit">Action</th>
       </tr>
     </thead>
     <tbody>
-      <tr v-for="entry in rows" id="ip-row-{{$index}}">
+      <tr v-for="(entry, index) in rows">
         <td>
-            <input id="ip-{{$index}}" type="text" v-model="rows[$index].IP"/>
+            <input v-bind:id="'ip-' + index" type="text" v-model="rows[index].IP"/>
         </td>
         <td>
-            <select id="ip-{{$index}}" v-model="rows[$index].IPT" number>
+            <select v-bind:id="'ip-' + index" v-model.number="rows[index].IPT">
                 <option v-for="type in iptypes" v-bind:value="type.IPT">
                     {{ type.Name }}
                 </option>
             </select>
         </td>
         <td>
-        <select v-model="rows[$index].IFD" number>
+        <select v-model.number="rows[index].IFD">
             <option v-for="port in ports" v-bind:value="port.IFD">
                 {{ port.Port }}
             </option>
         </select>
         </td>
-        <td v-if="canEdit">
-            <button class="btn" v-on:click.prevent="updateIP($index)">Update</button>
-            <button class="btn" v-on:click.prevent="deleteIP($index)">Delete</button>
+        <td v-if="$store.getters.canEdit">
+            <button class="btn" v-on:click.prevent="updateIP(index)">Update</button>
+            <button class="btn" v-on:click.prevent="deleteIP(index)">Delete</button>
         </td>
       </tr>
        
@@ -288,24 +281,23 @@
             <input type="text" v-model="newIP"/>
         </td>
         <td>
-            <select id="ip-{{$index}}" v-model="newIPT">
+            <select v-model="newIPT">
                 <option v-for="type in iptypes" v-bind:value="type.IPT">
                     {{ type.Name }}
                 </option>
             </select>
         </td>
         <td>
-        <select v-model="newIFD" number>
+        <select v-model.number="newIFD">
             <option v-for="port in ports" v-bind:value="port.IFD">
                 {{ port.Port }}
             </option>
         </select>
         </td>
-        <td v-if="canEdit">
+        <td v-if="$store.getters.canEdit">
             <button class="btn" v-on:click.prevent="addIP" :disabled="ipAddDisabled">Add</button>
         </td>
       </tr>
-
     </tbody>
   </table>
 </script>
@@ -319,29 +311,30 @@
         <th>MAC</th>
         <th>Switch Port</th>
         <th>Cable Tag</th>
-        <th v-if="canEdit">Action</th>
+        <th v-if="$store.getters.canEdit">Action</th>
       </tr>
     </thead>
     <tbody>
-      <tr v-for="entry in rows" id="face-row-{{$index}}">
+      <tr v-for="(entry, index) in rows">
         <td>
-            <input type="text" v-model="rows[$index].Port"/>
+            <input type="text" v-model="rows[index].Port"/>
         </td>
         <td>
-            <input type="checkbox" v-model="rows[$index].Mgmt"/>
+            <input type="checkbox" v-model="rows[index].Mgmt"/>
         </td>
         <td>
-            <input type="text" v-model="rows[$index].MAC"/>
+            <input type="text" v-model="rows[index].MAC"/>
         </td>
         <td>
-            <input type="text" v-model="rows[$index].SwitchPort"/>
+            <input type="text" v-model="rows[index].SwitchPort"/>
         </td>
         <td>
-            <input type="text" v-model="rows[$index].CableTag"/>
+            <input type="text" v-model="rows[index].CableTag"/>
         </td>
-        <td v-if="canEdit">
-            <button class="btn" v-on:click.prevent="updateInterface($index)">Update</button>
-            <button class="btn" v-on:click.prevent="deleteInterface($index)">Delete</button>
+        <td v-if="$store.getters.canEdit">
+            <button class="btn" v-on:click.prevent="updateInterface(index)">Update</button>
+            <button class="btn" v-on:click.prevent="deleteInterface(index)">Delete</button>
+            <button class="btn" v-on:click.prevent="findMAC(index)" v-if="needsMAC(index)">Get MAC</button>
         </td>
       </tr>
 
@@ -361,7 +354,7 @@
         <td>
             <input type="text" v-model="newCableTag"/>
         </td>
-        <td v-if="canEdit">
+        <td v-if="$store.getters.canEdit">
             <button class="btn" v-on:click.prevent="addInterface" :disabled="interfaceAddDisabled">Add</button>
         </td>
       </tr>
@@ -407,12 +400,11 @@
         </select>
 
         <paged-grid 
-            :data="rows | ipFilter | filterBy searchQuery" 
+            :data="filteredRows" 
             :filename="filename"
             :columns="columns" 
             :linkable="linkable"
-            :linkPath="linkpath"
-            :move-pages="movePages" 
+            :linkpath="linkpath"
             :start-row="startRow" 
             :rows-per-page="rowsPerPage">
         </paged-grid>
@@ -441,12 +433,11 @@
         </select>
 
         <paged-grid 
-            :data="rows | filterBy searchQuery | siteFilter" 
+            :data="filteredRows"
             :filename="filename"
             :columns="columns" 
             :linkable="linkable"
-            :linkPath="linkpath"
-            :move-pages="movePages" 
+            :linkpath="linkpath"
             :start-row="startRow" 
             :rows-per-page="rowsPerPage">
         </paged-grid>
@@ -455,98 +446,86 @@
 
 <script type="text/x-template" id="tmpl-device-list">
     <div class="view">
-        <div v-if="$loadingRouteData">Loading ...</div>
-        <div v-if="!$loadingRouteData">
-            <h1 class="mytitle">{{sitename}} Servers</h1>
-            <label for="STI">Site</label>
-            <select id="STI" v-model="STI" number>
-                <option v-for="dc in sites" v-bind:value="dc.STI">
-                    {{ dc.Name }}
-                </option>
-            </select>
+        <h1 class="mytitle">{{sitename}} Servers</h1>
+        <label for="STI">Site</label>
+        <select id="STI" v-model.number="STI">
+            <option v-for="dc in sites" v-bind:value="dc.STI">
+                {{ dc.Name }}
+            </option>
+        </select>
 
-            <label for="RID" v-show="STI">Rack</label>
-            <select id="RID" v-model="RID" v-show="STI" number>
-                <option v-for="rack in racks" v-bind:value="rack.RID">
-                    {{ rack.Label }}
-                </option>
-            </select>
+        <label for="RID" v-show="STI">Rack</label>
+        <select id="RID" v-model.number="RID" v-show="STI">
+            <option v-for="rack in racks" v-bind:value="rack.RID">
+                {{ rack.Label }}
+            </option>
+        </select>
 
-            <label for="DTI">Type</label>
-            <select id="DTI" v-model="DTI" number>
-                <option value="0"></option>
-                <option v-for="type in types" v-bind:value="type.DTI">
-                    {{ type.Name }}
-                </option>
-            </select>
+        <label for="DTI">Type</label>
+        <select id="DTI" v-model.number="DTI">
+            <option value="0"></option>
+            <option v-for="type in types" v-bind:value="type.DTI">
+                {{ type.Name }}
+            </option>
+        </select>
 
-            <label for="query">Filter</label>
-            <input name="query" v-model="searchQuery" @keyup="resetStartRow">
+        <label for="query">Filter</label>
+        <input name="query" v-model="searchQuery" @keyup="resetStartRow">
 
-            <label for="pagerows">page size</label>
-            <select id="pagerows" v-model="pagerows">
-                <option v-for="size in sizes" v-bind:value="size">
-                    {{ size }}
-                </option>
-            </select>
+        <label for="pagerows">page size</label>
+        <select id="pagerows" v-model="pagerows">
+            <option v-for="size in sizes" v-bind:value="size">
+                {{ size }}
+            </option>
+        </select>
 
-            <paged-grid 
-                :data="rows | filterBy searchQuery | rackFilter | typeFilter" 
-                :columns="columns" 
-                :linkable="canLink"
-                :linkPath="linkFN"
-                :move-pages="movePages" 
-                :start-row="startRow" 
-                :filename="filename"
-                :rows-per-page="rowsPerPage">
-            </paged-grid>
-        </div>
+        <paged-grid 
+            :data="filteredRows"
+            :columns="columns" 
+            :linkable="canLink"
+            :linkpath="linkFN"
+            :start-row="startRow" 
+            :filename="filename"
+            :rows-per-page="rowsPerPage">
+        </paged-grid>
     </div>
 </script>
 
 <script type="text/x-template" id="tmpl-device-audit">
     <div class="view">
-        <div v-if="$loadingRouteData">Loading ...</div>
-        <div v-if="!$loadingRouteData">
-            <label for="query">Filter</label>
-            <input name="query" v-model="searchQuery" @keyup="resetStartRow">
+        <label for="query">Filter</label>
+        <input name="query" v-model="searchQuery" @keyup="resetStartRow">
 
-            <select id="pagerows" v-model="pagerows">
-                <option v-for="size in sizes" v-bind:value="size">
-                    {{ size }}
-                </option>
-            </select>
+        <select id="pagerows" v-model="pagerows">
+            <option v-for="size in sizes" v-bind:value="size">
+                {{ size }}
+            </option>
+        </select>
 
-            <paged-grid 
-                :data="rows | filterBy searchQuery" 
-                :columns="columns" 
-                :linkable="linkable"
-                :linkPath="linkpath"
-                :move-pages="movePages" 
-                :start-row="startRow" 
-                :filename="filename"
-                :rows-per-page="rowsPerPage">
-            </paged-grid>
-        </div>
+        <paged-grid 
+            :data="filteredRows"
+            :columns="columns" 
+            :linkable="linkable"
+            :linkpath="linkpath"
+            :start-row="startRow" 
+            :filename="filename"
+            :rows-per-page="rowsPerPage">
+        </paged-grid>
     </div>
 </script>
 
 <script type="text/x-template" id="tmpl-device-types">
     <div class="view">
-        <div v-if="$loadingRouteData">Loading ...</div>
-        <div v-if="!$loadingRouteData">
-            <h1 class="mytitle">Device Types</h1>
-            <button class="btn" v-on:click.prevent="addType">Add Type</button>
-            <paged-grid 
-                :data="rows"
-                :columns="columns" 
-                :linkable="linkable"
-                :linkPath="linkpath"
-                :move-pages="movePages" 
-                :start-row="startRow" 
-                :rows-per-page="rowsPerPage">
-            </paged-grid>
-        </div>
+        <h1 class="mytitle">Device Types</h1>
+        <button class="btn" v-on:click.prevent="addType">Add Type</button>
+        <paged-grid 
+            :data="rows"
+            :columns="columns" 
+            :linkable="linkable"
+            :linkpath="linkpath"
+            :start-row="startRow" 
+            :rows-per-page="rowsPerPage">
+        </paged-grid>
     </div>
 </script>
 
@@ -590,33 +569,33 @@
       <tr>
         <th>IP</th>
         <th>Type</th>
-        <th v-if="canEdit">Action</th>
+        <th v-if="$store.getters.canEdit">Action</th>
       </tr>
     </thead>
     <tbody>
-      <tr v-for="entry in rows" id="ip-row-{{$index}}">
+      <tr v-for="(entry, index) in rows">
         <td>
-            <input id="ip-{{$index}}" type="text" v-model="rows[$index].IP"/>
+            <input v-bind:id="'ip-' + index" type="text" v-model="rows[index].IP"/>
         </td>
         <td>
-            <select id="ip-{{$index}}" v-model="rows[$index].IPT" number>
+            <select v-model.number="rows[index].IPT">
                 <option v-for="type in types" v-bind:value="type.IPT">
                     {{ type.Name }}
                 </option>
             </select>
         </td>
-        <td v-if="canEdit">
-            <button class="btn" v-on:click.prevent="updateIP($index)">Update</button>
-            <button class="btn" v-on:click.prevent="deleteIP($index)">Delete</button>
+        <td v-if="$store.getters.canEdit">
+            <button class="btn" v-on:click.prevent="updateIP(index)">Update</button>
+            <button class="btn" v-on:click.prevent="deleteIP(index)">Delete</button>
         </td>
       </tr>
        
-      <tr v-if="canEdit">
+      <tr v-if="$store.getters.canEdit">
         <td>
             <input type="text" v-model="newIP"/>
         </td>
         <td>
-            <select id="ip-{{$index}}" v-model="newIPT">
+            <select v-model="newIPT">
                 <option v-for="type in types" v-bind:value="type.IPT">
                     {{ type.Name }}
                 </option>
@@ -653,11 +632,10 @@
         </select>
 
         <paged-grid 
-            :data="data | filterBy searchQuery" 
+            :data="filteredRows"
             :columns="columns" 
             :linkable="linkable"
-            :linkPath="linkpath"
-            :move-pages="movePages" 
+            :linkpath="linkpath"
             :start-row="startRow" 
             :filename="filename"
             :rows-per-page="rowsPerPage">
@@ -692,7 +670,7 @@
                 <div class="form-group">
                     <label for="DTI" class="control-label col-xs-2">Type</label>
                     <div class="col-xs-2">
-                        <select id="DTI" v-model="Device.DTI" number>
+                        <select id="DTI" v-model.number="Device.DTI">
                             <option v-for="type in device_types" v-bind:value="type.DTI">
                                 {{ type.Name }}
                             </option>
@@ -717,7 +695,7 @@
                 <div class="form-group">
                     <label for="STI" class="control-label col-xs-2">Site</label>
                     <div class="col-xs-2">
-                        <select id="STI" v-model="Device.STI" number>
+                        <select id="STI" v-model.number="Device.STI">
                             <option v-for="dc in sites" v-bind:value="dc.STI">
                                 {{ dc.Name }}
                             </option>
@@ -726,9 +704,9 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="RID" class="control-label col-xs-2"><a href="rack/view/{{Device.DC}}/{{Device.Rack}}">Rack Number</a></label>
+                    <label for="RID" class="control-label col-xs-2"><router-link :to="{ path:'/rack/view/' + Device.RID}">Rack Number</router-link></label>
                     <div class="col-xs-2">
-                        <select id="RID" name="RID" v-model="Device.RID" number>
+                        <select id="RID" name="RID" v-model.number="Device.RID">
                             <option v-for="rack in Device.racks" v-bind:value="rack.RID">
                                 {{ rack.Label }}
                             </option>
@@ -739,14 +717,14 @@
                 <div class="form-group">
                     <label for="RU" class="control-label col-xs-2">Rack Unit</label>
                     <div class="col-xs-2">
-                        <input type="text" id="RU" v-model="Device.RU" number/>
+                        <input type="text" id="RU" v-model.number="Device.RU"/>
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label for="Height" class="control-label col-xs-2">Unit Height</label>
                     <div class="col-xs-2">
-                        <input type="text" id="Height" v-model="Device.Height" number/>
+                        <input type="text" id="Height" v-model.number="Device.Height"/>
                     </div>
                 </div>
 
@@ -760,7 +738,7 @@
                 <div class="form-group">
                     <label for="MID" class="control-label col-xs-2">Make</label>
                     <div class="col-xs-2">
-                        <select id="MID" v-model="Device.MID" number>
+                        <select id="MID" v-model.number="Device.MID" >
                             <option value="0"></option>
                             <option v-for="mfgr in mfgrs" v-bind:value="mfgr.MID">
                                 {{ mfgr.Name }}
@@ -779,7 +757,7 @@
                 <div class="form-group">
                     <label for="TID" class="control-label col-xs-2">Tag</label>
                     <div class="col-xs-2">
-                            <select id="TID" v-model="Device.TID" number>
+                            <select id="TID" v-model.number="Device.TID" >
                                 <option value="0"></option>
                                 <option v-for="tag in tags" v-bind:value="tag.TID">
                                     {{ tag.Name }}
@@ -817,7 +795,7 @@
                 </div>
             </fieldset>
 
-            <fieldset class="col-xs-12" v-if="canEdit">
+            <fieldset class="col-xs-12" v-if="$store.getters.canEdit">
                 <div class="form-group">
                     <div class="col-xs-offset-1 col-xs-1">
                         <button class="btn" v-on:click.prevent="showList">Cancel</button>
@@ -853,7 +831,8 @@
                 <interface-grid
                     :DID="Device.DID"
                     :rows="Device.interfaces"
-                    :columns="ifaceColumns">
+                    :columns="ifaceColumns"
+                    :IPMI="IPMI">
                 </interface-grid>
             </fieldset>
 
@@ -863,11 +842,12 @@
                     :data="Device.vms" 
                     :columns="vmColumns" 
                     :linkable="vmLinkable"
-                    :linkPath="vmLinkpath"
-                    :move-pages="movePages" 
-                    :start-row="startRow" 
-                    :rows-per-page="rowsPerPage">
+                    :linkpath="vmLinkpath"
+                    :start-row="startRow"
+                    :rows-per-page="pageRows">
                 </paged-grid>
+                <!--
+                -->
             </fieldset>
         </form>
     </div>
@@ -899,7 +879,7 @@
             </div>
         </fieldset>
 
-        <fieldset class="col-xs-12" v-if="canEdit">
+        <fieldset class="col-xs-12" v-if="$store.getters.canEdit">
             <div class="form-group">
                 <div class="col-xs-offset-1 col-xs-1">
                     <button class="btn" v-on:click.prevent="showList">Cancel</button>
@@ -938,7 +918,7 @@
             </div>
         </fieldset>
 
-        <fieldset class="col-xs-12" v-if="canEdit">
+        <fieldset class="col-xs-12" v-if="$store.getters.canEdit">
             <div class="form-group">
                 <div class="col-xs-offset-1 col-xs-1">
                     <button class="btn" v-on:click.prevent="showList">Cancel</button>
@@ -967,7 +947,7 @@
             <div class="form-group">
                 <label for="STI" class="control-label col-xs-2">Site</label>
                 <div class="col-xs-2">
-                    <select id="STI" v-model="STI" number>
+                    <select id="STI" v-model.number="STI">
                         <option v-for="site in sites" v-bind:value="site.STI">
                             {{ site.Name }}
                         </option>
@@ -1007,7 +987,7 @@
             <div class="form-group">
                 <label for="STI" class="control-label col-xs-2">Site</label>
                 <div class="col-xs-2">
-                    <select id="STI" v-model="STI" number>
+                    <select id="STI" v-model.number="STI">
                         <option v-for="site in sites" v-bind:value="site.STI">
                             {{ site.Name }}
                         </option>
@@ -1043,19 +1023,19 @@
         <fieldset class="col-xs-12">
             <legend>Rack</legend>
             <div class="form-group">
-                    <label for="STI" class="control-label col-xs-2">Site</label>
-                    <div class="col-xs-2">
-                        <select id="STI" v-model="Rack.STI" number>
-                            <option v-for="site in sites" v-bind:value="site.STI">
-                                {{ site.Name }}
-                            </option>
-                        </select>
-                    </div>
+                <label for="STI" class="control-label col-xs-2">Site</label>
+                <div class="col-xs-2">
+                    <select name="STI" v-model.number="Rack.STI">
+                        <option v-for="site in sites" v-bind:value="site.STI">
+                            {{ site.Name }}
+                        </option>
+                    </select>
+                </div>
             </div>
             <div class="form-group">
                 <label for="Label" class="control-label col-xs-2">Rack Number</label>
                 <div class="col-xs-2">
-                    <input type="text" name="Label" v-model="Rack.Label" required number/>
+                    <input type="text" name="Label" v-model.number="Rack.Label" required/>
                 </div>
             </div>
 
@@ -1069,7 +1049,7 @@
             <div class="form-group">
                 <label for="RUs" class="control-label col-xs-2">Height (RUs)</label>
                 <div class="col-xs-2">
-                    <input type="text" name="RUs" v-model="Rack.RUs" number/>
+                    <input type="text" name="RUs" v-model.number="Rack.RUs"/>
                 </div>
             </div>
 
@@ -1084,11 +1064,11 @@
         <fieldset class="col-xs-12" v-if="Rack.RID != 0">
             <label for="Audit" class="control-label col-xs-2">Audit</label>
             <div class="col-xs-2">
-                 <a v-link="{ path: '/rack/audit/' + Rack.RID }">Change History</a>
+                 <router-link :to="{ path:'/rack/audit/' + Rack.RID}">Change History</router-link>
             </div>
         </fieldset>
 
-        <fieldset class="col-xs-12" v-if="canEdit">
+        <fieldset class="col-xs-12" v-if="$store.getters.canEdit">
             <div class="form-group">
                 <div class="col-xs-offset-1 col-xs-1">
                     <button class="btn" v-on:click.prevent="showList">Cancel</button>
@@ -1131,11 +1111,10 @@
         </select>
 
         <paged-grid 
-            :data="rows | filterBy searchQuery" 
+            :data="filteredRows"
             :columns="columns" 
             :linkable="linkable"
-            :linkPath="linkpath"
-            :move-pages="movePages" 
+            :linkpath="linkpath"
             :start-row="startRow" 
             :rows-per-page="rowsPerPage">
         </paged-grid>
@@ -1156,11 +1135,10 @@
         </select>
 
         <paged-grid 
-            :data="rows | filterBy searchQuery" 
+            :data="filteredRows"
             :columns="columns" 
             :linkable="linkable"
-            :linkPath="linkpath"
-            :move-pages="movePages" 
+            :linkpath="linkpath"
             :start-row="startRow" 
             :rows-per-page="rowsPerPage">
         </paged-grid>
@@ -1173,13 +1151,14 @@
         <h1 class="mytitle">Manufacturers</h1>
         <label for="query">Search</label>
         <input id="query" v-model="searchQuery">
-        <a v-if="canEdit" class="btn btn-info" v-link="{ path: '/mfgr/edit/0' }">Add</a>
+        <template v-if="$store.getters.canEdit">
+        <router-link class="btn btn-info" :to="{ path: '/mfgr/edit/0'}" >Add</router-link>
+        </template>
         <paged-grid 
-            :data="rows | filterBy searchQuery" 
+            :data="rows"
             :columns="columns" 
             :linkable="linkable"
-            :linkPath="linkpath"
-            :move-pages="movePages" 
+            :linkpath="linkpath"
             :start-row="startRow" 
             :rows-per-page="rowsPerPage">
         </paged-grid>
@@ -1219,7 +1198,7 @@
             </div>
         </fieldset>
 
-        <fieldset class="col-xs-12" v-if="canEdit">
+        <fieldset class="col-xs-12" v-if="$store.getters.canEdit">
             <div class="form-group">
                 <div class="col-xs-offset-1 col-xs-1">
                     <button class="btn" v-on:click.prevent="showList">Cancel</button>
@@ -1244,13 +1223,12 @@
         <h1 class="mytitle">Sites</h1>
         <label for="query">Search</label>
         <input id="query" v-model="searchQuery">
-        <a v-if="canEdit" class="btn btn-info" v-link="{ path: '/site/edit/0' }">Add</a>
+        <router-link v-if="$store.getters.canEdit" class="btn btn-info" to='/site/edit/0' >Add</router-link>
         <paged-grid 
-            :data="rows | filterBy searchQuery" 
+            :data="filteredRows"
             :columns="columns" 
             :linkable="linkable"
-            :linkPath="linkpath"
-            :move-pages="movePages" 
+            :linkpath="linkpath"
             :start-row="startRow" 
             :rows-per-page="rowsPerPage">
         </paged-grid>
@@ -1262,7 +1240,7 @@
     <div class="rackwrap">
     <div class="rackview">
          <h2 class="racktitle">
-         <a v-link="{ path: '/rack/edit/' + layouts.rack.RID}">Rack: {{ layouts.rack.Label }}</a>
+         <router-link :to="{ path:'/rack/edit/' + layouts.rack.RID }">Rack: {{ layouts.rack.Label }}</router-link>
          </h2>
          <h4 class="racktitle">
          <span v-if="layouts.rack.VendorID">(Vendor ID: {{layouts.rack.VendorID}})</span>
@@ -1280,18 +1258,18 @@
                 <th class="rcell" v-if="audit">Up</th>
                 <th class="rcell" v-if="audit">Down</th>
             </tr>
-            <tr v-for="lay in layouts.units" class="rackrow rackheight{{lay.Height}}" v-if="lay.Height || audit">
+            <tr v-for="lay in layouts.units" class="rackrow" v-bind:class="'rackheight' + lay.Height" v-if="lay.Height || audit">
                 <td class="rcell">
                     <template v-if="lay.DID">
                     {{ lay.RU }}
                     </template>
                     <template v-else>
-                    <a v-link="{ name: 'device-add', params: {STI: layouts.rack.STI, RID:layouts.rack.RID, RU:lay.RU}}">{{ lay.RU }}</a>
+                    <router-link :to="{name:'device-add', params: {STI: layouts.rack.STI, RID:layouts.rack.RID, RU:lay.RU}}">{{ lay.RU }}</router-link>
                     </template>
                 </td>
                 <td class="rcell sizecol" v-if="audit">
                     <template v-if="lay.DID">
-                    <input type="text" class="sizecol" v-bind:class="{badentry: lay.badHeight}" v-model="lay.newHeight" @change="resize(lay)" number>
+                    <input type="text" class="sizecol" v-bind:class="{badentry: lay.badHeight}" v-model.number="lay.newHeight" @change="resize(lay)">
                     </template>
                 </td>
                 <td class="rcell">
@@ -1299,7 +1277,9 @@
                     <input type="text" v-if="lay.DID" v-bind:class="{badentry: lay.badHostname}" v-model="lay.Hostname" @change="rename(lay)">
                     </template>
                     <template v-else>
-                    <a v-if="lay.DID" v-link="{ path: '/device/edit/' + lay.DID}">{{ lay.Hostname }}</a>
+                        <template v-if="lay.DID">
+                        <router-link :to="{ path: '/device/edit/' + lay.DID}">{{ lay.Hostname }}</router-link>
+                        </template>
                     </template>
                 </td>
                 <td class="rcell">
@@ -1330,7 +1310,7 @@
             <tr v-for="lay in layouts.other" class="rackrow">
                 <td></td>
                 <td>
-                    <a v-if="lay.DID" v-link="{ path: '/device/edit/' + lay.DID}">{{ lay.Hostname }}</a>
+                    <a v-if="lay.DID" v-link="{ path: '/device/edit/' + lay.DID>{{ lay.Hostname }}"</router-link>
                 </td>
                 <td>
                     {{ lay.IPs }}
@@ -1351,14 +1331,14 @@
     <div>
         <h1 class="mytitle">{{sitename}} Rack View</h1>
         <label for="STI">Site</label>
-        <select id="STI" name="STI" v-model="STI" number>
+        <select id="STI" name="STI" v-model.number="STI">
             <option v-for="dc in sites" v-bind:value="dc.STI">
                 {{ dc.Name }}
             </option>
         </select>
 
         <label for="RID">Rack</label>
-        <select id="Rack" v-model="RID" number>
+        <select id="Rack" v-model.number="RID">
             <option v-for="rack in racks" v-bind:value="rack.RID">
                 {{ rack.Label }}
             </option>
@@ -1366,14 +1346,14 @@
 
         <button class="btn" v-on:click.prevent="ping">Ping</button>
 
-        <template v-if="canEdit">
+        <template v-if="$store.getters.canEdit">
         <label for="audit">Audit</label>
         <input type="checkbox" id="audit" name="audit" v-model="audit"/>
         </template>
 
         <div class="allracks">
             <rack-view 
-                v-for="lump in lumpy | filterBy rfilter"
+                v-for="lump in filteredRacks"
                 v-bind:RID="RID"
                 v-bind:audit="audit"
                 :layouts="lump">
@@ -1391,7 +1371,7 @@
             <div class="form-group">
                 <label for="Server" class="control-label col-xs-2">Server</label>
                 <div class="col-xs-2">
-                     <a v-link="{ path: '/device/edit/' + VM.DID}">{{ VM.Server }}</a>
+                     <router-link :to="{ path:'/device/edit/' + VM.DID}">{{ VM.Server }}</router-link>
                 </div>
             </div>
 
@@ -1420,11 +1400,11 @@
         <fieldset class="col-xs-12" v-if="VM.Version > 0">
             <label for="Audit" class="control-label col-xs-2">Audit</label>
             <div class="col-xs-2">
-                 <a v-link="{ path: '/vm/audit/' + VM.VMI }">Change History</a>
+                 <router-link :to="{ path:'/vm/audit/' + VM.VMI}">Change History</router-link>
             </div>
         </fieldset>
 
-        <fieldset class="col-xs-12" v-if="canEdit">
+        <fieldset class="col-xs-12" v-if="$store.getters.canEdit">
             <div class="form-group">
                 <div class="col-xs-offset-1 col-xs-1">
                     <button class="btn" v-on:click.prevent="showList">Cancel</button>
@@ -1449,28 +1429,24 @@
 
 <script type="text/x-template" id="tmpl-audit">
     <div class="view">
-        <div v-if="$loadingRouteData">Loading ...</div>
-        <div v-if="!$loadingRouteData">
-            <label for="query">Filter</label>
-            <input name="query" v-model="searchQuery" @keyup="resetStartRow">
+        <label for="query">Filter</label>
+        <input name="query" v-model="searchQuery" @keyup="resetStartRow">
 
-            <select id="pagerows" v-model="pagerows">
-                <option v-for="size in sizes" v-bind:value="size">
-                    {{ size }}
-                </option>
-            </select>
+        <select id="pagerows" v-model="pagerows">
+            <option v-for="size in sizes" v-bind:value="size">
+                {{ size }}
+            </option>
+        </select>
 
-            <paged-grid 
-                :data="rows | filterBy searchQuery" 
-                :columns="columns" 
-                :linkable="linkable"
-                :linkPath="linkpath"
-                :move-pages="movePages" 
-                :start-row="startRow" 
-                :filename="filename"
-                :rows-per-page="rowsPerPage">
-            </paged-grid>
-        </div>
+        <paged-grid 
+            :data="filteredRows"
+            :columns="columns" 
+            :linkable="linkable"
+            :linkpath="linkpath"
+            :start-row="startRow" 
+            :filename="filename"
+            :rows-per-page="rowsPerPage">
+        </paged-grid>
     </div>
 </script>
 
@@ -1495,10 +1471,10 @@
         </select>
 
         <paged-grid 
-            :data="partData | filterBy searchQuery" 
+            :data="filteredRows"
             :columns="columns" 
             :linkable="linkable"
-            :linkPath="linkpath"
+            :linkpath="linkpath"
             :start-row="startRow" 
             :rows-per-page="rowsPerPage">
         </paged-grid>
@@ -1512,12 +1488,12 @@
 
         <label for="query">Search</label>
         <input id="query" v-model="searchQuery">
-        <a v-if="canEdit" class="btn btn-info" v-link="{ path: '/user/edit/0' }">Add User</a>
+        <a v-if="$store.getters.canEdit" class="btn btn-info" v-link="{ path: '/user/edit/0' >Add User</router-link>
         <paged-grid 
-            :data="rows | filterBy searchQuery" 
+            :data="filteredRows"
             :columns="columns" 
             :linkable="linkable"
-            :linkPath="linkpath"
+            :linkpath="linkpath"
             :start-row="startRow" 
             :rows-per-page="rowsPerPage">
         </paged-grid>
@@ -1544,11 +1520,11 @@
         </select>
 
         <paged-grid 
-            :data="data | siteFilter" 
+            :data="filteredRows"
             :filename="filename" 
             :columns="columns" 
             :linkable="linkable"
-            :linkPath="linkpath"
+            :linkpath="linkpath"
             :start-row="startRow" 
             :rows-per-page="rowsPerPage">
         </paged-grid>
@@ -1563,9 +1539,9 @@
             <fieldset class="col-xs-12">
                 <legend>VLAN</legend>
                 <div class="form-group">
-                    <label for="STI" class="control-label col-xs-2">Site</label>
+                    <label for="STI" class="control-label col-xs-2">Site</label> STI:{{STI}}
                     <div class="col-xs-2">
-                        <select id="STI" name="STI" v-model="VLAN.STI" number>
+                        <select id="STI" name="STI" v-model.number="VLAN.STI">
                         <option v-for="site in sites" v-bind:value="site.STI">
                             {{ site.Name }}
                         </option>
@@ -1576,7 +1552,7 @@
                 <div class="form-group">
                     <label for="Name" class="control-label col-xs-2">Name</label>
                     <div class="col-xs-2">
-                        <input type="text" id="Name" v-model="VLAN.Name" number/>
+                        <input type="text" id="Name" v-model.number="VLAN.Name"/>
                     </div>
                 </div>
 
@@ -1607,9 +1583,23 @@
                         <input type="text" id="Netmask" v-model="VLAN.Netmask"/>
                     </div>
                 </div>
+
+                <div class="form-group">
+                    <label for="Starting" class="control-label col-xs-2">Starting</label>
+                    <div class="col-xs-2">
+                        <input type="text" id="Starting" v-model="VLAN.Starting"/>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="Note" class="control-label col-xs-2">Note</label>
+                    <div class="col-xs-2">
+                        <textarea cols="25" rows="2" name="Note" v-model="VLAN.Note"></textarea>
+                    </div>
+                </div>
             </fieldset>
 
-            <fieldset class="col-xs-12" v-if="canEdit">
+            <fieldset class="col-xs-12" v-if="$store.getters.canEdit">
                 <div class="form-group">
                     <div class="col-xs-offset-1 col-xs-1">
                         <button class="btn" v-on:click.prevent="showList">Cancel</button>
@@ -1636,7 +1626,7 @@
                 <div class="form-group">
                     <label for="STI" class="control-label col-xs-2">Site</label>
                     <div class="col-xs-2">
-                        <select id="STI" name="STI" v-model="STI" number>
+                        <select id="STI" name="STI" v-model.number="STI">
                         <option v-for="site in sites" v-bind:value="site.STI">
                             {{ site.Name }}
                         </option>
@@ -1647,7 +1637,7 @@
                 <div class="form-group">
                     <label for="Name" class="control-label col-xs-2">VLAN</label>
                     <div class="col-xs-2">
-                        <select id="VLI" name="VLI" v-model="VLI" number>
+                        <select id="VLI" name="VLI" v-model.number="VLI">
                         <option v-for="vlan in vlans" v-bind:value="vlan.VLI">
                             {{ vlan.Name }}
                         </option>
@@ -1724,7 +1714,7 @@
             <div class="form-group" v-if="inuse">
                 <label for="iptype" class="control-label col-xs-2">Type</label>
                 <div class="col-xs-2">
-                    <select id="iptype" v-model="IP.IPT" number>
+                    <select id="iptype" v-model.number="IP.IPT">
                         <option v-for="type in iptypes" v-bind:value="type.IPT">
                             {{ type.Name }}
                         </option>
@@ -1740,7 +1730,7 @@
             </div>
         </fieldset>
 
-        <fieldset class="col-xs-12" v-if="canEdit">
+        <fieldset class="col-xs-12" v-if="$store.getters.canEdit">
             <div class="form-group">
                 <div class="col-xs-offset-1 col-xs-1">
                     <button class="btn" v-on:click.prevent="showList">Cancel</button>
@@ -1771,7 +1761,7 @@
         <div class="form-group">
             <label for="STI" class="control-label col-xs-2">Site</label>
             <div class="col-xs-2">
-                <select id="STI" name="STI" v-model="Part.STI" number>
+                <select id="STI" name="STI" v-model.number="Part.STI">
                 <option v-for="site in sites" v-bind:value="site.STI">
                     {{ site.Name }}
                 </option>
@@ -1787,7 +1777,7 @@
         <div class="form-group">
             <label for="PTI" class="control-label col-xs-2">Part Type</label>
             <div class="col-xs-2">
-                <select id="PTI" name="PTI" v-model="Part.PTI" number>
+                <select id="PTI" name="PTI" v-model.number="Part.PTI">
                 <option v-for="type in types" v-bind:value="types.PTI">
                     {{ type.Name }}
                 </option>
@@ -1795,9 +1785,9 @@
             </div>
         </div>
         <div class="form-group">
-            <label for="VID" class="control-label col-xs-2"><a v-link="{ path: '/vendor/list' }">Vendor</a></label>
+            <label for="VID" class="control-label col-xs-2"><router-link to='/vendor/list' >Vendor</router-link></label>
             <div class="col-xs-2">
-                <select id="VID" name="VID" v-model="Part.VID" number>
+                <select id="VID" name="VID" v-model.number="Part.VID">
                 <option v-for="vendor in vendors" v-bind:value="vendor.VID">
                     {{ vendor.Name }}
                 </option>
@@ -1846,7 +1836,7 @@
                 <input type="text" class="form-control" v-bind:class="{badentry: badHost}" id="hostname" placeholder="optional"  v-model="Part.Hostname" @change="findhost">
             </div>
         </div>
-        <div class="form-group" v-if="canEdit">
+        <div class="form-group" v-if="$store.getters.canEdit">
             <div class="col-xs-offset-1 col-xs-1">
                 <button class="btn" type="cancel" v-on:click.prevent="showList">Cancel</button>
             </div>
@@ -1894,7 +1884,7 @@
             <div class="form-group">
                 <label for="level" class="control-label col-xs-2">Admin Level</label>
                 <div class="col-xs-2">
-                    <select id="level" name="level" v-model="User.Level" number>
+                    <select id="level" name="level" v-model.number="User.Level">
                     <option v-for="level in levels" v-bind:value="level.Level">
                         {{ level.Label }}
                     </option>
@@ -1909,7 +1899,7 @@
                 </div>
             </div>
 
-            <div class="form-group" v-if="isAdmin">
+            <div class="form-group" v-if="$store.getters.isAdmin">
                 <div class="col-xs-offset-1 col-xs-1">
                     <button class="btn" type="cancel" v-on:click.prevent="showList">Cancel</button>
                 </div>
@@ -2015,7 +2005,7 @@
                     <input type="text" class="form-control" id="date-created" v-model="RMA.Created">
                 </div>
             </div>
-            <div class="form-group" v-if="canEdit">
+            <div class="form-group" v-if="$store.getters.canEdit">
                 <div class="col-xs-offset-1 col-xs-1">
                     <button class="btn" type="cancel" v-on:click.prevent="showList">Cancel</button>
                 </div>
@@ -2040,7 +2030,7 @@
             <div class="form-group">
                 <label for="PID" class="control-label col-xs-2">Serial Number</label>
                 <div class="col-xs-2">
-                    <select id="PID" name="PID" v-model="PID" number>
+                    <select id="PID" name="PID" v-model.number="PID">
                     <option v-for="part in available" v-bind:value="part.PID">
                         {{ part.Serial }}
                     </option>
@@ -2079,7 +2069,7 @@
                 <div class="form-group">
                     <label for="TID" class="control-label col-xs-2">Tag</label>
                     <div class="col-xs-2">
-                            <select id="TID" v-model="tag.TID" number>
+                            <select id="TID" v-model.number="tag.TID">
                                 <option value="0"></option>
                                 <option v-for="t in tags" v-bind:value="t.TID">
                                     {{ t.Name }}
@@ -2136,7 +2126,7 @@
                     <div class="form-group">
                         <label for="username" class="control-label col-xs-3">Username</label>
                         <div class="col-xs-3">
-                            <input type="text" class="form-control" id="username" v-model="username" placeholder="{{placeholder}}" required autofocus/>
+                            <input type="text" class="form-control" id="username" v-model="username" v-bind:placeholder="placeholder" required autofocus/>
                         </div>
                     </div>
                     <div class="form-group">
@@ -2190,11 +2180,10 @@
     <div>
         <h1 class="mytitle">IP Types</h1>
         <paged-grid 
-            :data="data | filterBy searchQuery" 
+            :data="filteredRows"
             :columns="columns" 
             :linkable="linkable"
-            :linkPath="linkpath"
-            :move-pages="movePages" 
+            :linkpath="linkpath"
             :start-row="startRow" 
             :rows-per-page="rowsPerPage">
         </paged-grid>
@@ -2231,7 +2220,7 @@
                 </div>
             </fieldset>
 
-            <fieldset class="col-xs-12" v-if="canEdit">
+            <fieldset class="col-xs-12" v-if="$store.getters.canEdit">
                 <div class="form-group">
                     <div class="col-xs-offset-1 col-xs-1">
                         <button class="btn" v-on:click.prevent="showList">Cancel</button>
@@ -2258,32 +2247,32 @@
 
 <script type="text/x-template" id="tmpl-paged-grid">
     <div>
-        <div v-if="$loadingRouteData">Loading ...</div>
-        <div v-if="!$loadingRouteData">
         <table class="table table-striped">
             <thead>
                 <tr>
                     <th v-for="key in columns"
                       @click.prevent="sortBy(key)"
-                      :class="{active: sortKey == key}">
-                      {{key | capitalize}}
-                      <span class="arrow"
-                        :class="sortOrders[key] > 0 ? 'asc' : 'dsc'">
+                      v-bind:class="{active: sortKey == key}">
+                      <!--
+                      -->
+                      {{ key[0].toUpperCase() + key.slice(1) }}
+                      <span class="arrow" v-bind:class="sortOrders[key] > 0 ? 'asc' : 'dsc'">
                       </span>
                     </th>
                 </tr>
             </thead>
             <tbody>
                 <tr id="rowid(entry)" 
-                    v-for="entry in data 
-                        | limitBy rowsPerPage startRow
-                        | orderBy sortKey sortOrders[sortKey]">
+                    v-for="entry in limitBy"> 
                     <td v-for="key in columns">
                        <template v-if="linkable(key)">
-                          <a v-link="{ path: linkpath(entry, key)}">{{ entry[key] }}</a>
+                       <!--
+                          <router-link :to="{path: linkpath(entry, key)}">{{ entry[key] }}</router-link>
+                          -->
+                          <router-link :to="linkpath(entry, key)">{{ entry[key] }}</router-link>
                        </template>
                        <template v-else>
-                          {{* entry[key] }}
+                          {{entry[key] }}
                        </template>
                     </td>
                 </tr>
@@ -2297,7 +2286,6 @@
             </template>
             <button v-if="canDownload" class="btn download" v-on:click.prevent="download">Download</button>
         </div>
-    </div>
     </div>
 </script>
 
@@ -2318,7 +2306,7 @@
             :filename="filename" 
             :columns="columns" 
             :linkable="linkable"
-            :linkPath="linkpath"
+            :linkpath="linkpath"
             :start-row="startRow" 
             :rows-per-page="rowsPerPage">
         </paged-grid>

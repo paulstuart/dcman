@@ -101,11 +101,19 @@ func remember(w http.ResponseWriter, u *user) {
 	}
 	if u != nil {
 		c.Expires = time.Now().Add(sessionMinutes)
-		login := "no name"
-		if u.Login != nil {
-			login = *u.Login
+		/*
+			login := "no name"
+			if u.Login != nil {
+				login = *u.Login
+			}
+		*/
+		b, err := json.Marshal(&u)
+		if err != nil {
+			jsonError(w, err, http.StatusInternalServerError)
+			return
 		}
-		c.Value = b64(fmt.Sprintf(`{"username": "%s", "admin": %d}`, login, u.Level))
+		//c.Value = b64(fmt.Sprintf(`{"username": "%s", "admin": %d}`, login, u.Level))
+		c.Value = b64(string(b))
 	}
 	http.SetCookie(w, c)
 }
@@ -134,6 +142,7 @@ func apiUnknown(w http.ResponseWriter, r *http.Request) {
 }
 
 func pingMany(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("PING!")
 	r.ParseForm()
 	timeout := pingTimeout
 	if text := r.Form.Get("timeout"); len(text) > 0 {
@@ -148,11 +157,15 @@ func pingMany(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	if ips, ok := r.Form["ips[]"]; ok && len(ips) > 0 {
+	if iplist := r.FormValue("iplist"); len(iplist) > 0 {
+		ips := strings.Split(iplist, ",")
+		fmt.Println("BULK PING:", len(ips))
 		pings := bulkPing(timeout, ips...)
 		j, _ := json.MarshalIndent(pings, " ", " ")
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprint(w, string(j))
+	} else {
+		jsonError(w, "bad ping request", http.StatusBadRequest)
 	}
 }
 
@@ -481,6 +494,14 @@ func assumeUser(w http.ResponseWriter, r *http.Request) {
 	jsonError(w, "invalid method:"+method, http.StatusBadRequest)
 }
 
+func serverDump(w http.ResponseWriter, r *http.Request) {
+	const q = "select mac,hostname,site,ip,ipmi,rack,ru from pxedevice order by site,rack,ru desc"
+	w.Header().Set("Content-Type", "text/plain")
+	if err := dbStreamTab(w, q); err != nil {
+		log.Println("stream err:", err)
+	}
+}
+
 func deviceAudit(w http.ResponseWriter, r *http.Request) {
 	dbDebug(true)
 	defer dbDebug(false)
@@ -505,12 +526,81 @@ func vmAudit(w http.ResponseWriter, r *http.Request) {
 	sendJSON(w, list)
 }
 
+/*
+func bulkPings(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	timeout := pingTimeout
+	if text := r.Form.Get("timeout"); len(text) > 0 {
+		if t, err := strconv.Atoi(text); err == nil {
+			timeout = t
+		}
+	}
+	if text := r.Form.Get("debug"); len(text) > 0 {
+		if debug, err := strconv.ParseBool(text); err == nil && debug {
+			for k, v := range r.Form {
+				log.Println("K:", k, "(", len(k), ") V:", v)
+			}
+		}
+	}
+	if ips, ok := r.Form["ips[]"]; ok && len(ips) > 0 {
+		pings := bulkPing(timeout, ips...)
+		j, _ := json.MarshalIndent(pings, " ", " ")
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, string(j))
+	}
+}
+*/
+func BulkPings(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	timeout := pingTimeout
+	if text := r.Form.Get("timeout"); len(text) > 0 {
+		if t, err := strconv.Atoi(text); err == nil {
+			timeout = t
+		}
+	}
+	if text := r.Form.Get("debug"); len(text) > 0 {
+		if debug, err := strconv.ParseBool(text); err == nil && debug {
+			for k, v := range r.Form {
+				log.Println("K:", k, "(", len(k), ") V:", v)
+			}
+		}
+	}
+	if ips, ok := r.Form["ips[]"]; ok && len(ips) > 0 {
+		pings := bulkPing(timeout, ips...)
+		j, _ := json.MarshalIndent(pings, " ", " ")
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, string(j))
+	}
+}
+
+func getMAC(w http.ResponseWriter, r *http.Request) {
+	device := &pxeDevice{}
+	if err := dbFindByID(device, r.URL.Path); err != nil {
+		jsonError(w, err, http.StatusBadRequest)
+		return
+	}
+	if device.IPMI == nil || len(*device.IPMI) == 0 {
+		jsonError(w, "device has no IPMI address", http.StatusBadRequest)
+		log.Println("device has no IPMI address")
+		return
+	}
+	log.Println("IPMI address:", *device.IPMI)
+	mac, _ := findMAC(*device.IPMI)
+	log.Println("MAC:", mac)
+	d := struct{ MAC string }{mac}
+	j, _ := json.MarshalIndent(d, " ", " ")
+	cors(w)
+	fmt.Fprint(w, string(j))
+}
+
 var webHandlers = []hFunc{
 	{"/static/", StaticPage},
 	{"/ping", pingPage},
+	{"/servers", serverDump},
 	{"/api/db/pragmas", apiPragmas},
 	{"/api/device/adjust/", MakeREST(deviceAdjust{})},
 	{"/api/device/audit/", deviceAudit},
+	{"/api/device/mac/", getMAC},
 	{"/api/device/ips/", MakeREST(deviceIPs{})},
 	{"/api/device/pxe/", MakeREST(pxeDevice{})},
 	{"/api/device/type/", MakeREST(deviceType{})},

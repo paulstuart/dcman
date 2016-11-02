@@ -22,6 +22,72 @@ CREATE VIEW vlans_view as
     order by v.sti, v.name
     ;
 
+DROP VIEW IF EXISTS vlans_calc;
+CREATE VIEW vlans_calc as
+    with oct1(ipv4, vli, o1, rem1) as (
+            select starting as ipv4, vli, substr(starting,0,instr(starting,'.')) as o1, 
+                substr(starting,instr(starting,'.')+1) as rem1
+                from vlans
+        ),
+        oct2(vli, ipv4, o1, o2, rem2) as (
+            select vli, ipv4, o1,
+                substr(rem1,0,instr(rem1,'.')) as o2, 
+                substr(rem1,instr(rem1,'.')+1) as rem2
+                from oct1
+        ),
+        oct3(vli, ipv4, o1, o2, o3, o4) as (
+            select vli, ipv4, o1, o2,
+                substr(rem2,0,instr(rem2,'.')) as o3, 
+                substr(rem2,instr(rem2,'.')+1) as o4
+                from oct2
+        ),
+        calculated(vli, ipv4, ipcalc) as (
+            select
+                vli, ipv4, ((o1 << 24) + (o2 << 16) + (o3 << 8) + o4) as minip
+            from oct3
+        ),
+        net1(vli, o1, rem1) as (
+            select vli, substr(netmask,0,instr(netmask,'.')) as o1, 
+                substr(netmask,instr(netmask,'.')+1) as rem1
+                from vlans
+        ),
+        net2(vli, o1, o2, rem2) as (
+            select vli, o1,
+                substr(rem1,0,instr(rem1,'.')) as o2, 
+                substr(rem1,instr(rem1,'.')+1) as rem2
+                from net1
+        ),
+        net3(vli, o1, o2, o3, o4) as (
+            select vli, o1, o2,
+                substr(rem2,0,instr(rem2,'.')) as o3, 
+                substr(rem2,instr(rem2,'.')+1) as o4
+                from net2
+        ),
+        netasm(vli, ncalc) as (
+            select
+                vli, ((o1 << 24) + (o2 << 16) + (o3 << 8) + o4) as calc
+            from net3
+        ),
+        netcalc(vli, ncalc, range) as (
+            select vli, ncalc, ~(0xffffffff00000000 | ncalc) - 1 as maxip 
+            from netasm
+        ),
+        merge(vli, ipv4, ipcalc,ncalc,network,range) as (
+            select c.*, n.ncalc, (c.ipcalc & n.ncalc) as network, range
+               from calculated c
+               left outer join netcalc n on c.vli = n.vli
+        )
+
+        /*
+    select c.*, n.ncalc, (c.ipcalc & n.ncalc) as network, range, network+range as maxip --, ((c.ipcalc & n.ncalc) + range) - 1 as maxip --(n.ncalc & (256*256*256*256)) as range
+    --select c.*, n.ncalc, (c.ipcalc & n.ncalc) as network, ((256*256*256*256)) as range
+       from calculated 
+       left outer join netcalc n on c.vli = n.vli
+       */
+       select *, ipcalc|range as broadcast 
+            from merge
+    ;
+
 DROP VIEW IF EXISTS ips_view;
 CREATE VIEW ips_view as
     select i.*, v.name as vlan, t.name as iptype
@@ -70,25 +136,19 @@ CREATE VIEW ips_calc as
 
 drop view if exists ips_missing;
 create view ips_missing as
-   select i.*, i.ip32+1 as ip33, j.ip32 as missing
+   select i.*, i.ip32+1 as ip33
    from ips i
-   left outer join ips j on i.ip32 = (j.ip32 - 1)
+   left outer join ips j on j.ip32 = (i.ip32 + 1)
    where i.ip32 > 0
-     and missing is null
+     and j.ip32 is null
     ;
 
 drop view if exists ips_next;
 create view ips_next as
-   with ipgap(ip32, next32) as (
-       select i.ip32+1 as ip32, j.ip32 as next32
-       from ips i
-       left outer join ips j on i.ip32 = (j.ip32 - 1)
-       where i.ip32 > 0
-   )
-   select *, 
-    (ip32 >> 24) || '.' || ((ip32 >> 16) & 255) || '.' || ((ip32 >> 8) & 255) || '.' || (ip32 & 255) as ipv4
-    from ipgap 
-    where next32 is null
+   select i.vli, v.name as vlan,
+    (ip33 >> 24) || '.' || ((ip33 >> 16) & 255) || '.' || ((ip33 >> 8) & 255) || '.' || (ip33 & 255) as ipv4
+    from ips_missing i
+    left outer join vlans v on i.vli = v.vli
     order by ip32
    ;
 
