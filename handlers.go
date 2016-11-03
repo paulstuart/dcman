@@ -582,9 +582,7 @@ func getMAC(w http.ResponseWriter, r *http.Request) {
 		log.Println("device has no IPMI address")
 		return
 	}
-	log.Println("IPMI address:", *device.IPMI)
 	mac, _ := findMAC(*device.IPMI)
-	log.Println("MAC:", mac)
 	d := struct{ MAC string }{mac}
 	j, _ := json.MarshalIndent(d, " ", " ")
 	cors(w)
