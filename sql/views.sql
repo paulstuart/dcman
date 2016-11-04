@@ -4,6 +4,7 @@ CREATE VIEW "sessions_view" as
     select s.*, u.login
     from sessions s
     left outer join users u on s.usr = u.usr
+    order by s.ts desc
     ;
 
 DROP VIEW IF EXISTS racks_view;

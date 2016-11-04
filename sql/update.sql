@@ -1,31 +1,35 @@
+
+DROP TABLE IF EXISTS "skus" ;
+CREATE TABLE "skus" (
+    kid integer primary key,
+    vid integer,
+    mid integer,
+    pti integer,
+    description text,
+    part_no text, 
+    sku text, 
+    usr integer, 
+    ts date DEFAULT CURRENT_TIMESTAMP,
+    unique (mid,description),
+    FOREIGN KEY(vid) REFERENCES vendors(vid)
+    FOREIGN KEY(mid) REFERENCES mfgrs(mid)
+    FOREIGN KEY(pti) REFERENCES part_types(pti)
+);
+
+DROP TABLE IF EXISTS "part_types" ;
+CREATE TABLE "part_types" (
+    pti integer primary key,
+    name text not null COLLATE NOCASE,
+    usr integer, 
+    ts date DEFAULT CURRENT_TIMESTAMP,
+    unique (name)
+);
+
+insert into part_types (name) values('misc');
+
 insert into part_types (name) values ('Memory');
 insert into part_types (name) values ('Disk');
 insert into part_types (name) values ('Mainboard');
 insert into part_types (name) values ('Power Supply');
 insert into part_types (name) values ('CPU');
 
-ALTER TABLE "vlans" rename to "old_vlans";
-
-DROP TABLE IF EXISTS "vlans";
-CREATE TABLE "vlans" (
-    vli integer primary key,
-    sti integer,
-    name integer not null,
-    profile string,
-    gateway text,
-    netmask text,
-    route text,
-    starting text,
-    note text,
-    min_ip32 integer,
-    max_ip32 integer,
-    usr integer,
-    ts timestamp DEFAULT CURRENT_TIMESTAMP
-);
-
-insert into vlans
-    (vli, sti, name, profile, gateway,netmask, route, note, min_ip32, max_ip32, usr, ts)
-    select * from old_vlans
-    ;
-
-DROP TABLE "old_vlans";

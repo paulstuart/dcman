@@ -15,7 +15,7 @@
 </head>
 <body>
 
-    <div id="app">
+    <div id="myapp">
         <main-menu></main-menu>
         <div class="bodybox">
         <router-view>Loading...</router-view>
@@ -49,6 +49,7 @@
             <li><router-link to='/device/list' >Device List</router-link></li>
             <li><router-link to='/vm/list' >VM List</router-link></li>
             <li role="separator" class="divider"></li>
+            <li><router-link to='/device/edit/0' >Add Device</router-link></li>
             <li><router-link to='/device/load' >Device Load</router-link></li>
             <li role="separator" class="divider"></li>
             <li><router-link to='/rack/layout' >Rack Layout</router-link></li>
@@ -65,7 +66,7 @@
             <li><router-link to='/part/list/0' >All Parts</router-link></li>
             <li v-if="$store.getters.canEdit"><router-link to='/part/add' >Add Part</router-link></li>
             <li role="separator" class="divider"></li>
-            <li><router-link to='/part/types' >Part Types</router-link></li>
+            <li><router-link to='/part/type/list' >Part Types</router-link></li>
             <li role="separator" class="divider"></li>
             <li><router-link to='/rma/list' >RMA List</router-link></li>
             <li role="separator" class="divider"></li>
@@ -140,7 +141,7 @@
         </select>
 
         <paged-grid 
-            :data="rmasFiltered" 
+            :data="rmaFiltered" 
             :columns="columns" 
             :linkable="linkable"
             :linkpath="linkpath"
@@ -227,6 +228,7 @@
         <h1 class="mytitle">Part Types</h1>
         <label for="query">Search</label>
         <input id="query" name="query" v-model="searchQuery">
+        <button class="btn" v-on:click.prevent="addType">Add Type</button>
         <paged-grid 
             :data="filteredRows" 
             :columns="columns" 
@@ -235,6 +237,42 @@
             :start-row="startRow" 
             :rows-per-page="rowsPerPage">
         </paged-grid>
+    </div>
+</script>
+
+<script type="text/x-template" id="tmpl-part-type-edit">
+    <div id="tagform">
+        <form class="form-horizontal">
+            <fieldset class="col-xs-12">
+                <div class="form-group">
+                    <label for="name" class="control-label col-xs-2">Name</label>
+                    <div class="col-xs-2">
+                        <input type="text" class="form-control" id="name" v-model="PartType.Name">
+                    </div>
+                </div>
+            </fieldset>
+
+            <fieldset class="col-xs-12" v-if="$store.getters.canEdit">
+                <div class="form-group">
+                    <div class="col-xs-offset-1 col-xs-1">
+                        <button class="btn" v-on:click.prevent="showList">Cancel</button>
+                    </div>
+                    <div class="col-xs-1">
+                        <button :disabled="notReady" class="btn" v-on:click.prevent="saveSelf">
+                        <template v-if="PartType.PTI">
+                        Update
+                        </template>
+                        <template v-else>
+                        Add
+                        </template>
+                        </button>
+                    </div>
+                    <div class="col-xs-1" v-if="PartType.PTI">
+                        <button class="btn" v-on:click.prevent="deleteSelf">Delete</button>
+                    </div>
+                </div>
+            </fieldset>
+        </form>
     </div>
 </script>
 
@@ -797,7 +835,7 @@
                     <div class="col-xs-offset-1 col-xs-1">
                         <button class="btn" v-on:click.prevent="showList">Cancel</button>
                     </div>
-                    <div class="col-xs-1">
+                    <div class="col-xs-1" :disable="disableSave">
                         <button class="btn" v-on:click.prevent="saveSelf">
                         <template v-if="Device.DID">Update</template>
                         <template v-else>Add</template>
