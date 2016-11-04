@@ -2335,9 +2335,10 @@
                 {{ size }}
             </option>
         </select>
+        <input id="query" v-model="searchQuery">
 
         <paged-grid 
-            :data="rows"
+            :data="filteredRows"
             :filename="filename" 
             :columns="columns" 
             :linkable="linkable"

@@ -1327,6 +1327,10 @@ var deviceEditVue = {
     computed: {
         urlSuffix: function() {
             return this.Device.DC + "/" + this.Device.RID
+        },
+        disableSave: function() {
+            var hostname  = this.Device.Hostname || '';
+            return (hostname.length == 0)
         }
     },
     created: function() { 
@@ -3782,6 +3786,7 @@ var sessionList = Vue.component('session-list', {
             filename: "sessions",
             columns: ['TS', 'Login', 'Remote', 'Event'],
             rows: [],
+            searchQuery: '',
         }
     },
     created: function() {
