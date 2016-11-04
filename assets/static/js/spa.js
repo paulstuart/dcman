@@ -798,8 +798,6 @@ var searchFor = Vue.component('search-for', {
 
 Vue.component('main-menu', {
     template: '#tmpl-main-menu',
-    //mixins: [authVue],
-    //props: ['app', 'msg'],
     data: function() {
        return {
            searchText: '',
@@ -807,7 +805,6 @@ Vue.component('main-menu', {
        }
     },
     created: function() {
-        //this.userinfo()
         eventHub.$on('logged-out',this.loggedOut)
         eventHub.$on('logged-in',this.loggedIn)
     },
@@ -985,16 +982,7 @@ var reservedIPs = Vue.component('reserved-ips', {
             } else {
                 data = this.rows
             }
-            if (this.searchQuery.length > 0) {
-                return data.filter(obj => {
-                    for (var [key, value] of obj) {
-                        if (value.indexOf(this.searchQuery) >= 0) {
-                            return true
-                        }
-                    }
-                })
-            }
-            return data
+            return this.searchData(data)
         },
     },
 })
@@ -1580,16 +1568,16 @@ var deviceLoad = Vue.component('device-load', {
                 var url = deviceURL;
                 posty(url, device).then(added => {
                     console.log("added hostname:",  added.Hostname, " DID:", added.DID)
-                    var ip   = line[lookup["ip_ipmi"]];
-                    var port = line[lookup["port_ipmi"]];
-                    var mac  = line[lookup["mac_ipmi"]];
-                    var cable  = line[lookup["cable_ipmi"]];
+                    var ip    = line[lookup["ip_ipmi"]];
+                    var port  = line[lookup["port_ipmi"]];
+                    var mac   = line[lookup["mac_ipmi"]];
+                    var cable = line[lookup["cable_ipmi"]];
                     this.addNetwork(added.DID, port, true, mac, port, cable, ip)
 
-                    var ip   = line[lookup["ip_internal"]];
-                    var port = line[lookup["port_eth0"]];
-                    var mac  = line[lookup["mac_eth0"]];
-                    var cable  = line[lookup["cable_eth0"]];
+                    var ip    = line[lookup["ip_internal"]];
+                    var port  = line[lookup["port_eth0"]];
+                    var mac   = line[lookup["mac_eth0"]];
+                    var cable = line[lookup["cable_eth0"]];
                     this.addNetwork(added.DID, port, false, mac, port, cable, ip)
                 })
             }
@@ -1656,10 +1644,8 @@ var deviceAudit = Vue.component('device-audit', {
             getDeviceAudit(this.$route.params.DID).then(fix => rows = deltas(ignore, fix))
         },
         linkable: function(key) {
-            //return (key == 'Name')
         },
         linkpath: function(entry, key) {
-            //return '/ip/type/edit/' + entry['IPT']
         }
     },
     watch: {
@@ -1802,10 +1788,8 @@ var vmAudit = Vue.component('vm-audit', {
             })
         },
         linkable: function(key) {
-            //return (key == 'Name')
         },
         linkpath: function(entry, key) {
-            //return '/ip/type/edit/' + entry['IPT']
         }
     },
 })
@@ -2071,7 +2055,6 @@ var vlanEdit = Vue.component('vlan-edit', {
 //
 var ipReserve = Vue.component('ip-reserve', {
     template: '#tmpl-ip-reserve',
-    //mixins: [ siteMIX],
     data: function() {
         return {
             conflicted: 0,
