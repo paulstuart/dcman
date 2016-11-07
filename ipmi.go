@@ -147,6 +147,13 @@ func fixCredentials(ip string) (string, string, error) {
 				return u, p, nil
 			}
 		}
+		// is this a Dell?
+		u = "root"
+		p := "calvin"
+		if err := ipmichk(ip, u, p); err == nil {
+			setCredentials(ip, u, p)
+			return u, p, nil
+		}
 	}
 	return "", "", ErrLoginIPMI
 }

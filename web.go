@@ -641,30 +641,46 @@ func MakeREST(gen dbutil.DBGen) http.HandlerFunc {
 	}
 }
 
-func newREST(obj dbutil.DBObject, w http.ResponseWriter, r *http.Request) {
-	db := datastore
+func apiKey(w http.ResponseWriter, r *http.Request) (*user, bool, error) {
 	query := r.URL.Query()
 	debug := false
 	apiKey := r.Header.Get("X-API-KEY")
 	if len(apiKey) == 0 {
 		apiKey = query.Get("X-API-KEY")
 	}
+	//log.Println("check api key:", apiKey)
 	delete(query, "X-API-KEY")
 	if dbq, ok := query["debug"]; ok {
 		debug, _ = strconv.ParseBool(dbq[0])
+		//log.Println("*** debug set to:", debug)
 		delete(query, "debug")
+	} /*else {
+		log.Println("*** debug:", debug)
 	}
+	*/
 	r.URL.RawQuery = query.Encode()
 	if debug {
 		dbDebug(debug)
 		defer dbDebug(false)
 	}
 	user, err := userFromAPIKey(apiKey)
-	if err != nil {
+
+	if err != nil && !insecure {
+		log.Println("AUTH ERROR:", err)
+		jsonError(w, err, http.StatusUnauthorized)
+	}
+	return &user, debug, err
+}
+
+func newREST(obj dbutil.DBObject, w http.ResponseWriter, r *http.Request) {
+	db := datastore
+	user, debug, err := apiKey(w, r)
+	if err != nil && !insecure {
 		log.Println("AUTH ERROR:", err)
 		jsonError(w, err, http.StatusUnauthorized)
 		return
 	}
+	//log.Println("auth ok")
 	//spew.Println("\nUSER:", user, "\n")
 
 	var id string
@@ -673,10 +689,12 @@ func newREST(obj dbutil.DBObject, w http.ResponseWriter, r *http.Request) {
 		id = r.URL.Path[i+1:]
 	}
 	body := bodyCopy(r)
+	//log.Println("DEBUG:", debug, "BODY:", body)
 	if debug {
-		log.Printf("(%s) PATH:%s ID:%s Q:%s BODY:%s", r.Method, r.URL.Path, id, r.URL.RawQuery, body)
+		log.Printf("(%s) PATH:%s ID:%s T:%T Q:%s BODY:%s", r.Method, r.URL.Path, id, obj, r.URL.RawQuery, body)
 	}
 	method := strings.ToUpper(r.Method)
+	//log.Println("M:", method, "ID:", id)
 	switch method {
 	case "PUT", "POST":
 		bodyString := bodyCopy(r)
@@ -692,7 +710,9 @@ func newREST(obj dbutil.DBObject, w http.ResponseWriter, r *http.Request) {
 		} else {
 			objFromForm(obj, r.Form)
 		}
-		obj.ModifiedBy(user.USR, time.Now())
+		if !insecure {
+			obj.ModifiedBy(user.USR, time.Now())
+		}
 	case "OPTIONS", "HEAD":
 		cors(w)
 		fmt.Fprintln(w, "options:", bodyCopy(r))
@@ -718,6 +738,7 @@ func newREST(obj dbutil.DBObject, w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			//log.Println("LIST LEN:", len(list.([]dbutil.DBObject)))
+			//log.Println("GET LIST:", list)
 			sendJSON(w, list)
 			return
 		}
@@ -778,8 +799,9 @@ func newREST(obj dbutil.DBObject, w http.ResponseWriter, r *http.Request) {
 			jsonError(w, err, http.StatusInternalServerError)
 			return
 		}
-
-		obj.ModifiedBy(user.USR, time.Now())
+		if !insecure {
+			obj.ModifiedBy(user.USR, time.Now())
+		}
 		if err := db.Save(obj); err != nil {
 			log.Println("PATCH ERR 3:", err)
 			jsonError(w, err, http.StatusInternalServerError)

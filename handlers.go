@@ -321,6 +321,26 @@ func userLogin(w http.ResponseWriter, r *http.Request) (*user, error) {
 }
 
 func apiLogin(w http.ResponseWriter, r *http.Request) {
+	key := "insecure mode"
+	login := "insecure login"
+	if insecure {
+		c := &http.Cookie{
+			Name:    "X-API-KEY",
+			Path:    "/",
+			Expires: time.Now().Add(4 * time.Hour),
+			Value:   key,
+		}
+		http.SetCookie(w, c)
+		u := user{
+			Login:  &login,
+			APIKey: &key,
+			Level:  2,
+		}
+		remember(w, &u)
+		sendJSON(w, u)
+		return
+	}
+
 	method := strings.ToUpper(r.Method)
 	switch method {
 	case "POST":
@@ -419,7 +439,7 @@ func apiPragmas(w http.ResponseWriter, r *http.Request) {
 }
 
 func assumeUser(w http.ResponseWriter, r *http.Request) {
-	debug := true
+	var debug bool
 	query := r.URL.Query()
 	apiKey := r.Header.Get("X-API-KEY")
 	if len(apiKey) == 0 {

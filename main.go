@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"io/ioutil"
 	"log"
 	"net"
@@ -17,6 +18,7 @@ import (
 )
 
 var (
+	insecure          bool
 	version           = "1.0.1"
 	sessionMinutes    = time.Duration(time.Minute * 240)
 	masterMode        = true
@@ -69,12 +71,6 @@ type samlConfig struct {
 	Timeout     int    `gcfg:"timeout"`
 }
 
-type jiraConfig struct {
-	Username string `gcfg:"username"`
-	Password string `gcfg:"password"`
-	URL      string `gcfg:"url"`
-}
-
 const (
 	configFile = "config.gcfg"
 	logLayout  = "2006-01-02 15:04:05.999"
@@ -83,6 +79,8 @@ const (
 )
 
 func init() {
+	flag.BoolVar(&insecure, "insecure", insecure, "ignore authentication")
+	flag.Parse()
 	f := configFile
 	if _, err := os.Stat(configFile); err != nil {
 		f = filepath.Join(execDir, configFile)

@@ -106,6 +106,9 @@ func oktaAuth(username, password string) string {
 }
 
 func authenticate(username, password string) bool {
+	if insecure {
+		return true
+	}
 	reply := oktaAuth(username, password)
 	//ioutil.WriteFile("saml.xml", []byte(reply), 0644)
 	return len(reply) > 0

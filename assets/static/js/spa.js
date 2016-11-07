@@ -448,6 +448,7 @@ var getIt = function(geturl, what) {
         })
         .catch(function(x) {
             console.log('fetch failed for:', what, 'because:', x);
+            throw(x)
         });
     }
 }
@@ -1363,8 +1364,10 @@ var deviceEditVue = {
             posty(url, device, 'PATCH').then(router.go(-1))
         },
         deleteSelf: function(event) {
-            const url = deviceURL + this.Device.DID;
-            posty(url, null, 'DELETE').then(router.go(-1))
+            if (window.confirm("Really delete this device?")) {
+                const url = deviceViewURL + this.Device.DID;
+                posty(url, null, 'DELETE').then(router.go(-1))
+            }
         },
         showList: function(ev) {
             //router.push('/device/list')
@@ -1740,7 +1743,9 @@ var vmEdit = Vue.component('vm-edit', {
     methods: {
         loadSelf: function() {
             if (this.$route.params.VMI > 0) {
-                getVM(this.$route.params.VMI).then(v => this.VM = v)
+                getVM(this.$route.params.VMI).then(v => this.VM = v).catch(meh => {
+                    this.showList()
+                })
             } else {
                 this.VM = {VMI: 0}
             }
@@ -1749,7 +1754,9 @@ var vmEdit = Vue.component('vm-edit', {
             posty(this.url + this.VM.VMI, this.VM, 'PATCH').then(() => this.showList)
         },
         deleteSelf: function() {
-            posty(this.url + this.VM.VMI, null, 'DELETE').then(() => this.showList)
+            if (window.confirm("Really delete this VM?")) {
+                posty(this.url + this.VM.VMI, null, 'DELETE').then(() => this.showList)
+            }
         },
         showList: function(ev) {
             router.push('/vm/list')
@@ -1855,10 +1862,10 @@ var deviceList = Vue.component('device-list', {
     methods: {
         loadDevices: function() {
             if (this.STI > 0) {
-                getDeviceLIST(this.STI, '?sti=').then(devices => this.rows = devices)
-                getRack(this.STI, '?sti=').then(r => this.racks = r)
+                getDeviceLIST(this.STI, '?sti=').then(devices => this.rows = devices || [])
+                getRack(this.STI, '?sti=').then(r => this.racks = r || [])
             } else {
-                getDeviceLIST().then(d => this.rows = d)
+                getDeviceLIST().then(d => this.rows = d || [])
                 this.racks = []
             }
         },
@@ -3711,10 +3718,6 @@ var pagedGrid = Vue.component('paged-grid', {
         } 
     },
     methods: {
-        fuckme: function(a, b) {
-            //console.log("fuck:",a,"me:",b)
-            return "http://www.google.com"
-        },
         sortBy: function (column) {
             console.log("sort by:",column)
             this.sortKey = column

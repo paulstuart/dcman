@@ -84,11 +84,50 @@ BEGIN
     insert or replace into notes values(NEW.did, 'Device', NEW.hostname, NEW.note);
 END;
 
+-- delete ips / interfaces to remove FK dependencies
+DROP TRIGGER IF EXISTS devices_delete_before;
+CREATE TRIGGER devices_delete_before BEFORE DELETE ON devices 
+BEGIN
+    -- VM network --
+    delete from ips 
+        where iid in (
+            select iid from ips 
+            where ips.vmi in (
+                select vmi from vms where did = OLD.did
+            )
+        );
+
+    -- VM instances --
+    delete from vms 
+        where vmi in (
+            select vmi from vms 
+            where vms.did = OLD.did
+        );
+
+    -- Device network --
+    delete from ips 
+        where ifd in (
+            select ifd from interfaces 
+             where did = OLD.did
+        );
+
+    -- Device hardware --
+    delete from interfaces
+        where did = OLD.did
+        ;
+END;
+
 -- remove deleted data from full text search
 DROP TRIGGER IF EXISTS devices_delete;
 CREATE TRIGGER devices_delete AFTER DELETE ON devices 
 BEGIN
-    delete from notes where id=OLD.did and kind='VM';
+    delete from notes where id=OLD.did and kind='Device';
+END;
+
+DROP TRIGGER IF EXISTS devices_view_delete;
+CREATE TRIGGER devices_view_delete INSTEAD OF DELETE ON devices_view 
+BEGIN
+    delete from devices where did = OLD.did;
 END;
 
 drop trigger if exists devices_adjust_move;
@@ -158,6 +197,13 @@ BEGIN
     note = ifnull(NEW.note, OLD.note)
     where vmi = OLD.vmi
     ;
+END;
+
+DROP TRIGGER IF EXISTS vms_view_delete;
+CREATE TRIGGER vms_view_delete INSTEAD OF DELETE ON vms_view 
+BEGIN
+    delete from ips where vmi = old.vmi;
+    delete from vms where vmi = old.vmi;
 END;
 
 DROP TRIGGER IF EXISTS skus_view_insert;
