@@ -6,7 +6,7 @@
     <link rel="stylesheet" type="text/css" href="/dcman/static/css/new.css">
 
     <script src="/dcman/static/js/jquery-3.1.1.js"></script>
-    <script src="/dcman/static/js/lodash.core.js"></script>
+    <script src="/dcman/static/js/lodash.js"></script>
     <script src="/dcman/static/js/bootstrap.js"></script>
     <script src="/dcman/static/js/vue.js"></script>
     <script src="/dcman/static/js/vuex.js"></script>
@@ -2288,8 +2288,6 @@
                     <th v-for="key in columns"
                       @click.prevent="sortBy(key)"
                       v-bind:class="{active: sortKey == key}">
-                      <!--
-                      -->
                       {{ key[0].toUpperCase() + key.slice(1) }}
                       <span class="arrow" v-bind:class="sortOrders[key] > 0 ? 'asc' : 'dsc'">
                       </span>
@@ -2301,9 +2299,6 @@
                     v-for="entry in limitBy"> 
                     <td v-for="key in columns">
                        <template v-if="linkable(key)">
-                       <!--
-                          <router-link :to="{path: linkpath(entry, key)}">{{ entry[key] }}</router-link>
-                          -->
                           <router-link :to="linkpath(entry, key)">{{ entry[key] }}</router-link>
                        </template>
                        <template v-else>

@@ -109,10 +109,13 @@ var get = function(url) {
         resolve(obj)
       }
       else {
-        // Otherwise reject with the status text
-        // which will hopefully be a meaningful error
-        console.log('rejecting!!! ack:',req.status, 'txt:', req.statusText)
-        reject(Error(req.statusText));
+          if (req.status == 401) {
+              router.go('/auth/login')
+          }
+          // Otherwise reject with the status text
+          // which will hopefully be a meaningful error
+          console.log('rejecting!!! ack:',req.status, 'txt:', req.statusText)
+          reject(Error(req.statusText));
       }
     };
 
@@ -264,87 +267,6 @@ var Maker = function(obj, names, fresh) {
     obj.Init()
 }
 
-var newTable = function(name, template, mixins) {
-  return Vue.component(name, {
-      template: template,
-      props: {
-          data: Array,
-          columns: Array,
-          filterKey: String
-      },
-      data: function () {
-          var sortOrders = {}
-          this.columns.forEach(function (key) {
-              sortOrders[key] = 1
-          })
-          return {
-              sortKey: '',
-              sortOrders: {} 
-          }
-      },
-      methods: {
-            sortBy: function (key) {
-                this.sortKey = key
-                this.sortOrders[key] = this.sortOrders[key] * -1
-            },
-      },
-      mixins: mixins,
-    })
-}
-
-var makeTable = function(template, mixins) {
-  return Vue.extend({
-      template: template,
-      data: function () {
-          return {
-              columns: [],
-              rows: [],
-              sortKey: '',
-              sortOrders: {},
-              title: '',
-          }
-      },
-      methods: {
-            sortBy: function (key) {
-                this.sortKey = key
-                this.sortOrders[key] = this.sortOrders[key] * -1
-            },
-      },
-      mixins: mixins,
-      watch: {
-          'columns': function(val, oldVal) {
-              this.columns.forEach(key => this.sortOrders[key] = 1)
-          }
-      },
-    })
-}
-
-var makeNewTable = function(name, template, mixins) {
-  return Vue.component(name, {
-      template: template,
-      data: function () {
-          return {
-              columns: [],
-              rows: [],
-              sortKey: '',
-              sortOrders: {},
-              title: '',
-          }
-      },
-      methods: {
-            sortBy: function (key) {
-                this.sortKey = key
-                this.sortOrders[key] = this.sortOrders[key] * -1
-            },
-      },
-      mixins: mixins,
-      watch: {
-          'columns': function(val, oldVal) {
-              this.columns.forEach(key => this.sortOrders[key] = 1)
-          }
-      },
-    })
-}
 
 var childTable = function(name, template, mixins) {
     return Vue.component(name, {
@@ -613,29 +535,6 @@ var saveMe = function(url, data, id, fn) {
     }
 }
 
-var commonSearch = {
-    computed: {
-        filteredRows: function() {
-            return this.searchData(this.rows)
-        },
-    },
-    methods: {
-        searchData: function(data) {
-            if (this.searchQuery.length == 0) {
-                return data
-            }
-            return data.filter(obj => {
-                for (var k of this.columns) {
-                    const value = obj[k];
-                    if (_.isString(value) && value.indexOf(this.searchQuery) >= 0) {
-                        return true
-                    }
-                }
-                return false
-            })
-        }
-    }
-}
 
 // Create the view-model
 var pagedCommon = {
@@ -649,16 +548,32 @@ var pagedCommon = {
             sizes: [10, 25, 50, 100, 'all'],
         }
     },
-    mixins: [commonSearch],
     computed: {
         rowsPerPage: function() {
             if (this.pagerows == 'all') return null;
             return parseInt(this.pagerows);
         },
+        filteredRows: function() {
+            return this.searchData(this.rows)
+        },
     },
     methods: {
         resetStartRow: function() {
             this.startRow = 0;
+        },
+        searchData: function(data) {
+            if (this.searchQuery.length == 0) {
+                return data
+            }
+            return data.filter(obj => {
+                for (var k of this.columns) {
+                    const value = obj[k];
+                    if (_.isString(value) && value.indexOf(this.searchQuery) >= 0) {
+                        return true
+                    }
+                }
+                return false
+            })
         },
     },
 }
@@ -683,31 +598,6 @@ var editVue = {
             router.push(this.listURL)
         },
     }
-}
-
-var tableTmpl = {
-    props: ['columns', 'rows'],
-    data: function () {
-        return {
-            sortKey: '',
-            sortOrders: []
-        }
-    },
-    methods: {
-        sortBy: function (key) {
-            this.sortKey = key
-            this.sortOrders[key] = this.sortOrders[key] * -1
-        },
-    },
-    watch: {
-        'columns': function() {
-            var sortOrders = {}
-            this.columns.forEach(function (key) {
-                sortOrders[key] = 1
-            })
-            this.sortOrders = sortOrders
-        }
-    },
 }
 
 
@@ -994,7 +884,7 @@ var reservedIPs = Vue.component('reserved-ips', {
 //
 var ipTypes = Vue.component('ip-types', {
     template: '#tmpl-ip-types',
-    mixins: [pagedCommon, commonSearch],
+    mixins: [pagedCommon],
     data: function() {
         return {
             rows: [],
@@ -1073,7 +963,7 @@ var ipTypeEdit = Vue.component('iptype-edit', {
 
 var userList = Vue.component('user-list', {
     template: '#tmpl-user-list',
-    mixins: [pagedCommon, commonSearch],
+    mixins: [pagedCommon],
     data: function() {
         return {
             columns: ['Login', 'First', 'Last', 'Level'],
@@ -1319,7 +1209,7 @@ var deviceEditVue = {
         },
         disableSave: function() {
             var hostname  = this.Device.Hostname || '';
-            return (hostname.length == 0)
+            return (hostname.length == 0 || this.Device.TID == 0)
         }
     },
     created: function() { 
@@ -1358,10 +1248,10 @@ var deviceEditVue = {
 
             if (device.DID == 0) {
                 posty(deviceViewURL, device).then(router.go(-1))
-                return
+            } else {
+                const url = deviceViewURL + this.Device.DID;
+                posty(url, device, 'PATCH').then(router.go(-1))
             }
-            var url = deviceViewURL + this.Device.DID;
-            posty(url, device, 'PATCH').then(router.go(-1))
         },
         deleteSelf: function(event) {
             if (window.confirm("Really delete this device?")) {
@@ -1418,16 +1308,13 @@ var deviceAdd = Vue.component('device-add', {
             adding: true
         }
     },
-    computed: {
-        disableSave: function() {
-            return (this.Device.TID == 0)
-        }
-    },
     methods: { 
         newDevice: function() {
             var device = {
                 DID: 0,
-                TID: 0,
+                DTI: null,
+                TID: null,
+                MID: null,
                 Height: 1,
                 STI: parseInt(this.$route.params.STI),
                 RID: parseInt(this.$route.params.RID),
@@ -1769,7 +1656,7 @@ var vmEdit = Vue.component('vm-edit', {
 // this will create our standard row with named fields
 var vmAudit = Vue.component('vm-audit', {
     template: '#tmpl-audit',
-    mixins: [pagedCommon, commonSearch],
+    mixins: [pagedCommon],
     data: function() {
         return {
             filename: "audit",
@@ -1850,7 +1737,7 @@ var deviceList = Vue.component('device-list', {
                 data = data.filter(obj => (obj.RID == this.RID))
             }
             if (this.DTI > 0) {
-                data =  data.filter(obj = (obj.DTI == this.DTI))
+                data =  data.filter(obj => (obj.DTI == this.DTI))
             }
             return data
         }
@@ -1863,7 +1750,10 @@ var deviceList = Vue.component('device-list', {
         loadDevices: function() {
             if (this.STI > 0) {
                 getDeviceLIST(this.STI, '?sti=').then(devices => this.rows = devices || [])
-                getRack(this.STI, '?sti=').then(r => this.racks = r || [])
+                getRack(this.STI, '?sti=').then(r => {
+                    if (this.STI > 0) r.unshift({RID:null, Label: ''})
+                    this.racks = r || []
+                })
             } else {
                 getDeviceLIST().then(d => this.rows = d || [])
                 this.racks = []
@@ -2203,7 +2093,7 @@ var ipEdit = Vue.component('ip-edit', {
 
 var vmList = Vue.component('vm-list', {
     template: '#tmpl-vm-list',
-    mixins: [pagedCommon, siteMIX, commonListMIX, commonSearch],
+    mixins: [pagedCommon, siteMIX, commonListMIX ],
     data: function() {
         return {
             filename: "vms",
@@ -2256,7 +2146,7 @@ var vmList = Vue.component('vm-list', {
 
 var partInventory = Vue.component('part-inventory', {
     template: '#tmpl-part-inventory',
-    mixins: [pagedCommon, commonListMIX, siteMIX, commonSearch],
+    mixins: [pagedCommon, commonListMIX, siteMIX],
     data: function() {
         return {
             DID: 0,
@@ -2477,7 +2367,7 @@ var partList = Vue.component('part-list', {
 
 var partTypes = Vue.component('part-types', {
     template: '#tmpl-part-types',
-    mixins: [pagedCommon, commonListMIX, commonSearch],
+    mixins: [pagedCommon, commonListMIX],
     data: function() {
         return {
             searchQuery: '',
@@ -2636,7 +2526,7 @@ var rmaList = Vue.component('rma-list', {
 
 var vendorList = Vue.component('vendor-list', {
     template: '#tmpl-vendor-list',
-    mixins: [pagedCommon, commonSearch],
+    mixins: [pagedCommon],
     data: function() {
         return {
             sites: [],
@@ -2714,7 +2604,7 @@ var vendorEdit = Vue.component('vendor-edit', {
 
 var mfgrList = Vue.component('mfgr-list', {
     template: '#tmpl-mfgr-list',
-    mixins: [commonSearch, pagedCommon],
+    mixins: [pagedCommon],
     data: function() {
         return {
             sites: [],
@@ -3193,7 +3083,7 @@ var rackEdit = Vue.component('rack-edit', {
 
 var rackList = Vue.component('rack-list', {
     template: '#tmpl-rack-list',
-    mixins: [pagedCommon, siteMIX, commonListMIX, commonSearch],
+    mixins: [pagedCommon, siteMIX, commonListMIX],
     data: function() {
         return {
             dataURL: rackURL,
@@ -3714,7 +3604,9 @@ var pagedGrid = Vue.component('paged-grid', {
             return (this.data && (this.data.length > 0) && this.filename && (this.filename.length > 0))
         },
         limitBy: function() {
-           return this.data.slice(this.currentRow, this.currentRow + this.rowsPerPage)
+           let data = (this.rowsPerPage > 0) ? this.data.slice(this.currentRow, this.currentRow + this.rowsPerPage) : this.data;
+           let orderBy = (this.sortOrders[this.sortKey] > 0) ? 'asc' : 'desc';
+           return (this.sortKey.length > 0) ? _.orderBy(data, this.sortKey, orderBy) : data
         } 
     },
     methods: {
@@ -3797,7 +3689,7 @@ var sessionList = Vue.component('session-list', {
 //
 var siteList = Vue.component('site-list', {
     template: '#tmpl-site-list',
-    mixins: [commonSearch],
+    mixins: [pagedCommon],
     data: function() {
         return {
             sites: [],

@@ -84,6 +84,8 @@ table {
 tr {
     background-color: pink;
 }
+tr.rackrow:nth-child(3) { border: solid thin; }
+tr.rackrow { border: solid thin; }
 */
 
 table.racked { 
@@ -100,32 +102,16 @@ table.racked tbody tr:nth-child(odd) {
    background-color: #ccc;
 }
 
-.bogusbogus {
-     /* Chrome, Safari, Opera prefix */
-     -webkit-column-width: 2em;
-    /* Mozilla Firefox prefix */
-    -moz-column-width: 2em;
-}
 
 .rcell {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    /*
-    background-color: red;
-    column-width: 2em;
-    */
     margin: 0;
     padding: 0;
 }
 
 
-/*
-tr.rackrow:nth-child(3) { border: solid thin; }
-*/
-/*
-tr.rackrow { border: solid thin; }
-*/
 
 .racktitle {
     text-align: center;
@@ -137,18 +123,6 @@ tr.rackrow { border: solid thin; }
 }
 
 .rackwrap {
-    /*
-    margin-left: 2em;
-    margin-right: 2em;
-    padding-left: 2em;
-    padding-right: 2em;
-    margin: 0em 2em 1em 2em;
-
-    width: 34em;
-
-    background-color: red;
-    */
-
     float: left;
     min-height: 64em;
 }
@@ -161,80 +135,44 @@ table.racked th {
     text-align: center;
     width: 95%;
     margin: auto;
-    /*
-    background-color: pink;
-    float: left;
-    margin: 3em 0em;
-    display:inline-block;
-    */
 }
 
 .th-ru {
     width: 3em;
-    /*
-    background: #333;
-    width: 10px;
-    width: 1em;
-    */
 }
 
 .rackheight0 {
-    /*
-    line-height: 1em;
-    */
     display: none;
 }
-
 .rackheight1 {
-    height: 1.2em;
+    height: 1.5em;
 }
-
-    /*
-    background-color: pink;
-    border: 3px solid black;
-    padding-top: 10px;
-    */
-/*
-.rackheight2 > td {
-    height: 2.9em;
-}
-    */
-
-    /*
-    height: 4.8em;
-    background-color: yellow;
-    line-height: 1em;
-    */
 .rackheight2 {
-    height: 2.4em;
+    height: 3.0em;
 }
-
 .rackheight3 {
-    height: 3.6em;
+    height: 4.5em;
 }
 .rackheight4 {
-    height: 4.8em;
-}
-.rackheight5 {
     height: 6em;
 }
+.rackheight5 {
+    height: 7.5em;
+}
 .rackheight6 {
-    height: 7.2em;
+    height: 9.0em;
 }
 .rackheight7 {
-    height: 8.4em;
+    height: 10.5em;
 }
 .rackheight8 {
-    height: 9.6em;
+    height: 12em;
 }
 .rackheight9 {
-    height: 10.8em;
+    height: 13.5em;
 }
 .rackheight10 {
-    /*
-     border-style: solid;
-     */
-    height: 12em;
+    height: 15em;
 }
 
 .navbar-right {
@@ -249,17 +187,6 @@ table.racked th {
 #homepage table {
     width: auto;
 }
-/*
-#homepage table tbody td {
-    background-color: pink;
-}
-
-
-#homepage th {
-    background-color: blue;
-    width: auto;
-}
-*/
 
 #homepage td:nth-child(2) {
     text-align: right;
