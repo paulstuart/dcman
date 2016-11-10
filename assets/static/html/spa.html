@@ -835,8 +835,8 @@
                     <div class="col-xs-offset-1 col-xs-1">
                         <button class="btn" v-on:click.prevent="showList">Cancel</button>
                     </div>
-                    <div class="col-xs-1" :disable="disableSave">
-                        <button class="btn" v-on:click.prevent="saveSelf">
+                    <div class="col-xs-1">
+                        <button class="btn" v-on:click.prevent="saveSelf" :disabled="disableSave">
                         <template v-if="Device.DID">Update</template>
                         <template v-else>Add</template>
                         </button>

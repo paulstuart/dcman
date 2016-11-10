@@ -447,12 +447,6 @@ var deviceVMlist = function(device) {
     })
 }
 
-// device info with associated interface / IPs
-var completeDevice = function(DID) {
-   return getDevice(DID).then(getInterfaces).then(deviceRacks).then(deviceVMlist);
-}
-
-
 var siteMIX = {
     created: function() {
         getSiteLIST(true).then(s => this.sites = s);
@@ -1174,8 +1168,14 @@ var deviceEditVue = {
             return this.Device.DC + "/" + this.Device.RID
         },
         disableSave: function() {
-            var hostname  = this.Device.Hostname || "";
-            return (hostname.length == 0 || this.Device.TID == 0)
+            const hostname  = this.Device.Hostname || "";
+            return (hostname.length == 0 
+                    || (! this.Device.STI > 0) 
+                    || (! this.Device.DTI > 0) 
+                    || (! this.Device.RID > 0)
+                    || (! this.Device.RU > 0)
+                    || (! this.Device.Height > 0)
+                   )
         }
     },
     created: function() {
@@ -1193,14 +1193,32 @@ var deviceEditVue = {
             getMfgr().then(m => this.mfgrs = m)
         },
         loadDevice: function() {
-            completeDevice(this.$route.params.DID).then(d => this.Device = d).then(d => {
-                for (var ip of d.ips) {
-                    if (ip.Mgmt) {
-                        this.IPMI = ip.IP
-                        break;
-                    }
+            if (this.$route.params.DID > 0) {
+                getDevice(this.$route.params.DID)
+                    .then(getInterfaces)
+                    .then(deviceRacks)
+                    .then(deviceVMlist)
+                    .then(d => {
+                        this.Device = d
+                        for (var ip of d.ips) {
+                            if (ip.Mgmt) {
+                                this.IPMI = ip.IP
+                                break;
+                            }
+                        }
+                    })
+            } else {
+                this.Device = {
+                    DID: 0,
+                    DTI: null,
+                    TID: null,
+                    MID: null,
+                    Height: 1,
+                    STI: null,
+                    RID: null,
+                    RU: null,
                 }
-            })
+            }
         },
         loadRacks: function() {
             const url = rackURL + "?STI=" + this.Device.STI;
@@ -1226,7 +1244,6 @@ var deviceEditVue = {
             }
         },
         showList: function(ev) {
-            //router.push("/device/list")
             router.go(-1)
         },
         portLabel: function(ipinfo) {
@@ -1250,9 +1267,14 @@ var deviceEditVue = {
         }
     },
     watch: {
-        "Device.STI": function() {
-            this.loadRacks()
-        }
+        "Device.STI": {
+            handler: function (val, oldVal) {
+                console.log("watch STI:", this.Device.STI);
+                this.loadRacks()
+            },
+            deep: true
+        },
+        "$route": "loadDevice"
     }
 }
 
@@ -2802,6 +2824,9 @@ var rmaEdit = Vue.component("rma-edit", {
 var rmaCreate = Vue.component("rma-create", {
     template: "#tmpl-rma-edit",
     mixins: [rmaCommon],
+    created: function() {
+        this.loadSelf()
+    },
     methods: {
         loadSelf: function () {
             getPart(this.$route.params.PID).then(part => {
