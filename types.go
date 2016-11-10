@@ -22,7 +22,6 @@ func (d jsonDate) MarshalJSON() ([]byte, error) {
 
 func (d *jsonDate) UnmarshalJSON(in []byte) error {
 	s := string(in)
-	fmt.Printf("\nPARSE THIS: (%d) %s\n\n", len(s), s)
 	if len(in) < 3 {
 		return nil
 	}
