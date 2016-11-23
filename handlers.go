@@ -208,10 +208,6 @@ func ipRange(w http.ResponseWriter, r *http.Request) {
 		from := ipFromString(obj.From)
 		to := ipFromString(obj.To)
 		log.Println("RANGE FROM:", from, "TO:", to)
-		/*
-			dbDebug(true)
-			defer dbDebug(false)
-		*/
 		list, err := dbObjectListQuery(ipAddr{}, "where ip32 >=? and ip32 <=?", from, to)
 		if err != nil {
 			log.Println("IP RANGE ERROR:", err)
@@ -228,10 +224,6 @@ func ipRange(w http.ResponseWriter, r *http.Request) {
 				Error: "range conflict",
 				Count: len(ips),
 			}
-			/*
-				w.WriteHeader(http.StatusNotAcceptable)
-				sendJSON(w, cnt)
-			*/
 			jsonError(w, cnt, http.StatusNotAcceptable)
 			return
 		}
@@ -609,6 +601,25 @@ func getMAC(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, string(j))
 }
 
+// get user info for self
+func apiCheck(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+	apiKey := r.Header.Get("X-API-KEY")
+	if len(apiKey) == 0 {
+		apiKey = query.Get("X-API-KEY")
+	}
+	if len(apiKey) == 0 {
+		jsonError(w, "missing API key", http.StatusBadRequest)
+		return
+	}
+	u, err := userFromAPIKey(apiKey)
+	if err != nil {
+		jsonError(w, err, http.StatusUnauthorized)
+		return
+	}
+	sendJSON(w, u)
+}
+
 var webHandlers = []hFunc{
 	{"/static/", StaticPage},
 	{"/ping", pingPage},
@@ -660,6 +671,7 @@ var webHandlers = []hFunc{
 	{"/api/vm/view/", MakeREST(vmView{})},
 	{"/api/vm/", MakeREST(vm{})},
 	{"/api/search/", apiSearch},
+	{"/api/check", apiCheck},
 	{"/api/", apiUnknown},
 	{"/", homePage},
 }

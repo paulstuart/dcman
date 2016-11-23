@@ -881,9 +881,15 @@
                     :start-row="startRow"
                     :rows-per-page="pageRows">
                 </paged-grid>
-                <!--
-                -->
             </fieldset>
+            <button class="btn" v-if="canAddVM" v-on:click.prevent="addVM">Add VM</button>
+
+            <vm-add v-if="newVM"
+                :DID="Device.DID"
+                :biteme="Device.Hostname"
+                :Server="Device.Hostname">
+            </vm-add>
+
         </form>
     </div>
 </script>
@@ -1402,8 +1408,12 @@
     <div class="vm">
     <form role="form" class="form-horizontal">
         <fieldset class="col-xs-12">
-            <legend>Edit VM</legend>
-            <div class="form-group">
+            <legend>
+                <template v-if="VM.VMI">Edit</template>
+                <template v-else>Add</template>
+            VM
+            </legend>
+            <div class="form-group" v-if="VM.Server.length">
                 <label for="Server" class="control-label col-xs-2">Server</label>
                 <div class="col-xs-2">
                      <router-link :to="{ path:'/device/edit/' + VM.DID}">{{ VM.Server }}</router-link>
@@ -1445,19 +1455,22 @@
                     <button class="btn" v-on:click.prevent="showList">Cancel</button>
                 </div>
                 <div class="col-xs-1">
-                    <button class="btn" v-on:click.prevent="saveSelf">Update</button>
+                    <button class="btn" v-on:click.prevent="saveSelf">
+                    <template v-if="VM.VMI">Update</template>
+                    <template v-else>Add</template>
+                    </button>
                 </div>
-                <div class="col-xs-1">
+                <div class="col-xs-1" v-if="VM.VMI">
                     <button class="btn" v-on:click.prevent="deleteSelf">Delete</button>
                 </div>
             </div>
         </fieldset>
 
-            <fieldset class="col-xs-12">
-                <legend>IP Networking</legend>
-                <vm-ips :VMI="VM.VMI">
-                </vm-ips>
-            </fieldset>
+        <fieldset class="col-xs-12" v-if="VM.VMI">
+            <legend>IP Networking</legend>
+            <vm-ips :VMI="VM.VMI">
+            </vm-ips>
+        </fieldset>
     </form>
     </div>
 </script>
@@ -1523,7 +1536,7 @@
 
         <label for="query">Search</label>
         <input id="query" v-model="searchQuery">
-        <a v-if="$store.getters.canEdit" class="btn btn-info" v-link="{ path: '/user/edit/0' >Add User</router-link>
+        <router-link v-if="$store.getters.canEdit" class="btn btn-info" :to="{ path: '/user/edit/0' }">Add User</router-link>
         <paged-grid 
             :data="filteredRows"
             :columns="columns" 

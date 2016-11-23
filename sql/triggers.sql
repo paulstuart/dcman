@@ -339,6 +339,12 @@ BEGIN
    insert or replace into notes values(NEW.rid, 'Rack', NEW.rack, NEW.note);
 END;
 
+DROP TRIGGER IF EXISTS racks_view_delete;
+CREATE TRIGGER racks_view_delete INSTEAD OF DELETE ON racks_view 
+BEGIN
+  delete from racks where rid = OLD.rid ;
+END;
+
 DROP TRIGGER IF EXISTS racks_audit;
 CREATE TRIGGER racks_audit BEFORE UPDATE
 ON racks

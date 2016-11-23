@@ -408,6 +408,12 @@ func StaticPage(w http.ResponseWriter, r *http.Request) {
 	fi, _ := file.Stat()
 	w.Header().Set("Cache-control", "public, max-age=259200")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
+	switch path.Ext(name) {
+	case "css":
+		w.Header().Set("Content-Type", "text/css")
+	case "js":
+		w.Header().Set("Content-Type", "application/javascript")
+	}
 	http.ServeContent(w, r, name, fi.ModTime(), file)
 }
 
@@ -664,11 +670,6 @@ func apiKey(w http.ResponseWriter, r *http.Request) (*user, bool, error) {
 		defer dbDebug(false)
 	}
 	user, err := userFromAPIKey(apiKey)
-
-	if err != nil && !insecure {
-		log.Println("AUTH ERROR:", err)
-		jsonError(w, err, http.StatusUnauthorized)
-	}
 	return &user, debug, err
 }
 

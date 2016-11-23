@@ -1,5 +1,7 @@
 "use strict";
 
+console.log("loading spa.js");
+
 var fromCookie = function() {
     // reload existing auth from cookie
     for (var cookie of document.cookie.split("; ")) {
@@ -12,6 +14,14 @@ var fromCookie = function() {
     }
     return null
 }
+
+var killCookie = function() {
+    var xhttp = new XMLHttpRequest();
+    xhttp.open("GET", "api/logout", true);
+    xhttp.send();
+}
+
+var sameUser = false;
 
 const store = new Vuex.Store({
     state: {
@@ -45,8 +55,22 @@ const store = new Vuex.Store({
             state.login = user.Login
             state.USR = user.USR
             state.active = true
+         //   console.log("setUser:", state.login);
+            if (user["COOKIE"] === true) {
+        //        console.log("verifying cookie data is valid");
+                get("api/check")
+/*
+                    .then(u => 
+                        console.log("user is good:", u)
+                    )
+*/
+                    .catch(x => {
+                        console.log("user is bad:", x)
+                    })
+            }
         },
         logOut(state) {
+            console.log("logging out:", state.login);
             state.level = 0
             state.apiKey = ""
             state.login = ""
@@ -55,11 +79,6 @@ const store = new Vuex.Store({
         },
     },
 })
-
-const checkUser = fromCookie();
-if (checkUser) {
-    store.commit("setUser", checkUser)
-}
 
 const authVue = {
     computed: {
@@ -70,6 +89,7 @@ const authVue = {
     created: function() {
         // needed if refreshing a page and session expired
         if (! this.$store.getters.loggedIn) {
+            console.log("NOT LOGGED IN!");
             router.push("/auth/login")
         }
     },
@@ -94,6 +114,9 @@ var get = function(url) {
     if (key.length > 0) {
         req.setRequestHeader("X-API-KEY", key)
     } else {
+        router.push("/auth/login")
+        //reject(Error("no api key set"));
+        return
         //console.log("no api key set")
     }
 
@@ -106,7 +129,12 @@ var get = function(url) {
       }
       else {
           if (req.status == 401) {
-              router.go("/auth/login")
+              store.commit("logOut")
+              //  resolve(null)
+              reject(Error(req.statusText));
+                killCookie();
+               router.go("/auth/login")
+              return
           }
           // Otherwise reject with the status text
           // which will hopefully be a meaningful error
@@ -290,7 +318,8 @@ var mfgrURL         = "api/mfgr/";
 var networkURL      = "api/network/ip/used/";
 var partTypesURL    = "api/part/type/";
 var partURL         = "api/part/view/";
-var rackURL         = "api/rack/view/";
+var rackURL         = "api/rack/";
+var rackViewURL     = "api/rack/view/";
 var reservedURL     = "api/network/ip/reserved";
 var rmaURL          = "api/rma/";
 var rmaviewURL      = "api/rma/view/";
@@ -381,7 +410,7 @@ var getDevice = getIt(deviceViewURL, "device");
 var getMfgr = getIt(mfgrURL, "mfgr");
 var getVM = getIt(vmViewURL, "vm");
 var getVMAudit = getIt(vmAuditURL, "vm audit");
-var getRack = getIt(rackURL, "racks")
+var getRack = getIt(rackViewURL, "racks")
 var getRMA = getIt(rmaviewURL, "rma")
 var getVLAN = getIt(vlanURL, "vlan")
 var getUser = getIt(userURL, "user")
@@ -432,7 +461,7 @@ var getInterfaces = function(device) {
 }
 
 var deviceRacks = function(device) {
-    var url = rackURL + "?STI=" + device.STI;
+    var url = rackViewURL + "?STI=" + device.STI;
     return get(url).then(function(racks) {
         device.racks = racks
         return device
@@ -570,12 +599,11 @@ var foundList = Vue.component("found-list", {
             sortOrders: []
         }
     },
-    created: function() {
-        eventHub.$on("search-results",this.results)
-    },
     methods: {
+        /*
         results: function(data) {
         },
+        */
         sortBy: function (key) {
             this.sortKey = key
             this.sortOrders[key] = this.sortOrders[key] * -1
@@ -655,26 +683,12 @@ Vue.component("main-menu", {
            debug: false,
        }
     },
-    created: function() {
-        eventHub.$on("logged-out",this.loggedOut)
-        eventHub.$on("logged-in",this.loggedIn)
-    },
     computed: {
         "debugAction": function() {
             return this.debug ? "Disable" : "Enable"
         },
     },
     methods: {
-        loggedOut: function() {
-            console.log("logging out user:", this.$store.getters.login)
-            this.$store.commit("logOut")
-            get(logoutURL)
-            router.push("/")
-        },
-        loggedIn: function(user) {
-            this.$store.commit("setUser", user)
-            router.push("/")
-        },
         doSearch: function() {
             var text = cleanText(this.searchText);
             if (text.length == 0) {
@@ -980,7 +994,7 @@ var userEdit = Vue.component("user-edit", {
             return (!(this.User.First && this.User.Last && this.User.Login && this.User.Level == 0))
         },
         showKey: function() {
-            return (this.User.USR && (admin() > 1 || (this.$store.getters.USR == this.user.USR)));
+            return ((this.User.USR && this.$store.getters.isAdmin) || (this.$store.getters.USR == this.User.USR));
         },
     },
     methods: {
@@ -1160,6 +1174,7 @@ var deviceEditVue = {
             Device: {},
             pageRows: 10,
             startRow: 0,
+            newVM: false,
             vmColumns: ["Hostname", "IPs", "Profile", "Note"],
         }
     },
@@ -1176,6 +1191,9 @@ var deviceEditVue = {
                     || (! this.Device.RU > 0)
                     || (! this.Device.Height > 0)
                    )
+        },
+        canAddVM: function() {
+            return (this.Device.DID > 0 && ! this.newVM)
         }
     },
     created: function() {
@@ -1221,7 +1239,7 @@ var deviceEditVue = {
             }
         },
         loadRacks: function() {
-            const url = rackURL + "?STI=" + this.Device.STI;
+            const url = rackViewURL + "?STI=" + this.Device.STI;
             get(url).then(r => this.Device.racks = r)
         },
         saveSelf: function(event) {
@@ -1261,6 +1279,13 @@ var deviceEditVue = {
         },
         vmLinkpath: function(entry, key) {
             if (key == "Hostname") return "/vm/edit/" + entry["VMI"]
+        },
+        addVM: function() {
+            this.newVM = true;
+/*
+            console.log("ADD VM!");
+            router.push("/vm/add/" + this.Device.DID)
+*/
         },
         audit: function() {
             router.push("/device/audit/" + this.Device.DID)
@@ -1559,7 +1584,7 @@ var vmips = Vue.component("vm-ips", {
     methods: {
         loadSelf: function() {
             const url = ipURL + "?VMI=" + this.VMI;
-            get(url).then(data => this.rows = data)
+            get(url).then(data => this.rows = data || [])
             get(iptypesURL).then(data => this.types = data)
         },
         updateIP(i) {
@@ -1609,7 +1634,7 @@ var vmEdit = Vue.component("vm-edit", {
             ipRows: [],
             Description: "",
             VMI: parseInt(this.$route.params.VMI),
-            VM: {},
+            VM: {VMI: null, Server: ''},
         }
     },
     created: function() {
@@ -1622,7 +1647,7 @@ var vmEdit = Vue.component("vm-edit", {
                     this.showList()
                 })
             } else {
-                this.VM = {VMI: 0}
+                this.VM = {VMI: null, Server: ''}
             }
         },
         saveSelf: function() {
@@ -1635,6 +1660,47 @@ var vmEdit = Vue.component("vm-edit", {
         },
         showList: function(ev) {
             router.push("/vm/list")
+        },
+    },
+})
+
+var vmAdd = Vue.component("vm-add", {
+    template: "#tmpl-vm-edit",
+    props: ["DID", "Server"],
+    data: function() {
+        return {
+            url: vmViewURL,
+            tags: [],
+            ipTypes: [],
+            ipRows: [],
+            Description: "",
+            VM: {VMI:null, DID: 0, Server:''}
+        }
+    },
+    created: function() {
+        console.log("THIS SERVER:", this.Server)
+        this.VM['DID'] = this.DID
+        this.VM['Server'] = this.Server
+    },
+    methods: {
+        saveSelf: function() {
+            if (this.VM.VMI > 0) {
+                posty(this.url + this.VM.VMI, this.VM, "PATCH").then(() => router.go(-1))
+            } else {
+                posty(vmURL, this.VM).then(vm => {
+                    this.$parent.Device.vms.push(vm)
+                    this.$parent.newVM = false
+                })
+            }
+        },
+        deleteSelf: function() {
+            if (window.confirm("Really delete this VM?")) {
+                posty(this.url + this.VM.VMI, null, "DELETE").then(() => this.showList)
+            }
+        },
+        showList: function(ev) {
+            router.go(-1)
+            //router.push("/vm/list")
         },
     },
 })
@@ -1676,8 +1742,6 @@ var vmAudit = Vue.component("vm-audit", {
     },
 })
 
-
-var eventHub = new Vue();
 
 //
 // DEVICE LIST
@@ -3028,7 +3092,7 @@ var rackEdit = Vue.component("rack-edit", {
                 RID: 0,
                 STI: 0,
             },
-            dataURL: rackURL,
+            dataURL: rackViewURL,
             listURL: "/rack/list",
         }
     },
@@ -3055,6 +3119,9 @@ var rackEdit = Vue.component("rack-edit", {
                 }
             }
         },
+        deleteSelf: function() {
+            posty(rackViewURL + this.myID(), null, "DELETE").then(router.go(-1))
+        },
         showList: function() {
             router.push("/rack/list")
         },
@@ -3077,7 +3144,7 @@ var rackList = Vue.component("rack-list", {
     mixins: [pagedCommon, siteMIX, commonListMIX],
     data: function() {
         return {
-            dataURL: rackURL,
+            dataURL: rackViewURL,
             STI: 0,
             sites: [],
             searchQuery: "",
@@ -3460,7 +3527,7 @@ var rackLayout = Vue.component("rack-layout", {
 
              getSiteLIST().then(s => this.sites = s)
              get(url).then(units => {
-                 url = rackURL + "?STI=" + this.STI;
+                 url = rackViewURL + "?STI=" + this.STI;
                  get(url).then(racks => {
                      if (racks) {
                          racks.unshift({RID:0, Label:""})
@@ -3484,6 +3551,16 @@ var rackLayout = Vue.component("rack-layout", {
             }
             var list = ips.join(",");
             var self = this
+            for (var i=0; i < self.lumpy.length; i++) {
+                for (var k=0; k < self.lumpy[i].units.length; k++) {
+                    var unit = self.lumpy[i].units[k]
+                    if (unit.Mgmt && unit.Mgmt.length > 0) {
+                        self.lumpy[i].units[k].pingMgmt = "*"
+                    }
+                    if (unit.IPs && unit.IPs.length > 0)
+                        self.lumpy[i].units[k].pingIP = "*"
+                }
+            }
             postForm(url, {iplist: list}, function(xhr) {
                if (xhr.readyState == 4 && xhr.status == 200) {
                    var pinged = JSON.parse(xhr.responseText)
@@ -3520,8 +3597,12 @@ var userLogin = Vue.component("user-login", {
             errorMsg: ""
         }
     },
+    created: function() {
+        console.log("userLogin created")
+    },
     methods: {
         cancel: function() {
+            console.log("userLogin canceled")
             router.push("/")
         },
         login: function(ev) {
@@ -3537,13 +3618,16 @@ var userLogin = Vue.component("user-login", {
 
 var userLogout = Vue.component("user-logout", {
     template: "#tmpl-user-logout",
+    created: function() {
+        console.log("userLogout created")
+    },
     methods: {
         cancel: function() {
             router.push("/")
         },
         logout: function(ev) {
             console.log("logout button selected")
-            eventHub.$emit("logged-out")
+            this.$store.commit("logOut")
             router.push("/auth/login")
         },
     }
@@ -3595,8 +3679,8 @@ var pagedGrid = Vue.component("paged-grid", {
             return (this.data && (this.data.length > 0) && this.filename && (this.filename.length > 0))
         },
         limitBy: function() {
-           let data = (this.rowsPerPage > 0) ? this.data.slice(this.currentRow, this.currentRow + this.rowsPerPage) : this.data;
-           let orderBy = (this.sortOrders[this.sortKey] > 0) ? "asc" : "desc";
+           var data = (this.rowsPerPage > 0) ? this.data.slice(this.currentRow, this.currentRow + this.rowsPerPage) : this.data;
+           var orderBy = (this.sortOrders[this.sortKey] > 0) ? "asc" : "desc";
            return (this.sortKey.length > 0) ? _.orderBy(data, this.sortKey, orderBy) : data
         }
     },
@@ -3763,6 +3847,7 @@ var homePage = Vue.component("home-page", {
     methods: {
         loadSelf: function() {
             get(summaryURL).then(data => this.rows = data)
+                .catch(x => console.log("oh fuck:", x))
         },
         dl: function() {
             download("test.txt", this.testData)
@@ -3809,6 +3894,7 @@ const routes = [
 { path: "/device/type/edit/:DTI", component:  deviceTypeEdit },
 { path: "/vm/audit/:VMI", component: vmAudit },
 { path: "/vm/edit/:VMI", component: vmEdit },
+{ path: "/vm/add/:DID", component: vmAdd },
 { path: "/vm/list",         component:  vmList },
 { path: "/mfgr/edit/:MID",  component: mfgrEdit },
 { path: "/mfgr/list",       component:  mfgrList },
@@ -3836,6 +3922,15 @@ const routes = [
 { path: "/search/:searchText", component:  searchFor, name: "searcher" },
 { path: "/", component: homePage },
 ]
+
+
+// load user info from cookie if it exists
+const checkUser = fromCookie();
+if (checkUser) {
+    checkUser['COOKIE'] = true;
+    store.commit("setUser", checkUser)
+    //console.log("user is set");
+}
 
 const router = new VueRouter({
    routes // short for routes: routes
