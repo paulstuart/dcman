@@ -1351,7 +1351,7 @@
             <tr v-for="lay in layouts.other" class="rackrow">
                 <td></td>
                 <td>
-                    <a v-if="lay.DID" v-link="{ path: '/device/edit/' + lay.DID>{{ lay.Hostname }}"</router-link>
+                    <router-link v-if="lay.DID" :to="{ path: '/device/edit/' + lay.DID }">{{ lay.Hostname }}</router-link>
                 </td>
                 <td>
                     {{ lay.IPs }}
