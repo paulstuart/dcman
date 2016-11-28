@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"os/exec"
+	"regexp"
+	"sort"
 	"strings"
 	"sync"
 	"syscall"
@@ -83,8 +85,8 @@ func ipmiexec(ip, username, password, input string) (int, string, string, error)
 	if len(password) == 0 {
 		return -1, "", "", ErrNoPassword
 	}
-	//args := []string{"-Ilanplus", "-H", ip, "-U", username, "-P", password}
-	args := []string{"-H", ip, "-U", username, "-P", password}
+	args := []string{"-Ilanplus", "-H", ip, "-U", username, "-P", password}
+	//args := []string{"-H", ip, "-U", username, "-P", password}
 	args = append(args, strings.Fields(input)...)
 	cmd := exec.Command("ipmitool", args...)
 	//cmd.Stdin = nil
@@ -164,6 +166,10 @@ func findMAC(ipmi string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	// this is an ugly hack
+	if u == "root" && p == "calvin" {
+		return dellMAC(u, p, ipmi)
+	}
 	rc, stdout, _, err := ipmicmd(ipmi, u, p, cmd)
 	if err != nil {
 		return "", err
@@ -179,6 +185,35 @@ func findMAC(ipmi string) (string, error) {
 		stdout = lines[2]
 	}
 	return strings.Replace(stdout[13:], " ", ":", -1), nil
+}
+
+// dell is different than supermicro, go figure
+func dellMAC(u, p, ipmi string) (string, error) {
+	const cmd = "delloem mac"
+	rc, stdout, _, err := ipmicmd(ipmi, u, p, cmd)
+	if err != nil {
+		return "", err
+	}
+	if rc != 0 {
+		return "", err
+	}
+	lines := strings.Split(stdout, "\n")
+	macs := make([]string, 0, len(lines))
+	re, err := regexp.Compile("^[0-9].*")
+	if err != nil {
+		panic(err)
+	}
+	for _, line := range lines {
+		if re.Match([]byte(line)) {
+			f := strings.Fields(line)
+			macs = append(macs, f[1])
+		}
+	}
+	if len(macs) > 0 {
+		sort.Strings(macs)
+		return macs[0], nil
+	}
+	return "", fmt.Errorf("no MAC found")
 }
 
 func getCredentials(ipmi string) (string, string, error) {
