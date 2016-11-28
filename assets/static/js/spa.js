@@ -2036,7 +2036,6 @@ var ipReserve = Vue.component("ip-reserve", {
             return false
         }
     },
-    //created: () => {
     created: function() {
         this.common()
     },
@@ -2076,7 +2075,7 @@ var ipReserve = Vue.component("ip-reserve", {
     watch: {
         STI: function() {
             const url = vlanURL + "?STI=" + this.STI
-            get(url).then(data => this.vlans = data)
+            get(url).then(data => this.vlans = data.sort((a, b) => a.Name > b.Name))
         },
         VLI: function() {
             for (var i=0; i < this.vlans.length; i++) {
