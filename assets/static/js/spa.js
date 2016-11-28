@@ -8,7 +8,11 @@ var fromCookie = function() {
         const tuple = cookie.split("=")
         if (tuple[0] == "userinfo") {
             if (tuple[1].length > 0) {
-                return JSON.parse(atob(tuple[1]));
+		try {
+			return JSON.parse(atob(tuple[1]));
+		} catch(e) {
+			console.log("cookie parse error:", e)
+		}
             }
         }
     }
