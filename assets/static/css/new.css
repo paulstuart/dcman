@@ -199,3 +199,7 @@ table.racked th {
 .badentry {
     background-color: red;
 }
+
+.spacebtn {
+    margin: 2em 0em ;
+}

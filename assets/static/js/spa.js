@@ -1166,6 +1166,7 @@ var deviceEditVue = {
             sites: [],
             device_types: [],
             mfgrs: [],
+            vmFilename: "vms",
             tags: [],
             ipTypes: [],
             newIP: "",
@@ -1174,12 +1175,19 @@ var deviceEditVue = {
             newIFD: 0,
             netColumns: ["IP", "Type", "Port"],
             ifaceColumns: ["Port", "Mgmt", "MAC", "CableTag", "SwitchPort"],
+            part_columns: [
+                "Description",
+                "PartSN",
+                "PartNumber",
+                "Vendor",
+            ],
             Description: "",
             Device: {},
             pageRows: 10,
             startRow: 0,
             newVM: false,
             vmColumns: ["Hostname", "IPs", "Profile", "Note"],
+            parts: [],
         }
     },
     computed: {
@@ -1229,6 +1237,7 @@ var deviceEditVue = {
                             }
                         }
                     })
+                getPart(this.$route.params.DID, "?did=").then(p => this.parts = p)
             } else {
                 this.Device = {
                     DID: 0,
@@ -1286,10 +1295,12 @@ var deviceEditVue = {
         },
         addVM: function() {
             this.newVM = true;
-/*
-            console.log("ADD VM!");
-            router.push("/vm/add/" + this.Device.DID)
-*/
+        },
+        partLinkable: function(key) {
+            return (key == "Description")
+        },
+        partLinkpath: function(entry, key) {
+            if (key == "Description") return "/part/edit/" + entry["PID"]
         },
         audit: function() {
             router.push("/device/audit/" + this.Device.DID)
@@ -2511,6 +2522,7 @@ var rmaList = Vue.component("rma-list", {
                 "Description",
                 "Hostname",
                 "PartSN",
+                "Vendor",
                 "VendorRMA",
                 "Jira",
                 "Created",
@@ -2542,12 +2554,14 @@ var rmaList = Vue.component("rma-list", {
             switch(key) {
                 case "Description": return true;
                 case "Hostname": return true;
+                case "RMD": return true;
             }
             return false;
         },
         linkpath: function(entry, key) {
             switch(key) {
-                case "Description": return "/rma/edit/" + entry["RMD"]
+                case "RMD": return "/rma/edit/" + entry["RMD"]
+                case "Description": return "/part/edit/" + entry["OldPID"]
                 case "Hostname":
                     if (!("DID" in entry)) return "";
                     return "/device/edit/" + entry["DID"]
@@ -2913,6 +2927,7 @@ var rmaCreate = Vue.component("rma-create", {
                     PartNumber: part.PartNumber,
                     Hostname: part.Hostname,
                     PartSN: part.Serial,
+                    DeviceSN: part.DeviceSN,
                     Created: today,
                 }
             })

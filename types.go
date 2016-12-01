@@ -165,6 +165,7 @@ type rmaView struct {
 	Description *string   `sql:"description"`
 	PartSN      *string   `sql:"part_sn"`
 	PartNumber  *string   `sql:"part_no"`
+	Vendor      *string   `sql:"vendor"`
 	VendorRMA   *string   `sql:"vendor_rma"`
 	Jira        *string   `sql:"jira"`
 	ShipTrack   *string   `sql:"ship_tracking"`
@@ -232,6 +233,7 @@ type partView struct {
 	RMD         *int64   `sql:"rmd"` // rma id
 	Site        *string  `sql:"site"`
 	Hostname    *string  `sql:"hostname"`
+	DeviceSN    *string  `sql:"device_sn"`
 	Location    *string  `sql:"location"`
 	Serial      *string  `sql:"serial_no"`
 	AssetTag    *string  `sql:"asset_tag"`

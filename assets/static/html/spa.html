@@ -878,18 +878,29 @@
                     :columns="vmColumns" 
                     :linkable="vmLinkable"
                     :linkpath="vmLinkpath"
+                    :filename="vmFilename" 
                     :start-row="startRow"
                     :rows-per-page="pageRows">
                 </paged-grid>
             </fieldset>
-            <button class="btn" v-if="canAddVM" v-on:click.prevent="addVM">Add VM</button>
-
+            <button class="btn spacebtn" v-if="canAddVM" v-on:click.prevent="addVM">Add VM</button>
             <vm-add v-if="newVM"
                 :DID="Device.DID"
                 :biteme="Device.Hostname"
                 :Server="Device.Hostname">
             </vm-add>
 
+            <fieldset class="col-xs-12" v-if="parts">
+                <legend>Parts</legend>
+                <paged-grid 
+                    :data="parts" 
+                    :columns="part_columns" 
+                    :linkable="partLinkable"
+                    :linkpath="partLinkpath"
+                    :start-row="startRow"
+                    :rows-per-page="pageRows">
+                </paged-grid>
+            </fieldset>
         </form>
     </div>
 </script>
@@ -1990,7 +2001,7 @@
             <div class="form-group">
                 <label for="server-sn" class="control-label col-xs-2">Server SN</label>
                 <div class="col-xs-2">
-                    <input type="text" class="form-control" id="server-sn" v-model="RMA.ServerSN">
+                    <input type="text" class="form-control" id="server-sn" v-model="RMA.DeviceSN" readonly>
                 </div>
             </div>
             <div class="form-group">
