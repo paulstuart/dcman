@@ -109,6 +109,11 @@ func authenticate(username, password string) bool {
 	if insecure {
 		return true
 	}
+	if len(cfg.SAML.FakeName) > 0 &&
+		cfg.SAML.FakeName == username &&
+		cfg.SAML.FakePass == password {
+		return true
+	}
 	reply := oktaAuth(username, password)
 	//ioutil.WriteFile("saml.xml", []byte(reply), 0644)
 	return len(reply) > 0

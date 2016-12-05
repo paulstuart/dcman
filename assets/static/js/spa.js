@@ -32,7 +32,7 @@ const store = new Vuex.Store({
         apiKey: "",
         level: 0,
         active: false,
-        login: "",
+        email: "",
         USR: null,
     },
     getters: {
@@ -43,7 +43,7 @@ const store = new Vuex.Store({
             return (state.level > 1)
         },
         userName: state => {
-            return state.login
+            return state.email
         },
         apiKey: state => {
             return state.apiKey
@@ -51,17 +51,18 @@ const store = new Vuex.Store({
         loggedIn: state => {
             return state.active
         },
+        USR: state => {
+            return state.USR
+        },
     },
     mutations: {
         setUser(state, user) {
             state.level = user.Level
             state.apiKey = user.APIKey
-            state.login = user.Login
+            state.email = user.Email
             state.USR = user.USR
             state.active = true
-         //   console.log("setUser:", state.login);
             if (user["COOKIE"] === true) {
-        //        console.log("verifying cookie data is valid");
                 get("api/check")
 /*
                     .then(u => 
@@ -77,7 +78,7 @@ const store = new Vuex.Store({
             console.log("logging out:", state.login);
             state.level = 0
             state.apiKey = ""
-            state.login = ""
+            state.email = ""
             state.active = false
             state.USR = null
         },
@@ -944,7 +945,7 @@ var userList = Vue.component("user-list", {
     mixins: [pagedCommon],
     data: function() {
         return {
-            columns: ["Login", "First", "Last", "Level"],
+            columns: ["Email", "First", "Last", "Level"],
             rows: [],
             url: userURL,
             searchQuery: "",
@@ -958,7 +959,7 @@ var userList = Vue.component("user-list", {
             get(this.url).then(data => this.rows = data || [])
         },
         linkable: function(key) {
-            return (key == "Login")
+            return (key == "Email")
         },
         linkpath: function(entry, key) {
             return "/user/edit/" + entry["USR"]
@@ -976,7 +977,7 @@ var userEdit = Vue.component("user-edit", {
     data: function() {
         return {
             User: {
-                Login: '',
+                Email: '',
                 First: '',
                 Last: '',
                 Level: null,
@@ -998,12 +999,12 @@ var userEdit = Vue.component("user-edit", {
     },
     computed: {
         canAssume: function() {
-            return this.$store.getters.isAdmin && this.User.USR > 0;
+            return this.$store.getters.isAdmin && this.User.USR > 0 && this.$store.getters.USR != this.User.USR;
         },
         disableAdd: function() {
             return (this.User.First.length > 0  &&
                     this.User.Last.length  > 0  &&
-                    this.User.Login.length > 0  &&
+                    this.User.Email.length > 0  &&
                     this.User.Level === null
                     );
         },
@@ -1018,7 +1019,7 @@ var userEdit = Vue.component("user-edit", {
                 getUser(this.$route.params.USR).then(u => this.User = u)
             } else {
                 this.User = {
-                    Login: '',
+                    Email: '',
                     First: '',
                     Last: '',
                     Level: null,
@@ -1562,7 +1563,7 @@ var deviceAudit = Vue.component("device-audit", {
             columns: [
                 "TS",
                 "Version",
-                "Login",
+                "Email",
                 "Column",
                 "Before",
                 "After",
@@ -1574,7 +1575,7 @@ var deviceAudit = Vue.component("device-audit", {
     },
     methods: {
         loadSelf: function () {
-            const ignore = ["TS", "Version", "Login", "USR", "RID", "TID", "KID", "DTI"];
+            const ignore = ["TS", "Version", "Email", "USR", "RID", "TID", "KID", "DTI"];
             getDeviceAudit(this.$route.params.DID).then(fix => rows = deltas(ignore, fix))
         },
         linkable: function(key) {
@@ -1749,7 +1750,7 @@ var vmAudit = Vue.component("vm-audit", {
             columns: [
                 "TS",
                 "Version",
-                "Login",
+                "Email",
                 "Column",
                 "Before",
                 "After",
@@ -1762,7 +1763,7 @@ var vmAudit = Vue.component("vm-audit", {
     methods: {
         loadSelf: function() {
             getVMAudit(this.$route.params.VMI, "?vmi=").then(fix => {
-                const ignore = ["TS", "Version", "Login", "USR", "RID", "TID", "KID", "DTI"];
+                const ignore = ["TS", "Version", "Email", "USR", "RID", "TID", "KID", "DTI"];
                 this.rows = deltas(ignore, fix)
             })
         },
@@ -3772,7 +3773,7 @@ var sessionList = Vue.component("session-list", {
     data: function() {
         return {
             filename: "sessions",
-            columns: ["TS", "Login", "Remote", "Event"],
+            columns: ["TS", "Email", "Remote", "Event"],
             rows: [],
             searchQuery: "",
         }
@@ -3785,7 +3786,7 @@ var sessionList = Vue.component("session-list", {
             getSessions().then(s => this.rows = s)
         },
         linkable: function(key) {
-            return (key == "Login")
+            return (key == "Email")
         },
         linkpath: function(entry, key) {
             return "/user/edit/" + entry["USR"]

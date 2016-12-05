@@ -312,12 +312,12 @@ create index ips_ipv4 on ips(ipv4);
 DROP TABLE IF EXISTS users;
 CREATE TABLE users (
     usr integer primary key,
-    login text, -- optional unix login name
+    email text,
     firstname text,
     lastname text,
-    email text,
     salt text,
     admin int default 0, 
+    local int default 0, 
     pw_hash text, -- bcrypt hashed password
     pw_salt text default (lower(hex(randomblob(32)))),
     apikey text default (lower(hex(randomblob(32))))

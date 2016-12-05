@@ -101,6 +101,12 @@ func userAuth(username, password string) (*user, error) {
 		log.Println("user error:", err)
 		return nil, fmt.Errorf("%s is not authorized for access", username)
 	}
+	if user.Local {
+		if user.Email == username && user.Password == password {
+			return user, nil
+		}
+		return nil, fmt.Errorf("invalid login")
+	}
 	if authenticate(username, password) {
 		return &user, nil
 	}
@@ -111,7 +117,7 @@ func userAuth(username, password string) (*user, error) {
 func userFromAPIKey(key string) (user, error) {
 	if cfg.Main.NoKey {
 		login := "open acccess"
-		return user{Login: &login, Level: 2}, nil
+		return user{Email: &login, Level: 2}, nil
 	}
 	return getUser("where apikey=?", key)
 }

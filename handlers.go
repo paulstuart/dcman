@@ -101,12 +101,6 @@ func remember(w http.ResponseWriter, u *user) {
 	}
 	if u != nil {
 		c.Expires = time.Now().Add(sessionMinutes)
-		/*
-			login := "no name"
-			if u.Login != nil {
-				login = *u.Login
-			}
-		*/
 		b, err := json.Marshal(&u)
 		if err != nil {
 			jsonError(w, err, http.StatusInternalServerError)
@@ -314,7 +308,7 @@ func userLogin(w http.ResponseWriter, r *http.Request) (*user, error) {
 
 func apiLogin(w http.ResponseWriter, r *http.Request) {
 	key := "insecure mode"
-	login := "insecure login"
+	email := "insecure login"
 	if insecure {
 		c := &http.Cookie{
 			Name:    "X-API-KEY",
@@ -324,7 +318,7 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 		}
 		http.SetCookie(w, c)
 		u := user{
-			Login:  &login,
+			Email:  &email,
 			APIKey: &key,
 			Level:  2,
 		}
@@ -478,7 +472,7 @@ func assumeUser(w http.ResponseWriter, r *http.Request) {
 			jsonError(w, err, http.StatusInternalServerError)
 			return
 		}
-		msg := "Assumed identity for " + notNull(assumed.Login) + " by " + notNull(u.Login)
+		msg := "Assumed identity for " + notNull(assumed.Email) + " by " + notNull(u.Email)
 		auditLog(u.USR, remoteHost(r), "Assumed", msg)
 		cors(w)
 		c := &http.Cookie{
@@ -495,7 +489,7 @@ func assumeUser(w http.ResponseWriter, r *http.Request) {
 		s := &session{
 			USR:    &u.USR,
 			Remote: remoteHost(r),
-			Event:  "assumed identity of: " + notNull(assumed.Login),
+			Event:  "assumed identity of: " + notNull(assumed.Email),
 			TS:     &now,
 		}
 		dbAdd(s)

@@ -58,8 +58,6 @@ func (d *jsonDate) Value() (driver.Value, error) {
 	return time.Time(*d), nil
 }
 
-//type int64 int64
-
 type summary struct {
 	ID      int64   `sql:"sti" key:"true" table:"summary"`
 	Site    *string `sql:"site"`
@@ -70,22 +68,21 @@ type summary struct {
 type user struct {
 	USR    int64   `sql:"usr" key:"true" table:"users_view"`
 	RealID int64   // when emulating another user, retain real identity
-	Login  *string `sql:"login"`
+	Email  *string `sql:"email"`
 	First  *string `sql:"firstname"`
 	Last   *string `sql:"lastname"`
-	Email  *string `sql:"email"`
 	APIKey *string `sql:"apikey" update:"false"`
 	Level  int     `sql:"admin"`
+	Local  bool    `sql:"local"`
 }
 
 // FullUser has *all* user fields exposed
 type fullUser struct {
 	USR      int64  `sql:"usr" key:"true" table:"users"`
 	RealID   int64  // when emulating another user, retain real identity
-	Login    string `sql:"login"`
+	Email    string `sql:"email"`
 	First    string `sql:"firstname"`
 	Last     string `sql:"lastname"`
-	Email    string `sql:"email"`
 	APIKey   string `sql:"apikey"`
 	Password string `sql:"pw_hash"`
 	Salt     string `sql:"pw_salt"`

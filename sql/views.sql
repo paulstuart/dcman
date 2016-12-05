@@ -1,7 +1,7 @@
 
 DROP VIEW IF EXISTS sessions_view;
 CREATE VIEW "sessions_view" as
-    select s.*, u.login
+    select s.*, u.email
     from sessions s
     left outer join users u on s.usr = u.usr
     order by s.ts desc
@@ -100,7 +100,7 @@ CREATE VIEW ips_view as
 DROP VIEW IF EXISTS ips_reserved;
 CREATE VIEW ips_reserved as
     select i.iid, i.ipt, i.vli, v.sti, null as rid, 
-           v.site, v.name as vlan, i.iptype, i.ip32, i.ipv4, i.note, i.usr, i.ts, u.login as username
+           v.site, v.name as vlan, i.iptype, i.ip32, i.ipv4, i.note, i.usr, i.ts, u.email as username
     from ips_view i 
     left outer join vlans_view v on i.vli = v.vli
     left outer join users u on i.usr = u.usr
@@ -395,7 +395,7 @@ CREATE VIEW devices_history as
         union 
         select * from audit_devices
     ) 
-    select d.*, r.sti, r.site, r.rack, dt.name as devtype, t.tag, u.login 
+    select d.*, r.sti, r.site, r.rack, dt.name as devtype, t.tag, u.email 
     from all_devices d
     left outer join racks_view r on d.rid = r.rid
     left outer join device_types dt on d.dti = dt.dti
@@ -411,7 +411,7 @@ CREATE VIEW vms_history as
         union 
         select * from audit_vms
     ) 
-    select v.*, d.sti, d.rid, d.site, d.rack, d.ru, d.hostname as server, u.login 
+    select v.*, d.sti, d.rid, d.site, d.rack, d.ru, d.hostname as server, u.email 
     from all_vms v
     left outer join devices_view d on v.did = d.did
     left outer join users u on d.usr=u.usr

@@ -68,6 +68,8 @@ type samlConfig struct {
 	OKTAHash    string `gcfg:"OKTAHash"`
 	Disabled    bool   `gcfg:"disabled"`
 	Timeout     int    `gcfg:"timeout"`
+	FakeName    string `gcfg:"fakename"`
+	FakePass    string `gcfg:"fakepass"`
 }
 
 const (

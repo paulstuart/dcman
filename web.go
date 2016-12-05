@@ -430,7 +430,7 @@ func userMiddleware(next http.Handler) http.Handler {
 		if r.URL.User == nil {
 			user := currentUser(r)
 			if user.USR > 0 {
-				r.URL.User = url.User(notNull(user.Login))
+				r.URL.User = url.User(notNull(user.Email))
 			}
 		}
 		next.ServeHTTP(w, r)
