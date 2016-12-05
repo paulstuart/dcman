@@ -975,12 +975,18 @@ var userEdit = Vue.component("user-edit", {
     mixins: [editVue],
     data: function() {
         return {
-            User: {},
+            User: {
+                Login: '',
+                First: '',
+                Last: '',
+                Level: null,
+            },
             dataURL: userURL,
             listURL: "/user/list",
 
             // TODO: pull levels data from server
             levels: [
+                {Level:null, Label: ""},
                 {Level:0, Label: "User"},
                 {Level:1, Label: "Editor"},
                 {Level:2, Label: "Admin"},
@@ -992,13 +998,18 @@ var userEdit = Vue.component("user-edit", {
     },
     computed: {
         canAssume: function() {
-            return this.$store.getters.isAdmin
+            return this.$store.getters.isAdmin && this.User.USR > 0;
         },
         disableAdd: function() {
-            return (!(this.User.First && this.User.Last && this.User.Login && this.User.Level == 0))
+            return (this.User.First.length > 0  &&
+                    this.User.Last.length  > 0  &&
+                    this.User.Login.length > 0  &&
+                    this.User.Level === null
+                    );
         },
         showKey: function() {
-            return ((this.User.USR && this.$store.getters.isAdmin) || (this.$store.getters.USR == this.User.USR));
+            return (this.User.USR > 0) &&
+                   ((this.$store.getters.isAdmin) || (this.$store.getters.USR == this.User.USR));
         },
     },
     methods: {
@@ -1006,7 +1017,12 @@ var userEdit = Vue.component("user-edit", {
             if (this.$route.params.USR > 0) {
                 getUser(this.$route.params.USR).then(u => this.User = u)
             } else {
-                this.User = {USR: 0, Level: 0}
+                this.User = {
+                    Login: '',
+                    First: '',
+                    Last: '',
+                    Level: null,
+                }
             }
         },
         myID: function() {

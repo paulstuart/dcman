@@ -23,7 +23,6 @@ var (
 	sessionMinutes    = time.Duration(time.Minute * 240)
 	masterMode        = true
 	hostname, _       = os.Hostname()
-	basedir, _        = os.Getwd() // get abs path now, as we will be changing dirs
 	execDir, _        = osext.ExecutableFolder()
 	startTime         = time.Now()
 	sqlDir            = "sql" // dir containing sql schemas, etc
@@ -80,6 +79,7 @@ const (
 
 func init() {
 	flag.BoolVar(&insecure, "insecure", insecure, "ignore authentication")
+	flag.StringVar(&execDir, "dir", execDir, "ignore authentication")
 	flag.Parse()
 	f := configFile
 	if _, err := os.Stat(configFile); err != nil {
