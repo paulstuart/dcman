@@ -2412,10 +2412,11 @@ var partList = Vue.component("part-list", {
             var id = parseInt(ev.target.id.split("-")[1]);
         },
         linkable: function(key) {
-            return (key == "Description")
+            return (key == "Description" || key == "Hostname")
         },
         linkpath: function(entry, key) {
-            return "/part/edit/" + entry["PID"]
+            if (key == "Description")  return "/part/edit/"   + entry["PID"]
+            if (key == "Hostname")     return "/device/edit/" + entry["DID"]
         }
     },
     watch: {
