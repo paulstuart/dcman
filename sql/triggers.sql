@@ -517,8 +517,8 @@ drop trigger if exists users_view_insert;
 CREATE TRIGGER users_view_insert INSTEAD OF INSERT ON users_view 
 BEGIN
     insert into users 
-        (login, firstname, lastname, email, admin)
-        values(NEW.login, NEW.firstname, NEW.lastname, NEW.email, NEW.admin)
+        (firstname, lastname, email, admin, local)
+        values(NEW.firstname, NEW.lastname, NEW.email, NEW.admin, NEW.local)
         ;
 END;
 
@@ -526,11 +526,11 @@ drop trigger if exists users_view_update;
 CREATE TRIGGER users_view_update INSTEAD OF UPDATE ON users_view 
 BEGIN
     update users set 
-        login = ifnull(new.login,old.login), 
         firstname = ifnull(new.firstname,old.lastname),
         lastname = ifnull(new.lastname,old.lastname), 
         email = ifnull(new.email,old.email), 
-        admin = ifnull(new.admin,old.admin)
+        admin = ifnull(new.admin,old.admin),
+        local = ifnull(new.local,old.local) 
     where usr = OLD.usr
     ;
 END;

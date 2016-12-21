@@ -23,22 +23,6 @@ func userByID(id interface{}) (user, error) {
 	return getUser("where usr=?", id)
 }
 
-/*
-func userLogin(id string) string {
-	if len(id) == 0 {
-		return ""
-	}
-	if id == "0" {
-		return ""
-	}
-	u, err := userByID(id)
-	if err != nil {
-		return err.Error()
-	}
-	return u.Login
-}
-*/
-
 func userByLogin(login string) (user, error) {
 	return getUser("where login=?", login)
 }
@@ -96,19 +80,19 @@ type credentials struct {
 }
 
 func userAuth(username, password string) (*user, error) {
-	user, err := userByEmail(username)
-	if err != nil {
+	user := fullUser{}
+	if err := dbFindBy(&user, "email", username); err != nil {
 		log.Println("user error:", err)
 		return nil, fmt.Errorf("%s is not authorized for access", username)
 	}
 	if user.Local {
-		if user.Email == username && user.Password == password {
-			return user, nil
+		if user.Email == username && notNull(user.Password) == password {
+			return user.User(), nil
 		}
 		return nil, fmt.Errorf("invalid login")
 	}
 	if authenticate(username, password) {
-		return &user, nil
+		return user.User(), nil
 	}
 	return nil, fmt.Errorf("invalid credentials for %s", username)
 }
@@ -117,7 +101,7 @@ func userAuth(username, password string) (*user, error) {
 func userFromAPIKey(key string) (user, error) {
 	if cfg.Main.NoKey {
 		login := "open acccess"
-		return user{Email: &login, Level: 2}, nil
+		return user{Email: login, Level: 2}, nil
 	}
 	return getUser("where apikey=?", key)
 }

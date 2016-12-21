@@ -68,7 +68,7 @@ type summary struct {
 type user struct {
 	USR    int64   `sql:"usr" key:"true" table:"users_view"`
 	RealID int64   // when emulating another user, retain real identity
-	Email  *string `sql:"email"`
+	Email  string  `sql:"email"`
 	First  *string `sql:"firstname"`
 	Last   *string `sql:"lastname"`
 	APIKey *string `sql:"apikey" update:"false"`
@@ -78,15 +78,28 @@ type user struct {
 
 // FullUser has *all* user fields exposed
 type fullUser struct {
-	USR      int64  `sql:"usr" key:"true" table:"users"`
-	RealID   int64  // when emulating another user, retain real identity
-	Email    string `sql:"email"`
-	First    string `sql:"firstname"`
-	Last     string `sql:"lastname"`
-	APIKey   string `sql:"apikey"`
-	Password string `sql:"pw_hash"`
-	Salt     string `sql:"pw_salt"`
-	Level    int    `sql:"admin"`
+	USR      int64   `sql:"usr" key:"true" table:"users"`
+	RealID   int64   // when emulating another user, retain real identity
+	Email    string  `sql:"email"`
+	First    *string `sql:"firstname"`
+	Last     *string `sql:"lastname"`
+	APIKey   *string `sql:"apikey"`
+	Password *string `sql:"pw_hash"`
+	Salt     *string `sql:"pw_salt"`
+	Level    int     `sql:"admin"`
+	Local    bool    `sql:"local"`
+}
+
+func (f fullUser) User() *user {
+	return &user{
+		USR:    f.USR,
+		RealID: f.RealID,
+		Email:  f.Email,
+		First:  f.First,
+		Last:   f.Last,
+		APIKey: f.APIKey,
+		Level:  f.Level,
+	}
 }
 
 type session struct {

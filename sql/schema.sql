@@ -312,7 +312,7 @@ create index ips_ipv4 on ips(ipv4);
 DROP TABLE IF EXISTS users;
 CREATE TABLE users (
     usr integer primary key,
-    email text,
+    email text not null,
     firstname text,
     lastname text,
     salt text,

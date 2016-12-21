@@ -67,7 +67,7 @@ func loginFailHandler(w http.ResponseWriter, r *http.Request) {
 
 func logoutPage(w http.ResponseWriter, r *http.Request) {
 	user := currentUser(r)
-	auditLog(user.USR, remoteHost(r), "Logout", notNull(user.Email))
+	auditLog(user.USR, remoteHost(r), "Logout", user.Email)
 	isAuthorized(w, false)
 	remember(w, nil)
 	redirect(w, r, "/", 302)
@@ -318,7 +318,7 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 		}
 		http.SetCookie(w, c)
 		u := user{
-			Email:  &email,
+			Email:  email,
 			APIKey: &key,
 			Level:  2,
 		}
@@ -472,7 +472,7 @@ func assumeUser(w http.ResponseWriter, r *http.Request) {
 			jsonError(w, err, http.StatusInternalServerError)
 			return
 		}
-		msg := "Assumed identity for " + notNull(assumed.Email) + " by " + notNull(u.Email)
+		msg := "Assumed identity for " + assumed.Email + " by " + u.Email
 		auditLog(u.USR, remoteHost(r), "Assumed", msg)
 		cors(w)
 		c := &http.Cookie{
@@ -489,7 +489,7 @@ func assumeUser(w http.ResponseWriter, r *http.Request) {
 		s := &session{
 			USR:    &u.USR,
 			Remote: remoteHost(r),
-			Event:  "assumed identity of: " + notNull(assumed.Email),
+			Event:  "assumed identity of: " + assumed.Email,
 			TS:     &now,
 		}
 		dbAdd(s)

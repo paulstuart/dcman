@@ -182,6 +182,13 @@ func dbDelete(o dbutil.DBObject) error {
 	return datastore.Delete(o)
 }
 
+func dbFindBy(o dbutil.DBObject, key string, value interface{}) error {
+	if err := readable(); err != nil {
+		return err
+	}
+	return datastore.FindBy(o, key, value)
+}
+
 func dbFindByID(o dbutil.DBObject, id interface{}) error {
 	if err := readable(); err != nil {
 		return err

@@ -430,7 +430,7 @@ func userMiddleware(next http.Handler) http.Handler {
 		if r.URL.User == nil {
 			user := currentUser(r)
 			if user.USR > 0 {
-				r.URL.User = url.User(notNull(user.Email))
+				r.URL.User = url.User(user.Email)
 			}
 		}
 		next.ServeHTTP(w, r)
@@ -492,7 +492,6 @@ func notFound(w http.ResponseWriter, r *http.Request) {
 }
 
 func goHome(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("GO HOME:", r.URL.Path)
 	redirect(w, r, "/", http.StatusMovedPermanently)
 }
 
