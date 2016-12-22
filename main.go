@@ -30,7 +30,7 @@ var (
 	dbName            = execDir + "/data.db"
 	dbFile            = "file://" + dbName //+ "?cache=shared&mode=rwc"
 	systemLocation, _ = time.LoadLocation("Local")
-	pingTimeout       = 3
+	pingTimeout       = 10
 	pathPrefix        string
 	bannerText        string
 	cfg               = struct {

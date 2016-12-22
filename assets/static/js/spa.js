@@ -1107,13 +1107,15 @@ var interfaceMIX = {
     methods: {
         findMAC(i) {
             get(deviceMacURL + this.DID).then(mac => {
-                var row = this.rows[i]
-                row.MAC = mac.MAC
-                var data = {
-                    IFD: row.IFD,
-                    MAC: row.MAC,
+                if (mac.MAC.length > 0) {
+                    var row = this.rows[i]
+                    row.MAC = mac.MAC
+                    var data = {
+                        IFD: row.IFD,
+                        MAC: row.MAC,
+                    }
+                    posty(ifaceURL + row.IFD, data, "PATCH")
                 }
-                posty(ifaceURL + row.IFD, data, "PATCH")
             })
         },
         needsMAC(i) {

@@ -85,8 +85,8 @@ func ipmiexec(ip, username, password, input string) (int, string, string, error)
 	if len(password) == 0 {
 		return -1, "", "", ErrNoPassword
 	}
-	args := []string{"-Ilanplus", "-H", ip, "-U", username, "-P", password}
-	//args := []string{"-H", ip, "-U", username, "-P", password}
+	//args := []string{"-Ilanplus", "-H", ip, "-U", username, "-P", password}
+	args := []string{"-H", ip, "-U", username, "-P", password}
 	args = append(args, strings.Fields(input)...)
 	cmd := exec.Command("ipmitool", args...)
 	//cmd.Stdin = nil
@@ -116,7 +116,7 @@ func ipmicmd(ip, username, password, input string) (int, string, string, error) 
 }
 
 func ipmichk(ip, username, password string) error {
-	const chkcmd = "session info active"
+	const chkcmd = "mc info"
 	rc, stdout, stderr, err := ipmiexec(ip, username, password, chkcmd)
 	if err != nil {
 		return err
@@ -124,7 +124,7 @@ func ipmichk(ip, username, password string) error {
 	if rc > 0 {
 		return ErrExecFailed
 	}
-	if strings.Contains(stdout, "active session") {
+	if strings.Contains(stdout, "Manufacturer") {
 		return nil
 	}
 	if len(stdout) > 0 {
@@ -164,9 +164,10 @@ func findMAC(ipmi string) (string, error) {
 	const cmd = "raw 0x30 0x21" // supermicro specific
 	u, p, err := getCredentials(ipmi)
 	if err != nil {
+		fmt.Println("ERR:", err)
 		return "", err
 	}
-	// this is an ugly hack
+	// TODO: fix this ugly hack
 	if u == "root" && p == "calvin" {
 		return dellMAC(u, p, ipmi)
 	}
