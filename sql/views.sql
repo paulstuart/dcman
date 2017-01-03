@@ -23,21 +23,42 @@ CREATE VIEW vlans_view as
     order by v.sti, v.name
     ;
 
-DROP VIEW IF EXISTS vlans_calc;
-CREATE VIEW vlans_calc as
-    with oct1(ipv4, vli, o1, rem1) as (
-            select starting as ipv4, vli, substr(starting,0,instr(starting,'.')) as o1, 
-                substr(starting,instr(starting,'.')+1) as rem1
-                from vlans
+/*
+SELECT IP FROM iplist ORDER BY
+
+CAST(substr(trim(IP),1,instr(trim(IP),'.')-1) AS INTEGER),  
+
+   CAST(substr(substr(trim(IP),length(substr(trim(IP),1,instr(trim(IP),'.')))+1,length(IP)) ,1, instr(substr(trim(IP),length(substr(trim(IP),1,instr(trim(IP),'.')))+1,length(IP)),'.')-1) AS INTEGER), 
+
+        CAST(substr(substr(trim(IP),length(substr(substr(trim(IP),length(substr(trim(IP),1,instr(trim(IP),'.')))+1,length(IP)) ,1, instr(substr(trim(IP),length(substr(trim(IP),1,instr(trim(IP),'.')))+1,length(IP)),'.')))+length(substr(trim(IP),1,instr(trim(IP),'.')))+1,length(IP)) ,1, instr(substr(trim(IP),length(substr(substr(trim(IP),length(substr(trim(IP),1,instr(trim(IP),'.')))+1,length(IP)) ,1, instr(substr(trim(IP),length(substr(trim(IP),1,instr(trim(IP),'.')))+1,length(IP)),'.')))+length(substr(trim(IP),1,instr(trim(IP),'.')))+1,length(IP)),'.')-1) AS INTEGER), 
+
+        CAST(substr(trim(IP),length(substr(substr(trim(IP),length(substr(substr(trim(IP),length(substr(trim(IP),1,instr(trim(IP),'.')))+1,length(IP)) ,1, instr(substr(trim(IP),length(substr(trim(IP),1,instr(trim(IP),'.')))+1,length(IP)),'.')))+length(substr(trim(IP),1,instr(trim(IP),'.')))+1,length(IP)) ,1, instr(substr(trim(IP),length(substr(substr(trim(IP),length(substr(trim(IP),1,instr(trim(IP),'.')))+1,length(IP)) ,1, instr(substr(trim(IP),length(substr(trim(IP),1,instr(trim(IP),'.')))+1,length(IP)),'.')))+length(substr(trim(IP),1,instr(trim(IP),'.')))+1,length(IP)),'.')))+ length(substr(trim(IP),1,instr(trim(IP),'.')))+length(substr(substr(trim(IP),length(substr(trim(IP),1,instr(trim(IP),'.')))+1,length(IP)) ,1, instr(substr(trim(IP),length(substr(trim(IP),1,instr(trim(IP),'.')))+1,length(IP)),'.')))+1,length(trim(IP))) AS INTEGER)
+shareeditflag
+edited Feb 11 at 9:55
+answered Feb 11 at 9:49
+
+NEV
+17611
+
+*/
+DROP VIEW IF EXISTS vlans_first;
+CREATE VIEW vlans_first as
+    with ipaddr(ipv4, vli) as (
+            select ifnull(starting,route) as ipv4, vli from vlans
         ),
-        oct2(vli, ipv4, o1, o2, rem2) as (
-            select vli, ipv4, o1,
+        oct1(ipv4, vli, o1, rem1) as (
+            select ipv4, vli, substr(ipv4,0,instr(ipv4,'.')) as o1, 
+                substr(ipv4,instr(ipv4,'.')+1) as rem1
+                from ipaddr
+        ),
+        oct2(ipv4, vli, o1, o2, rem2) as (
+            select ipv4, vli, o1,
                 substr(rem1,0,instr(rem1,'.')) as o2, 
                 substr(rem1,instr(rem1,'.')+1) as rem2
                 from oct1
         ),
-        oct3(vli, ipv4, o1, o2, o3, o4) as (
-            select vli, ipv4, o1, o2,
+        oct3(ipv4, vli, o1, o2, o3, o4) as (
+            select ipv4, vli, o1, o2,
                 substr(rem2,0,instr(rem2,'.')) as o3, 
                 substr(rem2,instr(rem2,'.')+1) as o4
                 from oct2
@@ -73,7 +94,74 @@ CREATE VIEW vlans_calc as
             select vli, ncalc, ~(0xffffffff00000000 | ncalc) - 1 as maxip 
             from netasm
         ),
-        merge(vli, ipv4, ipcalc,ncalc,network,range) as (
+        merge(vli, starting, ipcalc, ncalc, network, range) as (
+            select c.*, n.ncalc, (c.ipcalc & n.ncalc) as network, range
+               from calculated c
+               left outer join netcalc n on c.vli = n.vli
+        )
+
+        /*
+    select c.*, n.ncalc, (c.ipcalc & n.ncalc) as network, range, network+range as maxip --, ((c.ipcalc & n.ncalc) + range) - 1 as maxip --(n.ncalc & (256*256*256*256)) as range
+    --select c.*, n.ncalc, (c.ipcalc & n.ncalc) as network, ((256*256*256*256)) as range
+       from calculated 
+       left outer join netcalc n on c.vli = n.vli
+       */
+       select v.name, m.*, ipcalc|range as broadcast 
+            from merge m
+              left outer join vlans v on m.vli = v.vli
+    ;
+
+DROP VIEW IF EXISTS vlans_calc;
+CREATE VIEW vlans_calc as
+    with oct1(ipv4, vli, o1, rem1) as (
+            select starting as ipv4, vli, substr(starting,0,instr(starting,'.')) as o1, 
+                substr(starting,instr(starting,'.')+1) as rem1
+                from vlans
+        ),
+        oct2(ipv4, vli, o1, o2, rem2) as (
+            select ipv4, vli, o1,
+                substr(rem1,0,instr(rem1,'.')) as o2, 
+                substr(rem1,instr(rem1,'.')+1) as rem2
+                from oct1
+        ),
+        oct3(ipv4, vli, o1, o2, o3, o4) as (
+            select ipv4, vli, o1, o2,
+                substr(rem2,0,instr(rem2,'.')) as o3, 
+                substr(rem2,instr(rem2,'.')+1) as o4
+                from oct2
+        ),
+        calculated(vli, ipv4, ipcalc) as (
+            select
+                vli, ipv4, ((o1 << 24) + (o2 << 16) + (o3 << 8) + o4) as minip
+            from oct3
+        ),
+        net1(vli, o1, rem1) as (
+            select vli, substr(netmask,0,instr(netmask,'.')) as o1, 
+                substr(netmask,instr(netmask,'.')+1) as rem1
+                from vlans
+        ),
+        net2(vli, o1, o2, rem2) as (
+            select vli, o1,
+                substr(rem1,0,instr(rem1,'.')) as o2, 
+                substr(rem1,instr(rem1,'.')+1) as rem2
+                from net1
+        ),
+        net3(vli, o1, o2, o3, o4) as (
+            select vli, o1, o2,
+                substr(rem2,0,instr(rem2,'.')) as o3, 
+                substr(rem2,instr(rem2,'.')+1) as o4
+                from net2
+        ),
+        netasm(vli, ncalc) as (
+            select
+                vli, ((o1 << 24) + (o2 << 16) + (o3 << 8) + o4) as calc
+            from net3
+        ),
+        netcalc(vli, ncalc, range) as (
+            select vli, ncalc, ~(0xffffffff00000000 | ncalc) - 1 as maxip 
+            from netasm
+        ),
+        merge(vli, starting, ipcalc,ncalc,network,range) as (
             select c.*, n.ncalc, (c.ipcalc & n.ncalc) as network, range
                from calculated c
                left outer join netcalc n on c.vli = n.vli
@@ -421,3 +509,13 @@ CREATE VIEW vms_history as
 -- view mirrors users table, used to filter updates via view trigger
 DROP VIEW IF EXISTS users_view;
 CREATE VIEW users_view as select * from users;
+
+drop view if exists ips_vlan;
+create view ips_vlan as
+    select i.*,v.name as vlan 
+    from ips i
+    left outer join vlans_first v
+        where i.ip32 > v.network
+          and i.ip32 < v.broadcast
+        ;
+    

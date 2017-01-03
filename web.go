@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -25,6 +26,7 @@ import (
 	//"github.com/davecgh/go-spew/spew"
 	gorilla "github.com/gorilla/handlers"
 	sqlite3 "github.com/mattn/go-sqlite3"
+	//	"github.com/nytimes/gziphandler"
 	"github.com/paulstuart/dbutil"
 )
 
@@ -142,13 +144,15 @@ func cors(w http.ResponseWriter) {
 }
 
 func sendJSON(w http.ResponseWriter, obj interface{}) {
-	j, err := json.MarshalIndent(obj, " ", " ")
-	if err != nil {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Encoding", "gzip")
+	cors(w)
+	// Gzip data
+	gz := gzip.NewWriter(w)
+	if err := json.NewEncoder(gz).Encode(obj); err != nil {
 		log.Println("marshal error:", err)
 	}
-	cors(w)
-	w.Header().Set("Content-Type", "application/json")
-	fmt.Fprint(w, string(j))
+	gz.Flush()
 }
 
 // Validator is a custom function for object validation
@@ -505,12 +509,11 @@ func webServer(handlers []hFunc) {
 		p := pathPrefix + h.Path
 		switch {
 		case strings.HasPrefix(h.Path, "/static/"):
-			http.Handle(p, http.StripPrefix(pathPrefix, h.Func))
+			http.Handle(p, gorilla.CompressHandler(http.StripPrefix(pathPrefix, h.Func)))
 		case strings.HasPrefix(h.Path, "/data/"):
 			http.Handle(p, http.StripPrefix(p, h.Func))
 		case strings.HasPrefix(h.Path, "/api/"):
 			http.Handle(p, http.StripPrefix(p, h.Func))
-			//http.Handle(p, h.Func)
 		case strings.HasPrefix(h.Path, "/login"):
 			http.Handle(p, http.StripPrefix(p, h.Func))
 		default:
@@ -548,7 +551,7 @@ func webServer(handlers []hFunc) {
 	httpServer = fmt.Sprintf(":%d", cfg.Main.Port)
 	baseURL = fmt.Sprintf("http://%s:%d/%s", serverIP, cfg.Main.Port, pathPrefix)
 	fmt.Printf("serve up web: http://%s%s/\n", serverIP, httpServer)
-	err = http.ListenAndServe(httpServer, gorilla.CompressHandler(userMiddleware(gorilla.LoggingHandler(accessLog, http.DefaultServeMux))))
+	err = http.ListenAndServe(httpServer, userMiddleware(gorilla.LoggingHandler(accessLog, http.DefaultServeMux)))
 	if err != nil {
 		panic(err)
 	}
@@ -823,7 +826,7 @@ func newREST(obj dbutil.DBObject, w http.ResponseWriter, r *http.Request) {
 			jsonError(w, err, http.StatusInternalServerError)
 			return
 		}
-		w.WriteHeader(http.StatusCreated)
+		//w.WriteHeader(http.StatusCreated)
 		db.FindSelf(obj) // load what DB has for verification
 		sendJSON(w, obj)
 	}
