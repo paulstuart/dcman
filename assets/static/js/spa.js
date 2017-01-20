@@ -1201,7 +1201,8 @@ var deviceEditVue = {
                 "Vendor",
             ],
             Description: "",
-            Device: {},
+            Device: {Hostname: ""},
+            //Device: {},
             pageRows: 10,
             startRow: 0,
             newVM: false,
@@ -1214,18 +1215,24 @@ var deviceEditVue = {
             return this.Device.DC + "/" + this.Device.RID
         },
         disableSave: function() {
-            const hostname  = this.Device.Hostname || "";
-            return (hostname.length == 0 
-                    || (! this.Device.STI > 0) 
-                    || (! this.Device.DTI > 0) 
-                    || (! this.Device.RID > 0)
-                    || (! this.Device.RU > 0)
-                    || (! this.Device.Height > 0)
+            console.log("computing disableSave");
+            const name   = this.Device["Hostname"]      || ""
+            const STI    = parseInt(this.Device["STI"]) || 0
+            const RID    = parseInt(this.Device["RID"]) || 0
+            const DTI    = parseInt(this.Device["DTI"]) || 0
+            const RU     = parseInt(this.Device["RU"])  || 0
+            const Height = parseInt(this.Device["Height"]) || 0
+            return ! ( (name.length > 0)
+                    && (STI > 0) 
+                    && (RID > 0) 
+                    && (DTI > 0) 
+                    && (RU > 0) 
+                    && (Height > 0) 
                    )
         },
         canAddVM: function() {
             return (this.Device.DID > 0 && ! this.newVM)
-        }
+        },
     },
     created: function() {
         if (! this.adding) {
@@ -1352,22 +1359,23 @@ var deviceAdd = Vue.component("device-add", {
     },
     data: function() {
         return {
-            adding: true
+            adding: true,
         }
     },
     methods: {
         newDevice: function() {
-            var device = {
-                DID: 0,
-                DTI: null,
-                TID: null,
-                MID: null,
-                Height: 1,
-                STI: parseInt(this.$route.params.STI),
-                RID: parseInt(this.$route.params.RID),
-                RU: parseInt(this.$route.params.RU),
-            }
-            deviceRacks(device).then(d => this.Device = d)
+            this.Device.DID = 0
+            this.Device.DTI = null
+            this.Device.TID = null
+            this.Device.MID = null
+            this.Device.Height = 1
+            this.Device.STI = parseInt(this.$route.params.STI)
+            this.Device.RID = parseInt(this.$route.params.RID)
+            this.Device.RU = parseInt(this.$route.params.RU)
+            this.Device.Hostname = ""
+
+            const url = rackViewURL + "?STI=" + this.Device.STI;
+            get(url).then(r => this.Device.racks = r)
         },
     },
 })
@@ -1523,6 +1531,7 @@ var deviceLoad = Vue.component("device-load", {
     },
     watch: {
         "STI": function() {
+            this.RID = 0
             racks: getRack(this.STI, "?sti=")
        }
    }
