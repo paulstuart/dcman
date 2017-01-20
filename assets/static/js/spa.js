@@ -116,7 +116,7 @@ var get = function(url) {
     var req = new XMLHttpRequest();
     req.open("GET", url);
     var key = store.getters.apiKey;
-    if (key.length > 0) {
+    if (key && key.length > 0) {
         req.setRequestHeader("X-API-KEY", key)
     } else {
         router.push("/auth/login")
@@ -169,7 +169,7 @@ var posty = function(url, data, method) {
     }
     req.open(method, url)
     const key = store.getters.apiKey;
-    if (key.length > 0) {
+    if (key && key.length > 0) {
         req.setRequestHeader("X-API-KEY", key)
     }
     req.setRequestHeader("Content-Type", "application/json")
@@ -3970,6 +3970,10 @@ const routes = [
 { path: "/", component: homePage },
 ]
 
+const router = new VueRouter({
+   routes // short for routes: routes
+})
+
 
 // load user info from cookie if it exists
 const checkUser = fromCookie();
@@ -3978,10 +3982,6 @@ if (checkUser) {
     store.commit("setUser", checkUser)
     //console.log("user is set");
 }
-
-const router = new VueRouter({
-   routes // short for routes: routes
-})
 
 var app = new Vue({
     router,
