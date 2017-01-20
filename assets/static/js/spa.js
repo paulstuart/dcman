@@ -1201,8 +1201,10 @@ var deviceEditVue = {
                 "Vendor",
             ],
             Description: "",
-            Device: {Hostname: ""},
-            //Device: {},
+            Device: {
+                Hostname: "",
+                Height: 1
+            },
             pageRows: 10,
             startRow: 0,
             newVM: false,
@@ -1215,13 +1217,13 @@ var deviceEditVue = {
             return this.Device.DC + "/" + this.Device.RID
         },
         disableSave: function() {
-            console.log("computing disableSave");
             const name   = this.Device["Hostname"]      || ""
             const STI    = parseInt(this.Device["STI"]) || 0
             const RID    = parseInt(this.Device["RID"]) || 0
             const DTI    = parseInt(this.Device["DTI"]) || 0
             const RU     = parseInt(this.Device["RU"])  || 0
             const Height = parseInt(this.Device["Height"]) || 0
+
             return ! ( (name.length > 0)
                     && (STI > 0) 
                     && (RID > 0) 
