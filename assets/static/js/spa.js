@@ -3886,7 +3886,7 @@ var siteEdit = Vue.component("site-edit", {
         loadSelf: function () {
             if (this.$route.params.STI > 0) {
                 var url = sitesURL + this.$route.params.STI;
-                get(url).then(s => this.Site = 1)
+                get(url).then(s => this.Site = s)
             } else {
                 this.Site = {STI: 0}
             }
