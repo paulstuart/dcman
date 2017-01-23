@@ -20,8 +20,20 @@ DROP TRIGGER IF EXISTS ips_update;
 CREATE TRIGGER ips_update AFTER UPDATE OF ipv4 ON ips 
 --when NEW.ip32 is null and NEW.ipv4 > ''
 BEGIN
+    /*
     update ips 
     set ip32 = (select ipcalc from ips_calc where iid = OLD.iid)
+    where iid=OLD.iid
+    ;
+    */
+
+    update ips 
+    set ip32 = (select ipcalc from ips_calc where iid = OLD.iid),
+        vli  = ifnull(NEW.vli, 
+            (select v.vli from vlans_first v
+                where (select ipcalc from ips_calc where iid = OLD.iid) >= network 
+                  and (select ipcalc from ips_calc where iid = OLD.iid) < broadcast
+            ))
     where iid=OLD.iid
     ;
 

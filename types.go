@@ -589,6 +589,7 @@ type ifaceView struct {
 	DID        int64   `sql:"did"`
 	IID        *int64  `sql:"iid"`
 	IPT        *int64  `sql:"ipt"`
+	VLI        *int64  `sql:"vli"`
 	IP32       *uint32 `sql:"ip32"`
 	Mgmt       bool    `sql:"mgmt"`
 	Port       int     `sql:"port"`

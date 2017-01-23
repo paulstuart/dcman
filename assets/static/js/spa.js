@@ -1045,10 +1045,11 @@ var userEdit = Vue.component("user-edit", {
 
 
 var ipMIX = {
-    props: ["iptypes", "ports"],
+    props: ["iptypes", "ports", "vlans"],
     data: function() {
         return {
             newIP: "",
+            newVLI: null,
             newIPT: 0,
             newIFD: 0,
         }
@@ -1070,7 +1071,8 @@ var ipMIX = {
             var ip  = row.IP
             var ipt = row.IPT
             var ifd = row.IFD
-            var data = {IFD:ifd, IID: iid, IPT: ipt, IP: ip}
+            var vli = row.VLI
+            var data = {IFD:ifd, IID: iid, IPT: ipt, IP: ip, VLI: vli}
             posty(ipURL + iid, data, "PATCH")
             return false
         },
@@ -1078,12 +1080,17 @@ var ipMIX = {
             var iid = this.rows[i].IID
             posty(ipURL + iid, null, "DELETE").then(() => this.rows.splice(i, 1))
         },
+        checkVLAN(i) {
+            var ip = this.rows[i];
+            console.log("VLI:", ip.VLI, " IPv4:", ip.IP)
+        },
         addIP: function() {
-            var data = {IFD: this.newIFD, IPT: this.newIPT, IP: this.newIP}
+            var data = {IFD: this.newIFD, IPT: this.newIPT, IP: this.newIP, VLI: this.newVLI}
             posty(ipURL, data).then(ip => {
                 this.rows.push(ip)
                 this.newIP = ""
                 this.newIPT = 0
+                this.newVLI = null
                 this.newIFD = 0
             })
             return false
@@ -1199,7 +1206,7 @@ var deviceEditVue = {
             IPMI: "huh",
             newIPD: 0,
             newIFD: 0,
-            netColumns: ["IP", "Type", "Port"],
+            netColumns: ["IP", "VLAN", "Type", "Port"],
             ifaceColumns: ["Port", "Mgmt", "MAC", "CableTag", "SwitchPort"],
             part_columns: [
                 "Description",
@@ -1217,6 +1224,7 @@ var deviceEditVue = {
             newVM: false,
             vmColumns: ["Hostname", "IPs", "Profile", "Note"],
             parts: [],
+            vlans: [],
         }
     },
     computed: {
@@ -1312,6 +1320,14 @@ var deviceEditVue = {
         showList: function(ev) {
             router.go(-1)
         },
+        loadVLANs: function() {
+            const url = vlanViewURL + "?STI=" + this.Device.STI;
+            get(url).then(v => this.vlans = v)
+        },
+        siteLoad: function() {
+            this.loadRacks()
+            this.loadVLANs()
+        },
         portLabel: function(ipinfo) {
             if (this.Device.Type === "server") {
                 return ipinfo.Mgmt ? "IPMI" : "Eth" + ipinfo.Port
@@ -1345,7 +1361,7 @@ var deviceEditVue = {
         "Device.STI": {
             handler: function (val, oldVal) {
                 console.log("watch STI:", this.Device.STI);
-                this.loadRacks()
+                this.siteLoad()
             },
             deep: true
         },
@@ -2032,10 +2048,13 @@ var vlanEdit = Vue.component("vlan-edit", {
     },
     methods: {
         loadSelf() {
-            getVLAN(this.$route.params.VLI).then(v => {
-                this.VLAN = v
-                this.STI = this.VLAN.STI
-            })
+            const VLI = parseInt(this.$route.params.VLI) || 0;
+            if (VLI > 0) {
+                getVLAN(VLI).then(v => {
+                    this.VLAN = v
+                    this.STI = this.VLAN.STI
+                })
+            }
             getSiteLIST(true).then(s => this.sites = s)
         },
         myID: function() {
@@ -2048,6 +2067,9 @@ var vlanEdit = Vue.component("vlan-edit", {
               router.push("/vlan/list")
         },
     },
+     watch: {
+         '$route': 'loadSelf'
+     },
 })
 
 

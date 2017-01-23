@@ -79,7 +79,8 @@
           <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Network<span class="caret"></span></a>
           <ul class="dropdown-menu">
             <li><router-link to='/ip/list' >Network IPs</router-link></li>
-            <li><router-link to='/vlan/list' >VLANs</router-link></li>
+            <li><router-link to='/vlan/list' >VLANs List</router-link></li>
+            <li><router-link to='/vlan/edit/0' >Add VLAN</router-link></li>
             <li role="separator" class="divider"></li>
             <li v-if="$store.getters.canEdit"><router-link to='/ip/reserve' >Reserve IPs</router-link></li>
             <li><router-link to='/ip/reserved' >IPs Reserved</router-link></li>
@@ -281,6 +282,7 @@
     <thead>
       <tr>
         <th>IP</th>
+        <th>VLAN</th>
         <th>Type</th>
         <th>Port</th>
         <th v-if="$store.getters.canEdit">Action</th>
@@ -290,6 +292,13 @@
       <tr v-for="(entry, index) in rows">
         <td>
             <input v-bind:id="'ip-' + index" type="text" v-model="rows[index].IP"/>
+        </td>
+        <td>
+        <select v-model.number="rows[index].VLI" @change="checkVLAN(index)">
+            <option v-for="vlan in vlans" v-bind:value="vlan.VLI">
+                {{ vlan.Name }}
+            </option>
+        </select>
         </td>
         <td>
             <select v-bind:id="'ip-' + index" v-model.number="rows[index].IPT">
@@ -316,6 +325,13 @@
             <input type="text" v-model="newIP"/>
         </td>
         <td>
+            <select v-model="newVLI">
+                <option v-for="vlan in vlans" v-bind:value="vlan.VLI">
+                    {{ vlan.Name }}
+                </option>
+            </select>
+        </td>
+        <td>
             <select v-model="newIPT">
                 <option v-for="type in iptypes" v-bind:value="type.IPT">
                     {{ type.Name }}
@@ -323,11 +339,11 @@
             </select>
         </td>
         <td>
-        <select v-model.number="newIFD">
-            <option v-for="port in ports" v-bind:value="port.IFD">
-                {{ port.Port }}
-            </option>
-        </select>
+            <select v-model.number="newIFD">
+                <option v-for="port in ports" v-bind:value="port.IFD">
+                    {{ port.Port }}
+                </option>
+            </select>
         </td>
         <td v-if="$store.getters.canEdit">
             <button class="btn" v-on:click.prevent="addIP" :disabled="ipAddDisabled">Add</button>
@@ -855,6 +871,7 @@
                 <network-grid
                     :ports="Device.interfaces"
                     :iptypes="ipTypes"
+                    :vlans="vlans"
                     :rows="Device.ips"
                     :columns="netColumns"
                     >
@@ -1598,7 +1615,7 @@
             <fieldset class="col-xs-12">
                 <legend>VLAN</legend>
                 <div class="form-group">
-                    <label for="STI" class="control-label col-xs-2">Site</label> STI:{{STI}}
+                    <label for="STI" class="control-label col-xs-2">Site</label>
                     <div class="col-xs-2">
                         <select id="STI" name="STI" v-model.number="VLAN.STI">
                         <option v-for="site in sites" v-bind:value="site.STI">

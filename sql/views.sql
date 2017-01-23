@@ -254,7 +254,7 @@ create view devices_view as
 
 drop view if exists interfaces_view;
 create view interfaces_view as 
-    select i.*, p.iid, p.ipt, p.ip32, p.ipv4, t.name as iptype
+    select i.*, p.iid, p.ipt, p.vli, p.ip32, p.ipv4, t.name as iptype
     from interfaces i
     left outer join ips p on p.ifd = i.ifd
     left outer join ip_types t on p.ipt = t.ipt
