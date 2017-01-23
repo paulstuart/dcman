@@ -1053,6 +1053,11 @@ var ipMIX = {
             newIFD: 0,
         }
     },
+    created: function() {
+        if (this.ports.length == 1) {
+            this.newIFD = this.ports[0].IFD
+        }
+    },
     computed: {
         ipAddDisabled: function() {
             return this.newIP.length == 0 || this.newIPT==0 || this.newIFD==0
@@ -1101,7 +1106,7 @@ var interfaceMIX = {
     },
     computed: {
         interfaceAddDisabled: function() {
-            return this.newPort.length == 0 || this.newMAC.length == 0
+            return this.newPort.length == 0 //|| this.newMAC.length == 0
         }
     },
     methods: {
@@ -1126,6 +1131,8 @@ var interfaceMIX = {
             var row = this.rows[i]
             var ifd = row.IFD
 
+            // every port is "eth0", 1, etc
+            // save just the int in db
             var port = row.Port.replace(/[^\d]*/g, "");
             port = (port.length) ? parseInt(port) : 0
 

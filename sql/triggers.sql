@@ -41,9 +41,13 @@ BEGIN
         values
         (NEW.usr, NEW.rid, nullif(NEW.dti,0), NEW.tid, NEW.ru, NEW.height, NEW.hostname, NEW.alias, 
             NEW.model, NEW.sn, NEW.profile, NEW.asset_tag, NEW.assigned, NEW.note,
-            (select mid from mfgrs where name=new.make)
+            ifnull(NEW.mid, (select mid from mfgrs where name=new.make))
         )
         ;
+    -- TODO: need to add usr/ts to interfaces schema
+    -- insert into interfaces (did, usr) values(last_insert_rowid(), NEW.usr)
+    insert into interfaces (did) values(last_insert_rowid())
+    ;
 END;
 
 
