@@ -1087,19 +1087,27 @@ var ipMIX = {
         checkVLAN(i) {
             var ip = this.rows[i];
             console.log("VLI:", ip.VLI, " IPv4:", ip.IP)
-            ip.IP = this.vlanIP(ip.VLI)
+            const newIP = this.vlanIP(ip.VLI);
+            if (newIP && newIP.length > 0) {
+                ip.IP = newIP;
+            }
         },
         vlanIP(vli) {
+            console.log("check for VLI:", vli);
             for (let i in this.available) {
                 const v = this.available[i]
+                console.log("check VLI:", v.VLI);
                 if (vli == v.VLI) {
+                    console.log("found:", v.IPv4);
                     return v.IPv4
                 }
             }
         },
         newVLAN() {
-            console.log("check for VLI:", this.newVLI);
-            this.newIP = this.vlanIP(this.newVLI)
+            const found= this.vlanIP(this.newVLI)
+            if (found && found.length > 0) {
+                this.newIP = found
+            }
         },
         addIP: function() {
             var data = {IFD: this.newIFD, IPT: this.newIPT, IP: this.newIP, VLI: this.newVLI}
