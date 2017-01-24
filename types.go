@@ -656,6 +656,13 @@ type ipReserve struct {
 	TS   time.Time `sql:"ts"`
 }
 
+type ipNext struct {
+	STI  int64  `sql:"sti" table:"ips_next"`
+	VLI  int64  `sql:"vli"`
+	VLAN int    `sql:"vlan"`
+	IPv4 string `sql:"ipv4"`
+}
+
 type provider struct {
 	PRI     int64   `sql:"pri" key:"true" table:"providers"`
 	Name    *string `sql:"name"`

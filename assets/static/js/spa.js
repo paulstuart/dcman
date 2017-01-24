@@ -444,6 +444,7 @@ var getInterfaces = function(device) {
         var ips = []
         var ports = {}
         interfaces.forEach(iface => {
+            iface.Note = "" // place holder for updating in UI
             if (! (iface.IFD in ports)) {
                 ports[iface.IFD] = iface
             }
@@ -1045,19 +1046,22 @@ var userEdit = Vue.component("user-edit", {
 
 
 var ipMIX = {
-    props: ["iptypes", "ports", "vlans"],
+    props: ["iptypes", "ports", "vlans", "STI"],
     data: function() {
         return {
             newIP: "",
             newVLI: null,
             newIPT: 0,
             newIFD: 0,
+            newNote: "",
+            available: [],
         }
     },
     created: function() {
         if (this.ports.length == 1) {
             this.newIFD = this.ports[0].IFD
         }
+        this.nextIPs()
     },
     computed: {
         ipAddDisabled: function() {
@@ -1083,6 +1087,19 @@ var ipMIX = {
         checkVLAN(i) {
             var ip = this.rows[i];
             console.log("VLI:", ip.VLI, " IPv4:", ip.IP)
+            ip.IP = this.vlanIP(ip.VLI)
+        },
+        vlanIP(vli) {
+            for (let i in this.available) {
+                const v = this.available[i]
+                if (vli == v.VLI) {
+                    return v.IPv4
+                }
+            }
+        },
+        newVLAN() {
+            console.log("check for VLI:", this.newVLI);
+            this.newIP = this.vlanIP(this.newVLI)
         },
         addIP: function() {
             var data = {IFD: this.newIFD, IPT: this.newIPT, IP: this.newIP, VLI: this.newVLI}
@@ -1092,9 +1109,31 @@ var ipMIX = {
                 this.newIPT = 0
                 this.newVLI = null
                 this.newIFD = 0
+                this.newNote = ""
             })
             return false
-        }
+        },
+        nextIPs: function() {
+            const url = "api/network/ip/next/" + this.STI;
+            get(url).then(a => this.available = a)
+        },
+        pingIP: function(i) {
+            var row = this.rows[i];
+            const url = "api/network/ip/ping/" + row.IP;
+            get(url).then(r => {
+                console.log(r);
+                console.log("ok:", r.OK);
+                const status = r.OK ? "alive" : "unreachable";
+                row.Note = row.IP + " is " + status;
+            })
+        },
+        pingNewIP: function() {
+            const url = "api/network/ip/ping/" + this.newIP;
+            get(url).then(r => {
+                const status = r.OK ? "alive" : "unreachable";
+                this.newNote = this.newIP + " is " + status;
+            })
+        },
     }
 }
 

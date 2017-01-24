@@ -122,6 +122,21 @@ func apiSearch(w http.ResponseWriter, r *http.Request) {
 	jsonError(w, "no search term specified", http.StatusBadRequest)
 }
 
+func getNextIP(w http.ResponseWriter, r *http.Request) {
+	if len(r.URL.Path) == 0 {
+		jsonError(w, "no STI given", http.StatusBadRequest)
+		return
+	}
+	list, err := dbObjectListQuery(ipNext{}, "where sti=?", r.URL.Path)
+	if err != nil {
+		log.Println("GET NEXT IP DB ERROR:", err)
+		jsonError(w, err, http.StatusInternalServerError)
+		return
+	}
+	ips := list.([]ipNext)
+	sendJSON(w, ips)
+}
+
 // return the string after the last "/" of the url
 func urlSuffix(r *http.Request) string {
 	i := strings.LastIndex(r.URL.Path, "/")
@@ -406,9 +421,7 @@ func apiLogout(w http.ResponseWriter, r *http.Request) {
 }
 
 func apiPragmas(w http.ResponseWriter, r *http.Request) {
-	//dbDebug(true)
 	pragmas, err := dbPragmas()
-	//dbDebug(false)
 	if err != nil {
 		jsonError(w, err, http.StatusInternalServerError)
 	} else {
@@ -507,8 +520,6 @@ func serverDump(w http.ResponseWriter, r *http.Request) {
 }
 
 func deviceAudit(w http.ResponseWriter, r *http.Request) {
-	dbDebug(true)
-	defer dbDebug(false)
 	list, err := datastore.ListQuery(&deviceHistory{}, "where did=?", r.URL.Path)
 	if err != nil {
 		log.Println("audit error:", err)
@@ -519,8 +530,6 @@ func deviceAudit(w http.ResponseWriter, r *http.Request) {
 }
 
 func vmAudit(w http.ResponseWriter, r *http.Request) {
-	dbDebug(true)
-	defer dbDebug(false)
 	list, err := datastore.ListQuery(&vmHistory{}, "where vmi=?", r.URL.Path)
 	if err != nil {
 		log.Println("audit error:", err)
@@ -530,30 +539,18 @@ func vmAudit(w http.ResponseWriter, r *http.Request) {
 	sendJSON(w, list)
 }
 
-/*
-func bulkPings(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
-	timeout := pingTimeout
-	if text := r.Form.Get("timeout"); len(text) > 0 {
-		if t, err := strconv.Atoi(text); err == nil {
-			timeout = t
-		}
+func webPing(w http.ResponseWriter, r *http.Request) {
+	ip := r.URL.Path // TODO: sanitize IP value
+	reply := struct {
+		IP string
+		OK bool
+	}{
+		ip,
+		ping(ip, pingTimeout),
 	}
-	if text := r.Form.Get("debug"); len(text) > 0 {
-		if debug, err := strconv.ParseBool(text); err == nil && debug {
-			for k, v := range r.Form {
-				log.Println("K:", k, "(", len(k), ") V:", v)
-			}
-		}
-	}
-	if ips, ok := r.Form["ips[]"]; ok && len(ips) > 0 {
-		pings := bulkPing(timeout, ips...)
-		j, _ := json.MarshalIndent(pings, " ", " ")
-		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, string(j))
-	}
+	sendJSON(w, reply)
 }
-*/
+
 func BulkPings(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	timeout := pingTimeout
@@ -640,6 +637,8 @@ var webHandlers = []hFunc{
 	{"/api/network/circuit/view/", MakeREST(circuitView{})},
 	{"/api/network/circuit/list/", MakeREST(circuitList{})},
 	{"/api/network/circuit/", MakeREST(circuit{})},
+	{"/api/network/ip/next/", getNextIP},
+	{"/api/network/ip/ping/", webPing},
 	{"/api/network/ip/type/", MakeREST(ipType{})},
 	{"/api/network/ip/used/", MakeREST(ipsUsed{})},
 	{"/api/network/ip/range", ipRange},

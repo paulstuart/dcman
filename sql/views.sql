@@ -223,6 +223,20 @@ CREATE VIEW ips_calc as
     select * from calculated
     ;
 
+-- create a list of all used IPs
+-- merge in ip right before vlan range so we have
+-- a starting point if no IPs in that range taken  
+drop view if exists ips_taken;
+create view ips_taken as
+   with used(vli, ip32) as (
+       select vli, ip32 from ips where ip32 > 0
+   union
+       select vli, ipcalc - 1 as ip32 from vlans_first  -- TODO: vlans_first is calc'd, data should be updated in vlans table
+   )
+   select distinct * from used
+   ;
+
+/*
 drop view if exists ips_missing;
 create view ips_missing as
    select i.*, i.ip32+1 as ip33
@@ -231,16 +245,36 @@ create view ips_missing as
    where i.ip32 > 0
      and j.ip32 is null
     ;
+*/
 
-drop view if exists ips_next;
-create view ips_next as
-   select i.vli, v.name as vlan,
+drop view if exists ips_missing;
+create view ips_missing as
+   select i.*, i.ip32+1 as ip33
+   from ips_taken i
+   left outer join ips_taken j on j.ip32 = (i.ip32 + 1)
+   where i.ip32 > 0
+     and j.ip32 is null
+    ;
+
+drop view if exists ips_available;
+create view ips_available as
+   select v.sti, i.vli, v.name as vlan, ip33 as ip32,
     (ip33 >> 24) || '.' || ((ip33 >> 16) & 255) || '.' || ((ip33 >> 8) & 255) || '.' || (ip33 & 255) as ipv4
     from ips_missing i
     left outer join vlans v on i.vli = v.vli
     order by ip32
    ;
 
+drop view if exists ips_next;
+create view ips_next as
+   with filter(sti, vli, vlan, ip32, ipv4) as (
+       select sti, vli, vlan, min(ip32) as ip32, ipv4 
+        from ips_available
+        where vli > 0
+        group by vli
+    )
+   select sti,vli,vlan,ipv4 from filter
+    ;
 
 drop view if exists devices_view;
 create view devices_view as

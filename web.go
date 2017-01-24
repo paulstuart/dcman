@@ -667,10 +667,12 @@ func apiKey(w http.ResponseWriter, r *http.Request) (*user, bool, error) {
 	}
 	*/
 	r.URL.RawQuery = query.Encode()
-	if debug {
-		dbDebug(debug)
-		defer dbDebug(false)
-	}
+	/*
+		if debug {
+			dbDebug(debug)
+			//defer dbDebug(false)
+		}
+	*/
 	user, err := userFromAPIKey(apiKey)
 	return &user, debug, err
 }
@@ -695,6 +697,7 @@ func newREST(obj dbutil.DBObject, w http.ResponseWriter, r *http.Request) {
 	//log.Println("DEBUG:", debug, "BODY:", body)
 	if debug {
 		log.Printf("(%s) PATH:%s ID:%s T:%T Q:%s BODY:%s", r.Method, r.URL.Path, id, obj, r.URL.RawQuery, body)
+		dbDebug(true)
 	}
 	method := strings.ToUpper(r.Method)
 	//log.Println("M:", method, "ID:", id)

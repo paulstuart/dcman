@@ -317,6 +317,7 @@
         <td v-if="$store.getters.canEdit">
             <button class="btn" v-on:click.prevent="updateIP(index)">Update</button>
             <button class="btn" v-on:click.prevent="deleteIP(index)">Delete</button>
+            <button class="btn" v-on:click.prevent="pingIP(index)">Ping</button> {{ rows[index].Note }}
         </td>
       </tr>
        
@@ -325,7 +326,7 @@
             <input type="text" v-model="newIP"/>
         </td>
         <td>
-            <select v-model="newVLI">
+            <select v-model="newVLI" @change="newVLAN">
                 <option v-for="vlan in vlans" v-bind:value="vlan.VLI">
                     {{ vlan.Name }}
                 </option>
@@ -347,6 +348,7 @@
         </td>
         <td v-if="$store.getters.canEdit">
             <button class="btn" v-on:click.prevent="addIP" :disabled="ipAddDisabled">Add</button>
+            <button class="btn" v-on:click.prevent="pingNewIP()">Ping</button> {{ newNote }}
         </td>
       </tr>
     </tbody>
@@ -872,6 +874,7 @@
                     :ports="Device.interfaces"
                     :iptypes="ipTypes"
                     :vlans="vlans"
+                    :STI="Device.STI"
                     :rows="Device.ips"
                     :columns="netColumns"
                     >
@@ -1681,7 +1684,10 @@
                         <button class="btn" v-on:click.prevent="showList">Cancel</button>
                     </div>
                     <div class="col-xs-1">
-                        <button class="btn" v-on:click.prevent="saveSelf">Update</button>
+                        <button class="btn" v-on:click.prevent="saveSelf">
+                        <template v-if="VLAN.VLI">Update</template>
+                        <template v-else>Add</template>
+                        </button>
                     </div>
                     <div class="col-xs-1">
                         <button class="btn" v-on:click.prevent="deleteSelf">Delete</button>
