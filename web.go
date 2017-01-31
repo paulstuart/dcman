@@ -626,9 +626,11 @@ func fullQuery(r *http.Request) (string, []interface{}, error) {
 
 func jsonError(w http.ResponseWriter, what interface{}, code int) {
 	var msg string
-	switch what.(type) {
+	switch what := what.(type) {
 	case string:
 		msg = fmt.Sprintf(`{"Error": "%v"}`, what)
+	case error:
+		msg = fmt.Sprintf(`{"Error": "%v"}`, what.Error())
 	default:
 		j, err := json.MarshalIndent(what, " ", " ")
 		if err != nil {

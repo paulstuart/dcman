@@ -203,3 +203,14 @@ table.racked th {
 .spacebtn {
     margin: 2em 0em ;
 }
+
+.invalid_login {
+    margin: 1em 0em;
+    width: 60%;
+    text-align: center;
+    font-family: Helvetica, Arial, "Lucida Grande", sans-serif; 
+    font-weight: 200;
+    font-size: 200%;
+    color: red;
+}
+

@@ -2210,7 +2210,6 @@
         <div class="header">
             <h2 class="login">Enter your Okta Login Credentials</h2>
         </div>
-        <div class="invalid_login" v-if="errorMsg">{{errorMsg}}</div>
 
         <div class="contents">
     
@@ -2228,6 +2227,9 @@
                             <input type="password" class="form-control" id="password" v-model="password"/>
                         </div>
                     </div>
+                </fieldset>
+                <fieldset class="col-xs-12" v-if="errorMsg">
+                    <div class="col-xs-offset-3 col-xs-1 invalid_login">{{errorMsg}}</div>
                 </fieldset>
                 <div class="form-group">
                     <div class="col-xs-offset-3 col-xs-1">

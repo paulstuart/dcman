@@ -361,6 +361,7 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 		user, err := userAuth(obj.Username, obj.Password)
 		if err != nil {
 			auditLog(0, remoteAddr, "Login", err.Error())
+			fmt.Println("APILOGIN ERR:", err)
 			jsonError(w, err, http.StatusUnauthorized)
 			return
 		}

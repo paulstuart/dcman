@@ -23,24 +23,6 @@ CREATE VIEW vlans_view as
     order by v.sti, v.name
     ;
 
-/*
-SELECT IP FROM iplist ORDER BY
-
-CAST(substr(trim(IP),1,instr(trim(IP),'.')-1) AS INTEGER),  
-
-   CAST(substr(substr(trim(IP),length(substr(trim(IP),1,instr(trim(IP),'.')))+1,length(IP)) ,1, instr(substr(trim(IP),length(substr(trim(IP),1,instr(trim(IP),'.')))+1,length(IP)),'.')-1) AS INTEGER), 
-
-        CAST(substr(substr(trim(IP),length(substr(substr(trim(IP),length(substr(trim(IP),1,instr(trim(IP),'.')))+1,length(IP)) ,1, instr(substr(trim(IP),length(substr(trim(IP),1,instr(trim(IP),'.')))+1,length(IP)),'.')))+length(substr(trim(IP),1,instr(trim(IP),'.')))+1,length(IP)) ,1, instr(substr(trim(IP),length(substr(substr(trim(IP),length(substr(trim(IP),1,instr(trim(IP),'.')))+1,length(IP)) ,1, instr(substr(trim(IP),length(substr(trim(IP),1,instr(trim(IP),'.')))+1,length(IP)),'.')))+length(substr(trim(IP),1,instr(trim(IP),'.')))+1,length(IP)),'.')-1) AS INTEGER), 
-
-        CAST(substr(trim(IP),length(substr(substr(trim(IP),length(substr(substr(trim(IP),length(substr(trim(IP),1,instr(trim(IP),'.')))+1,length(IP)) ,1, instr(substr(trim(IP),length(substr(trim(IP),1,instr(trim(IP),'.')))+1,length(IP)),'.')))+length(substr(trim(IP),1,instr(trim(IP),'.')))+1,length(IP)) ,1, instr(substr(trim(IP),length(substr(substr(trim(IP),length(substr(trim(IP),1,instr(trim(IP),'.')))+1,length(IP)) ,1, instr(substr(trim(IP),length(substr(trim(IP),1,instr(trim(IP),'.')))+1,length(IP)),'.')))+length(substr(trim(IP),1,instr(trim(IP),'.')))+1,length(IP)),'.')))+ length(substr(trim(IP),1,instr(trim(IP),'.')))+length(substr(substr(trim(IP),length(substr(trim(IP),1,instr(trim(IP),'.')))+1,length(IP)) ,1, instr(substr(trim(IP),length(substr(trim(IP),1,instr(trim(IP),'.')))+1,length(IP)),'.')))+1,length(trim(IP))) AS INTEGER)
-shareeditflag
-edited Feb 11 at 9:55
-answered Feb 11 at 9:49
-
-NEV
-17611
-
-*/
 DROP VIEW IF EXISTS vlans_first;
 CREATE VIEW vlans_first as
     with ipaddr(ipv4, vli) as (
@@ -99,17 +81,11 @@ CREATE VIEW vlans_first as
                from calculated c
                left outer join netcalc n on c.vli = n.vli
         )
-
-        /*
-    select c.*, n.ncalc, (c.ipcalc & n.ncalc) as network, range, network+range as maxip --, ((c.ipcalc & n.ncalc) + range) - 1 as maxip --(n.ncalc & (256*256*256*256)) as range
-    --select c.*, n.ncalc, (c.ipcalc & n.ncalc) as network, ((256*256*256*256)) as range
-       from calculated 
-       left outer join netcalc n on c.vli = n.vli
-       */
        select v.name, m.*, ipcalc|range as broadcast 
             from merge m
               left outer join vlans v on m.vli = v.vli
     ;
+
 
 DROP VIEW IF EXISTS vlans_calc;
 CREATE VIEW vlans_calc as
@@ -167,12 +143,6 @@ CREATE VIEW vlans_calc as
                left outer join netcalc n on c.vli = n.vli
         )
 
-        /*
-    select c.*, n.ncalc, (c.ipcalc & n.ncalc) as network, range, network+range as maxip --, ((c.ipcalc & n.ncalc) + range) - 1 as maxip --(n.ncalc & (256*256*256*256)) as range
-    --select c.*, n.ncalc, (c.ipcalc & n.ncalc) as network, ((256*256*256*256)) as range
-       from calculated 
-       left outer join netcalc n on c.vli = n.vli
-       */
        select *, ipcalc|range as broadcast 
             from merge
     ;
@@ -351,9 +321,10 @@ CREATE VIEW vms_view as
     from vms v
     left outer join devices_view d on v.did = d.did
 ;
+
 DROP VIEW IF EXISTS vms_ips; 
 CREATE VIEW vms_ips as
-    select v.*, i.iid, i.ipt, i.ipv4, i.iptype
+    select v.*, i.iid, i.ipt, i.ipv4, i.iptype, i.vlan
     from vms_view v
     left outer join ips_view i on v.vmi = i.vmi
     ;
@@ -391,7 +362,7 @@ create view devices_network as
 
 drop view if exists devices_all_ips;
 create view devices_all_ips as
-    select r.sti, s.name as site, d.*, r.rack, dt.name as devtype, i.ipt, i.ipv4, t.name as iptype 
+    select r.sti, s.name as site, d.*, r.rack, dt.name as devtype, i.ipt, i.vli, i.ipv4, t.name as iptype, v.name as vlan 
     from devices d
     left outer join racks r on d.rid = r.rid
     left outer join sites s on r.sti = s.sti
@@ -399,6 +370,7 @@ create view devices_all_ips as
     left outer join interfaces f on d.did = f.did
     left outer join ips i on f.ifd = i.ifd
     left outer join ip_types t on i.ipt = t.ipt
+    left outer join vlans v on i.vli = v.vli
     where ipv4 > ''
     ;
 
@@ -482,11 +454,11 @@ CREATE VIEW ips_devices as
 
 DROP VIEW IF EXISTS ips_list;
 CREATE VIEW ips_list as
-    select sti, did as id, rid, ipt, devtype as host, site, rack, ipv4 as ip, iptype, hostname, note  from devices_all_ips where ipv4 > ''
+    select vlan, sti, did as id, rid, ipt, devtype as host, site, rack, ipv4 as ip, iptype, hostname, note  from devices_all_ips where ipv4 > ''
     union
-    select sti, vmi as id, rid, ipt, 'VM' as host, site, rack, ipv4 as ip, iptype, hostname, note  from vms_ips where ipv4 > '' and iptype != 'VIP'
+    select vlan, sti, vmi as id, rid, ipt, 'VM' as host, site, rack, ipv4 as ip, iptype, hostname, note  from vms_ips where ipv4 > '' and iptype != 'VIP'
     union
-    select sti, vli as id, rid, ipt, iptype as host, site, '' as rack, ipv4 as ip, iptype, iptype as hostname, note from ips_reserved 
+    select vlan, sti, vli as id, rid, ipt, iptype as host, site, '' as rack, ipv4 as ip, iptype, iptype as hostname, note from ips_reserved 
     ;
 
 DROP VIEW IF EXISTS "circuits_view";

@@ -109,12 +109,10 @@ func dbPrep() {
 }
 */
 func dbPrep() {
-	var err error
+	//var err error
 	//log.Println("DBFILE:", dbFile)
-	datastore, err = dbutil.Open(dbFile, true)
-	if err != nil {
-		panic(err)
-	}
+	//datastore, err = dbutil.Open(dbFile, true)
+	datastore = dbutil.CreateIfMissing(dbFile, sqlInit)
 	if err := dbExec("PRAGMA foreign_keys = ON"); err != nil {
 		panic(err)
 	}

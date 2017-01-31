@@ -200,7 +200,7 @@ var posty = function(url, data, method) {
     // Handle network errors
     req.onerror = function() {
         console.log("posty network error");
-        reject(Error("Network Error"));
+        reject({Error: "can't connect to server"});
     };
 
     // Make the request
@@ -732,6 +732,7 @@ var ipList = Vue.component("ip-list", {
                 "Type",
                 "Host",
                 "Hostname",
+                "VLAN",
                 "IP",
                 "Note"
             ],
@@ -3735,7 +3736,11 @@ var userLogin = Vue.component("user-login", {
             posty(loginURL, data).then(user => {
                 this.$store.commit("setUser", user)
                 router.push("/")
-            }).catch(msg => this.errorMsg = msg.Error)
+            //}).catch(msg => this.errorMsg = msg.Error)
+            }).catch(msg => {
+                console.log("ERROR:", msg.Error)
+                this.errorMsg = msg.Error
+            })
         },
     },
 })

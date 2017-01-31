@@ -26,7 +26,7 @@ var (
 	execDir, _        = osext.ExecutableFolder()
 	startTime         = time.Now()
 	sqlDir            = "sql" // dir containing sql schemas, etc
-	sqlSchema         = sqlDir + "/schema.sql"
+	sqlInit           = sqlDir + "/init.sql"
 	dbName            = execDir + "/data.db"
 	dbFile            = "file://" + dbName //+ "?cache=shared&mode=rwc"
 	systemLocation, _ = time.LoadLocation("Local")

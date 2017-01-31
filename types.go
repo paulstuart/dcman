@@ -636,6 +636,7 @@ type ipsUsed struct {
 	Rack     *int    `sql:"rack"`
 	IP       *string `sql:"ip"`
 	Type     *string `sql:"iptype"`
+	VLAN     *string `sql:"vlan"`
 	Host     *string `sql:"host"`
 	Hostname *string `sql:"hostname"`
 	Note     *string `sql:"note"`
