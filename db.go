@@ -85,38 +85,10 @@ func dbPragmas() (map[string]string, error) {
 	return datastore.Pragmas()
 }
 
-/*
 func dbPrep() {
-	var fresh bool
-	var err error
-	//log.Println("DBFILE:", dbFile)
-	if _, err = os.Stat(dbFile); os.IsNotExist(err) {
-		fresh = true
-	}
-	datastore, err = dbutil.Open(dbFile, true)
-	if err != nil {
-		panic(err)
-	}
-	if fresh {
-		err = datastore.File(sqlSchema)
-		if err != nil {
-			panic(err)
-		}
-	}
-	if err := dbExec("PRAGMA foreign_keys = ON"); err != nil {
-		panic(err)
-	}
-}
-*/
-func dbPrep() {
-	//var err error
-	//log.Println("DBFILE:", dbFile)
-	//datastore, err = dbutil.Open(dbFile, true)
-	datastore = dbutil.CreateIfMissing(dbFile, sqlInit)
-	if err := dbExec("PRAGMA foreign_keys = ON"); err != nil {
-		panic(err)
-	}
-	datastore.DB.SetMaxOpenConns(1)
+	const hook = "PRAGMA foreign_keys = ON"
+
+	datastore = dbutil.CreateIfMissing(dbFile, sqlInit, hook)
 }
 
 func backups(freq int, to string) {
