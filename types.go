@@ -757,18 +757,19 @@ type vlanView struct {
 }
 
 type pxeDevice struct {
-	DID      int64   `sql:"did" key:"true" table:"pxedevice"`
-	STI      int64   `sql:"sti"`
-	RID      int64   `sql:"rid"`
-	Site     *string `sql:"site"`
-	Rack     int     `sql:"rack"`
-	RU       int     `sql:"ru"`
-	Hostname *string `sql:"hostname"`
-	Profile  *string `sql:"profile"`
-	MAC      *string `sql:"mac"`
-	IP       *string `sql:"ip"`
-	IPMI     *string `sql:"ipmi"`
-	Note     *string `sql:"note"`
+	DID        int64   `sql:"did" key:"true" table:"pxedevice"`
+	STI        int64   `sql:"sti"`
+	RID        int64   `sql:"rid"`
+	Site       *string `sql:"site"`
+	Rack       int     `sql:"rack"`
+	RU         int     `sql:"ru"`
+	Restricted bool    `sql:"restricted"`
+	Hostname   *string `sql:"hostname"`
+	Profile    *string `sql:"profile"`
+	MAC        *string `sql:"mac"`
+	IP         *string `sql:"ip"`
+	IPMI       *string `sql:"ipmi"`
+	Note       *string `sql:"note"`
 }
 
 type profile struct {

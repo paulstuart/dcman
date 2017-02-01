@@ -2603,15 +2603,15 @@ func (o pxeDevice) NewObj() interface{} {
 // pxeDevice DBObject interface functions
 //
 func (o *pxeDevice) InsertValues() []interface{} {
-	return []interface{}{o.STI, o.RID, o.Site, o.Rack, o.RU, o.Hostname, o.Profile, o.MAC, o.IP, o.IPMI, o.Note}
+	return []interface{}{o.STI, o.RID, o.Site, o.Rack, o.RU, o.Restricted, o.Hostname, o.Profile, o.MAC, o.IP, o.IPMI, o.Note}
 }
 
 func (o *pxeDevice) UpdateValues() []interface{} {
-	return []interface{}{o.STI, o.RID, o.Site, o.Rack, o.RU, o.Hostname, o.Profile, o.MAC, o.IP, o.IPMI, o.Note, o.DID}
+	return []interface{}{o.STI, o.RID, o.Site, o.Rack, o.RU, o.Restricted, o.Hostname, o.Profile, o.MAC, o.IP, o.IPMI, o.Note, o.DID}
 }
 
 func (o *pxeDevice) MemberPointers() []interface{} {
-	return []interface{}{&o.DID, &o.STI, &o.RID, &o.Site, &o.Rack, &o.RU, &o.Hostname, &o.Profile, &o.MAC, &o.IP, &o.IPMI, &o.Note}
+	return []interface{}{&o.DID, &o.STI, &o.RID, &o.Site, &o.Rack, &o.RU, &o.Restricted, &o.Hostname, &o.Profile, &o.MAC, &o.IP, &o.IPMI, &o.Note}
 }
 
 func (o *pxeDevice) Key() int64 {
@@ -2627,11 +2627,11 @@ func (o *pxeDevice) TableName() string {
 }
 
 func (o *pxeDevice) SelectFields() string {
-	return "did,sti,rid,site,rack,ru,hostname,profile,mac,ip,ipmi,note"
+	return "did,sti,rid,site,rack,ru,restricted,hostname,profile,mac,ip,ipmi,note"
 }
 
 func (o *pxeDevice) InsertFields() string {
-	return "did,sti,rid,site,rack,ru,hostname,profile,mac,ip,ipmi,note"
+	return "did,sti,rid,site,rack,ru,restricted,hostname,profile,mac,ip,ipmi,note"
 }
 
 func (o *pxeDevice) KeyField() string {
@@ -2643,7 +2643,7 @@ func (o *pxeDevice) KeyName() string {
 }
 
 func (o *pxeDevice) Names() []string {
-	return []string{"STI", "RID", "Site", "Rack", "RU", "Hostname", "Profile", "MAC", "IP", "IPMI", "Note"}
+	return []string{"STI", "RID", "Site", "Rack", "RU", "Restricted", "Hostname", "Profile", "MAC", "IP", "IPMI", "Note"}
 }
 
 func (o *pxeDevice) ModifiedBy(user int64, t time.Time) {
