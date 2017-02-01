@@ -421,7 +421,7 @@ CREATE VIEW mactable as
 DROP VIEW IF EXISTS pxedevice;
 CREATE VIEW pxedevice as
     select d.sti, d.did, d.rid, d.site, d.rack, d.ru, d.hostname, d.profile, 
-            i.mac, i.ipv4 as ip, m.ipv4 as ipmi, d.note
+            i.mac, i.ipv4 as ip, m.ipv4 as ipmi, d.note, d.restricted
     from devices_view d
     left outer join interfaces_view i on d.did = i.did
     left outer join interfaces_view m on d.did = m.did
