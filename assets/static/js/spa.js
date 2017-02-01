@@ -332,7 +332,6 @@ var searchURL       = "api/search/";
 var sessionsURL     = "api/session/" ;
 var sitesURL        = "api/site/" ;
 var summaryURL      = "api/summary/";
-var tagURL          = "api/tag/";
 var userURL         = "api/user/" ;
 var vendorURL       = "api/vendor/" ;
 var vlanURL         = "api/vlan/" ;
@@ -410,7 +409,6 @@ var getDeviceTypes = getIt(deviceTypesURL, "device types");
 var getIPTypes = getIt(iptypesURL, "ip types");
 var getDeviceLIST = getIt(deviceListURL, "device list");
 var getDeviceAudit = getIt(deviceAuditURL, "device audit");
-var getTagList = getIt(tagURL, "tags");
 var getDevice = getIt(deviceViewURL, "device");
 var getMfgr = getIt(mfgrURL, "mfgr");
 var getVM = getIt(vmViewURL, "vm");
@@ -678,6 +676,9 @@ var searchFor = Vue.component("search-for", {
                 }
             })
         }
+    },
+    watch: {
+         '$route': 'search'
     },
 })
 
@@ -1248,7 +1249,7 @@ var deviceEditVue = {
             device_types: [],
             mfgrs: [],
             vmFilename: "vms",
-            tags: [],
+            profiles: [],
             ipTypes: [],
             newIP: "",
             IPMI: "huh",
@@ -1309,7 +1310,7 @@ var deviceEditVue = {
         loadCommon: function() {
             getSiteLIST(false).then(s => this.sites = s)
             getDeviceTypes().then(t => this.device_types = t)
-            getTagList().then(l => this.tags = l)
+            get("api/profile/").then(p => this.profiles = p)
             getIPTypes().then(t => this.ipTypes = t)
             getMfgr().then(m => this.mfgrs = m)
         },
@@ -1333,7 +1334,7 @@ var deviceEditVue = {
                 this.Device = {
                     DID: 0,
                     DTI: null,
-                    TID: null,
+                    PRD: null,
                     MID: null,
                     Height: 1,
                     STI: null,
@@ -1871,8 +1872,11 @@ var deviceList = Vue.component("device-list", {
             STI: 1,
             RID: 0,
             DTI: 0,
+            PRD: 0,
+            restricted: false,
             sites: [],
             racks: [],
+            profiles: [],
             searchQuery: "",
             rows: [],
             filename: "servers",
@@ -1905,7 +1909,14 @@ var deviceList = Vue.component("device-list", {
                 data = data.filter(obj => (obj.RID == this.RID))
             }
             if (this.DTI > 0) {
-                data =  data.filter(obj => (obj.DTI == this.DTI))
+                data = data.filter(obj => (obj.DTI == this.DTI))
+            }
+            if (this.PRD > 0) {
+                data = data.filter(obj => (obj.PRD == this.PRD))
+            }
+            if (this.restricted) {
+                console.log("RESTRICTED:", this.restricted)
+                data = data.filter(obj => (obj.Restricted))
             }
             return data
         }
@@ -1931,6 +1942,7 @@ var deviceList = Vue.component("device-list", {
             this.RID = 0;
             getSiteLIST(true).then(s => this.sites = s)
             getDeviceTypes().then(t => this.types = t)
+            get("api/profile/").then(p => this.profiles = p)
         },
         canLink: function(column) {
             return column === "Hostname"
@@ -3134,73 +3146,85 @@ var partLoad = Vue.component("part-load", {
 
 
 //
-// TAGS
+// Profiles
 //
 
-var tagEdit = Vue.component("tag-edit", {
-    template: "#tmpl-tag-edit",
+var profileEdit = Vue.component("profile-edit", {
+    template: "#tmpl-profile-edit",
     data: function () {
         return {
-            tags: [],
-            url: tagURL,
-            tag: {TID: 0}, //tag,
-            sites: [],
+            url: "api/profile/",
+            Profile: {PRD: 0, Profile: "", Note: ""}, 
         }
     },
     created: function() {
         this.loadSelf()
     },
-    methods: {
-        showList: function() {
-            router.push("/")
-        },
-        loadSelf: function () {
-             getSiteLIST().then(s => this.sites = s)
-             get(this.url).then(data => this.tags = data)
-        },
-        deleteSelf: function(ev) {
-            if (! this.tag) {
-                return
-            }
-            posty(this.url + this.tag.TID, null, function(data) {}, "DELETE")
-            for (var i=0; i < this.tags.length; i++) {
-                if (this.tags[i].TID == this.tag.TID) {
-                    this.tags.splice(i, 1)
-                    break
-                }
-            }
-            this.tag = {TID: 0}
-        },
-        saveSelf: function() {
-            if (this.tag.TID > 0) {
-                posty(this.url + this.tag.TID, this.tag, "PATCH").then(() => {
-                    for (var i=0; i < this.tags.length; i++) {
-                        if (this.tags[i].TID == this.tag.TID) {
-                            this.tags[i].Name = this.tag.Name
-                            break
-                        }
-                    }
-                })
-            } else {
-                posty(this.url, this.tag).then(t => {
-                    this.tag = t
-                    this.loadSelf()
-                })
-            }
-        },
-    },
-    watch: {
-        "tag.TID": function() {
-            for (var i=0; i < this.tags.length; i++) {
-                if (this.tags[i].TID == this.tag.TID) {
-                    this.tag.Name = this.tags[i].Name
-                    return
-                }
-            }
-            this.tag.Name = ""
+    computed: {
+        disableSave() {
+            const p = this.Profile.Profile || "";
+            return (p.length == 0)
         }
     },
+    methods: {
+        showList: function() {
+            router.push("/profile/list")
+        },
+        loadSelf: function () {
+            const id = this.$route.params.PRD || 0;
+            if (id > 0) {
+                get(this.url + id).then(p => this.Profile = p)
+            } else {
+                this.Profile.PRD = 0
+                this.Profile.Profile =  "" 
+                this.Profile.Note =  "" 
+            }
+        },
+        deleteSelf: function(ev) {
+            posty(this.url + this.Profile.PRD, null, function(data) {}, "DELETE").then(this.showList)
+        },
+        saveSelf: function() {
+            if (this.Profile.PRD > 0) {
+                posty(this.url + this.Profile.PRD, this.Profile, "PATCH").then(this.showList)
+            } else {
+                posty(this.url, this.Profile).then(this.showList)
+            }
+        },
+    },
 })
+
+var profileList = Vue.component("profile-list", {
+    template: "#tmpl-profile-list",
+    mixins: [pagedCommon],
+    data: function() {
+        return {
+            sites: [],
+            searchQuery: "",
+            rows: [],
+            url: "api/profile/",
+            columns: [
+                "Profile",
+                "Script",
+                "Note",
+            ],
+        }
+    },
+    created: function () {
+        this.loadSelf()
+    },
+    methods: {
+        loadSelf: function () {
+            get(this.url).then(data => this.rows = data)
+        },
+        linkable: function(key) {
+            return (key == "Profile")
+        },
+        linkpath: function(entry, key) {
+            return "/profile/edit/" + entry["PRD"]
+        },
+    },
+})
+
 
 
 //
@@ -4006,7 +4030,6 @@ const routes = [
 { path: "/auth/login",      component: userLogin },
 { path: "/auth/logout",     component: userLogout },
 { path: "/admin/sessions",  component: sessionList },
-{ path: "/admin/tags",      component: tagEdit },
 { path: "/ip/edit/:IID",    component: ipEdit },
 { path: "/ip/list",         component: ipList },
 { path: "/ip/reserve",      component: ipReserve },
@@ -4020,6 +4043,8 @@ const routes = [
 { path: "/device/edit/:DID", component: deviceEdit },
 { path: "/device/list", component:  deviceList },
 { path: "/device/load", component: deviceLoad },
+{ path: "/profile/edit/:PRD", component: profileEdit },
+{ path: "/profile/list", component: profileList },
 { path: "/device/types", component:  deviceTypes },
 { path: "/device/type/edit/:DTI", component:  deviceTypeEdit },
 { path: "/vm/audit/:VMI", component: vmAudit },

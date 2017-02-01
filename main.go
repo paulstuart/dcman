@@ -179,14 +179,14 @@ func dbHits(q string, args ...interface{}) []found {
 }
 
 func searchDB(what string) []found {
-	q := "select distinct did as id, 'server' as kind, hostname, note from devices where hostname=? or sn=? or alias=? or asset_tag=? or profile=? or assigned=?"
-	hits := dbHits(q, what, what, what, what, what, what)
+	q := "select distinct did as id, 'server' as kind, hostname, note from devices where hostname=? or sn=? or alias=? or asset_tag=? or tag=? or assigned=?"
+	hits := dbHits(q, what, what, what, what, what, what, what)
 	if len(hits) > 0 {
 		return hits
 	}
 
 	q = `select distinct did as id, 'server' as kind, hostname, note from devices where hostname like ? 
-			or sn like ? or alias like ? or asset_tag like ? or profile like ? or assigned like ?`
+			or sn like ? or alias like ? or asset_tag like ? or tag like ? or assigned like ?`
 	almost := "%" + what + "%"
 	hits = dbHits(q, almost, almost, almost, almost, almost, almost)
 	if len(hits) > 0 {

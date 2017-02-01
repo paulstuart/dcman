@@ -112,9 +112,9 @@ type session struct {
 
 type sessionView struct {
 	SSI    int64      `sql:"ssi" key:"true" table:"sessions_view"`
-	Login  string     `sql:"login"`
 	Event  string     `sql:"event"`
 	Remote string     `sql:"remote_addr"`
+	Email  *string    `sql:"email"`
 	USR    *int64     `sql:"usr"`
 	TS     *time.Time `sql:"ts" update:"false"`
 }
@@ -293,11 +293,6 @@ type site struct {
 	TS      time.Time `sql:"ts" audit:"time"`
 }
 
-type tag struct {
-	TID  int64  `sql:"tid" key:"true" table:"tags"`
-	Name string `sql:"tag"`
-}
-
 type rack struct {
 	RID      int64      `sql:"rid" key:"true" table:"racks"`
 	STI      int64      `sql:"sti"`
@@ -463,51 +458,53 @@ type deviceType struct {
 }
 
 type device struct {
-	DID      int64     `sql:"did" key:"true" table:"devices"`
-	RID      *int64    `sql:"rid"` // Rack ID
-	MID      *int64    `sql:"mid"` // Mfgr ID
-	DTI      *int64    `sql:"dti"` // Device type ID
-	TID      *int64    `sql:"tid"` // Tag ID
-	RU       int       `sql:"ru"`
-	Height   int       `sql:"height"`
-	Hostname *string   `sql:"hostname"`
-	Alias    *string   `sql:"alias"`
-	Profile  *string   `sql:"profile"`
-	Model    *string   `sql:"model"`
-	SerialNo *string   `sql:"sn"`
-	AssetTag *string   `sql:"asset_tag"`
-	Assigned *string   `sql:"assigned"`
-	Note     *string   `sql:"note"`
-	USR      *int64    `sql:"usr" audit:"user"`
-	TS       time.Time `sql:"ts" audit:"time"`
+	DID        int64     `sql:"did" key:"true" table:"devices"`
+	RID        *int64    `sql:"rid"` // Rack ID
+	MID        *int64    `sql:"mid"` // Mfgr ID
+	DTI        *int64    `sql:"dti"` // Device type ID
+	PRD        *int64    `sql:"prd"` // Profile ID
+	RU         int       `sql:"ru"`
+	Height     int       `sql:"height"`
+	Restricted bool      `sql:"restricted"`
+	Hostname   *string   `sql:"hostname"`
+	Alias      *string   `sql:"alias"`
+	Tag        *string   `sql:"tag"`
+	Model      *string   `sql:"model"`
+	SerialNo   *string   `sql:"sn"`
+	AssetTag   *string   `sql:"asset_tag"`
+	Assigned   *string   `sql:"assigned"`
+	Note       *string   `sql:"note"`
+	USR        *int64    `sql:"usr" audit:"user"`
+	TS         time.Time `sql:"ts" audit:"time"`
 }
 
 // deviceView is a more usable view of the Device record
 type deviceView struct {
-	DID      int64     `sql:"did" key:"true" table:"devices_view"`
-	STI      *int64    `sql:"sti"` // Site ID
-	MID      *int64    `sql:"mid"` // Mfgr ID
-	RID      *int64    `sql:"rid"` // Rack ID
-	DTI      *int64    `sql:"dti"` // Device type ID
-	TID      *int64    `sql:"tid"` // Tag ID
-	Rack     int       `sql:"rack"`
-	RU       int       `sql:"ru"`
-	Height   int       `sql:"height"`
-	Hostname *string   `sql:"hostname"`
-	Alias    *string   `sql:"alias"`
-	Make     *string   `sql:"make"`
-	Model    *string   `sql:"model"`
-	Profile  *string   `sql:"profile"`
-	SerialNo *string   `sql:"sn"`
-	AssetTag *string   `sql:"asset_tag"`
-	Assigned *string   `sql:"assigned"`
-	Note     *string   `sql:"note"`
-	Type     *string   `sql:"devtype"`
-	Tag      *string   `sql:"tag"`
-	Site     *string   `sql:"site"`
-	Version  *int      `sql:"version"`
-	USR      *int64    `sql:"usr" audit:"user"`
-	TS       time.Time `sql:"ts" audit:"time"`
+	DID        int64     `sql:"did" key:"true" table:"devices_view"`
+	STI        *int64    `sql:"sti"` // Site ID
+	MID        *int64    `sql:"mid"` // Mfgr ID
+	RID        *int64    `sql:"rid"` // Rack ID
+	DTI        *int64    `sql:"dti"` // Device type ID
+	PRD        *int64    `sql:"prd"` // Profile ID
+	Rack       int       `sql:"rack"`
+	RU         int       `sql:"ru"`
+	Height     int       `sql:"height"`
+	Hostname   *string   `sql:"hostname"`
+	Alias      *string   `sql:"alias"`
+	Make       *string   `sql:"make"`
+	Model      *string   `sql:"model"`
+	Tag        *string   `sql:"tag"`
+	SerialNo   *string   `sql:"sn"`
+	AssetTag   *string   `sql:"asset_tag"`
+	Assigned   *string   `sql:"assigned"`
+	Note       *string   `sql:"note"`
+	Type       *string   `sql:"devtype"`
+	Profile    *string   `sql:"profile"`
+	Site       *string   `sql:"site"`
+	Restricted bool      `sql:"restricted"`
+	Version    *int      `sql:"version"`
+	USR        *int64    `sql:"usr" audit:"user"`
+	TS         time.Time `sql:"ts" audit:"time"`
 }
 
 // deviceHistory is a usable view of the Device record history
@@ -517,7 +514,7 @@ type deviceHistory struct {
 	KID      *int64    `sql:"kid"` // SKU ID
 	RID      *int64    `sql:"rid"` // Rack ID
 	DTI      *int64    `sql:"dti"` // Device type ID
-	TID      *int64    `sql:"tid"` // Tag ID
+	PRD      *int64    `sql:"prd"` // Profile ID
 	Rack     int       `sql:"rack"`
 	RU       int       `sql:"ru"`
 	Height   int       `sql:"height"`
@@ -539,31 +536,32 @@ type deviceHistory struct {
 
 // deviceIPs merges IP info into the DeviceView
 type deviceIPs struct {
-	DID      int64     `sql:"did" key:"true" table:"devices_list"`
-	STI      *int64    `sql:"sti"` // Site ID
-	RID      *int64    `sql:"rid"` // Rack ID
-	MID      *int64    `sql:"mid"` // Mfgr ID
-	DTI      *int64    `sql:"dti"` // Device type ID
-	TID      *int64    `sql:"tid"` // Tag ID
-	Rack     *int      `sql:"rack"`
-	RU       *int      `sql:"ru"`
-	Height   *int      `sql:"height"`
-	Hostname *string   `sql:"hostname"`
-	IPs      *string   `sql:"ips"`
-	Mgmt     *string   `sql:"mgmt"`
-	Alias    *string   `sql:"alias"`
-	Profile  *string   `sql:"profile"`
-	Make     *string   `sql:"make"`
-	Model    *string   `sql:"model"`
-	SerialNo *string   `sql:"sn"`
-	AssetTag *string   `sql:"asset_tag"`
-	Assigned *string   `sql:"assigned"`
-	Tag      *string   `sql:"tag"`
-	Note     *string   `sql:"note"`
-	Type     *string   `sql:"devtype"`
-	Site     *string   `sql:"site"`
-	USR      *int64    `sql:"usr"`
-	TS       time.Time `sql:"ts"`
+	DID        int64     `sql:"did" key:"true" table:"devices_list"`
+	STI        *int64    `sql:"sti"` // Site ID
+	RID        *int64    `sql:"rid"` // Rack ID
+	MID        *int64    `sql:"mid"` // Mfgr ID
+	DTI        *int64    `sql:"dti"` // Device type ID
+	PRD        *int64    `sql:"prd"` // Profile ID
+	Rack       *int      `sql:"rack"`
+	RU         *int      `sql:"ru"`
+	Height     *int      `sql:"height"`
+	Restricted bool      `sql:"restricted"`
+	Hostname   *string   `sql:"hostname"`
+	IPs        *string   `sql:"ips"`
+	Mgmt       *string   `sql:"mgmt"`
+	Alias      *string   `sql:"alias"`
+	Profile    *string   `sql:"profile"`
+	Make       *string   `sql:"make"`
+	Model      *string   `sql:"model"`
+	SerialNo   *string   `sql:"sn"`
+	AssetTag   *string   `sql:"asset_tag"`
+	Assigned   *string   `sql:"assigned"`
+	Tag        *string   `sql:"tag"`
+	Note       *string   `sql:"note"`
+	Type       *string   `sql:"devtype"`
+	Site       *string   `sql:"site"`
+	USR        *int64    `sql:"usr"`
+	TS         time.Time `sql:"ts"`
 }
 
 // special view with triggers for resizing/moving unit
@@ -771,4 +769,13 @@ type pxeDevice struct {
 	IP       *string `sql:"ip"`
 	IPMI     *string `sql:"ipmi"`
 	Note     *string `sql:"note"`
+}
+
+type profile struct {
+	PRD     int64     `sql:"prd" key:"true" table:"profiles"`
+	Profile *string   `sql:"profile"`
+	Script  *string   `sql:"script"`
+	Note    *string   `sql:"note"`
+	USR     *int64    `sql:"usr" audit:"user"`
+	TS      time.Time `sql:"ts"  audit:"time"`
 }

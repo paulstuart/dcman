@@ -191,7 +191,6 @@ func loadTemplates() {
 		"plusOne":   plusOne,
 		"fixDate":   fixDate,
 		"userLogin": userLogin,
-		"tags":      tagList,
 	}
 	htmlTmpl = make(map[string]*template.Template)
 	textTmpl = make(map[string]*ttext.Template)
@@ -269,15 +268,6 @@ func isBlank(s string) string {
 		return s
 	}
 	return " * blank * "
-}
-
-func tagList() []tag {
-	t, err := dbObjectList(tag{})
-	if err == nil {
-		return t.([]tag)
-	}
-	fmt.Println("TAGS ERR:", err)
-	return []tag{}
 }
 
 func plusOne(in interface{}) string {

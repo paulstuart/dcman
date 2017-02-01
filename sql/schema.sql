@@ -164,11 +164,6 @@ CREATE TABLE "rmas" (
 
 
 DROP TABLE IF EXISTS "tags";
-CREATE TABLE "tags" (
-    tid integer primary key,
-    tag text,
-    unique(tag)
-);
 
 drop table if exists device_types;
 CREATE TABLE "device_types" (
@@ -176,13 +171,23 @@ CREATE TABLE "device_types" (
     name text not null COLLATE NOCASE
 );
 
+drop table if exists profiles;
+CREATE TABLE "profiles" (
+    prd      integer primary key,
+    profile  text,
+    script   text,
+    note     text,
+    usr      integer,
+    ts       date DEFAULT CURRENT_TIMESTAMP
+)
+
 drop table if exists devices;
 CREATE TABLE "devices" (
     did integer primary key,
     rid integer,    -- rack ID
     dti integer,    -- device type ID
     mid integer,    -- mfgr ID
-    tid integer,    -- tag ID
+    prd integer,    -- profile ID
     ru  integer default 0,
     height    int default 1,
     hostname  text not null COLLATE NOCASE,
@@ -190,25 +195,25 @@ CREATE TABLE "devices" (
     model     text,
     asset_tag text,
     sn        text,
-    profile   text,
+    tag       text,
     assigned  text,
     note      text,
+    restricted integer default 0,
     version integer default 0,
     usr integer,
     ts  date DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(rid) REFERENCES racks(rid)
     FOREIGN KEY(dti) REFERENCES device_types(dti)
     FOREIGN KEY(mid) REFERENCES mfgrs(mid)
-    FOREIGN KEY(tid) REFERENCES tags(tid)
+    FOREIGN KEY(prd) REFERENCES profiles(prd)
 );
 
-drop table if exists audit_devices;
 CREATE TABLE "audit_devices" (
     did integer,
     rid integer,
     dti integer,
     mid integer,
-    tid integer,
+    prd integer,
     ru  integer,
     height    integer,
     hostname  text,
@@ -216,13 +221,15 @@ CREATE TABLE "audit_devices" (
     model     text,
     asset_tag text,
     sn        text,
-    profile   text,
+    tag       text,
     assigned  text,
     note      text,
+    restricted integer,
     version integer,
     usr integer,
     ts  date
 );
+
 
 CREATE TABLE "vms" (
     vmi integer primary key,

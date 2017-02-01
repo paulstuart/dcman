@@ -248,12 +248,12 @@ create view ips_next as
 
 drop view if exists devices_view;
 create view devices_view as
-    select r.sti, r.site, r.rack, d.*, dt.name as devtype, t.tag, m.name as make
+    select r.sti, r.site, r.rack, d.*, dt.name as devtype, p.profile, m.name as make
     from devices d
     left outer join racks_view r on d.rid = r.rid
     left outer join device_types dt on d.dti = dt.dti
     left outer join mfgrs m on d.mid = m.mid
-    left outer join tags t on d.tid = t.tid
+    left outer join profiles p on d.prd = p.prd
     ;
 
 drop view if exists interfaces_view;

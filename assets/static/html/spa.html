@@ -56,6 +56,7 @@
             <li><router-link to='/rack/list' >Rack List</router-link></li>
             <li><router-link to='/rack/edit/0' >Add Rack</router-link></li>
             <li role="separator" class="divider"></li>
+            <li><router-link to='/profile/list' >Device Profiles</router-link></li>
             <li><router-link to='/device/types' >Device Types</router-link></li>
           </ul>
         <li class="dropdown">
@@ -101,7 +102,6 @@
           <ul class="dropdown-menu">
             <li><router-link to='/site/list' >Site List</router-link></li>
             <li><router-link to='/user/list' >User List</router-link></li>
-            <li><router-link to='/admin/tags' >Manage Tags</router-link></li>
             <li role="separator" class="divider"></li>
             <li><router-link to='/admin/sessions' >Session Log</router-link></li>
             <li><a v-on:click.prevent="toggleDebug">{{debugAction}} Debug</a></li>
@@ -522,6 +522,17 @@
             </option>
         </select>
 
+        <label for="PRD">Profile</label>
+        <select id="PRD" v-model.number="PRD">
+            <option value="0"></option>
+            <option v-for="profile in profiles" v-bind:value="profile.PRD">
+                {{ profile.Profile }}
+            </option>
+        </select>
+
+        <label for="Restricted">Restricted</label>
+        <input type="checkbox" id="Restricted" v-model.number="restricted">
+
         <label for="query">Filter</label>
         <input name="query" v-model="searchQuery" @keyup="resetStartRow">
 
@@ -801,21 +812,28 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="Profile" class="control-label col-xs-2">Profile</label>
+                    <label for="Tag" class="control-label col-xs-2">Tag</label>
                     <div class="col-xs-2">
-                        <input type="text" id="Profile" v-model="Device.Profile"/>
+                        <input type="text" id="Tag" v-model="Device.Tag"/>
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label for="TID" class="control-label col-xs-2">Tag</label>
+                    <label for="Profile" class="control-label col-xs-2">Profile</label>
                     <div class="col-xs-2">
-                            <select id="TID" v-model.number="Device.TID" >
+                            <select id="TID" v-model.number="Device.PRD" >
                                 <option value="0"></option>
-                                <option v-for="tag in tags" v-bind:value="tag.TID">
-                                    {{ tag.Name }}
+                                <option v-for="profile in profiles" v-bind:value="profile.PRD">
+                                    {{ profile.Profile }}
                                 </option>
                             </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="Restricted" class="control-label col-xs-2">Restricted</label>
+                    <div class="col-xs-2">
+                        <input type="checkbox" id="Restricted" v-model="Device.Restricted"/>
                     </div>
                 </div>
 
@@ -2155,27 +2173,56 @@
 </script>
 
 
-<script type="text/x-template" id="tmpl-tag-edit">
-    <div id="tagform">
+<script type="text/x-template" id="tmpl-profile-list">
+    <div>
+        <h1 class="mytitle">Profiles</h1>
+        <label for="query">Search</label>
+        <input id="query" v-model="searchQuery">
+
+        <label for="pagerows">page size</label>
+        <select id="pagerows" v-model="pagerows">
+            <option v-for="size in sizes" v-bind:value="size">
+                {{ size }}
+            </option>
+        </select>
+
+        <paged-grid 
+            :data="filteredRows"
+            :columns="columns" 
+            :linkable="linkable"
+            :linkpath="linkpath"
+            :start-row="startRow" 
+            :rows-per-page="rowsPerPage">
+        </paged-grid>
+    </div>
+</script>
+
+<script type="text/x-template" id="tmpl-profile-edit">
+    <div id="profileform">
         <form class="form-horizontal">
             <fieldset class="col-xs-12">
                 <div class="form-group">
-                    <label for="TID" class="control-label col-xs-2">Tag</label>
+                    <label for="profile" class="control-label col-xs-2">Profile</label>
                     <div class="col-xs-2">
-                            <select id="TID" v-model.number="tag.TID">
-                                <option value="0"></option>
-                                <option v-for="t in tags" v-bind:value="t.TID">
-                                    {{ t.Name }}
-                                </option>
-                            </select>
+                        <input type="text" class="form-control" id="profile" v-model="Profile.Profile">
                     </div>
                 </div>
             </fieldset>
+
             <fieldset class="col-xs-12">
                 <div class="form-group">
-                    <label for="new-tag" class="control-label col-xs-2">Name</label>
+                    <label for="script" class="control-label col-xs-2">Script</label>
                     <div class="col-xs-2">
-                        <input type="text" class="form-control" id="new-tag" v-model="tag.Name">
+                        <input type="text" class="form-control" id="script" v-model="Profile.Script">
+                    </div>
+                </div>
+            </fieldset>
+
+            <fieldset class="col-xs-12">
+                <div class="form-group">
+                    <label for="Note" class="control-label col-xs-2">Note</label>
+                    <div class="col-xs-2">
+                        <textarea cols="35" rows="3" id="Note" v-model="Profile.Note"></textarea>
                     </div>
                 </div>
             </fieldset>
@@ -2186,8 +2233,8 @@
                         <button class="btn" v-on:click.prevent="showList">Cancel</button>
                     </div>
                     <div class="col-xs-1">
-                        <button :disabled="tag.Name.length==0" class="btn" v-on:click.prevent="saveSelf">
-                        <template v-if="tag.TID > 0">
+                        <button :disabled="disableSave" class="btn" v-on:click.prevent="saveSelf">
+                        <template v-if="Profile.PRD > 0">
                         Update
                         </template>
                         <template v-else>
@@ -2196,7 +2243,7 @@
                         </button>
                     </div>
                     <div class="col-xs-1">
-                        <button :disabled="tag.TID==0" class="btn" v-on:click.prevent="deleteSelf">Delete</button>
+                        <button :disabled="Profile.PRD==0" class="btn" v-on:click.prevent="deleteSelf">Delete</button>
                     </div>
                 </div>
             </fieldset>
