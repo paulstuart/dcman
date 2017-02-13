@@ -593,6 +593,34 @@ func getMAC(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, string(j))
 }
 
+func profileScript(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("PROFILE MAC:", r.URL.Path)
+	device := &pxeDevice{}
+	if err := dbFindBy(device, "mac", r.URL.Path); err != nil {
+		jsonError(w, err, http.StatusBadRequest)
+		return
+	}
+	if device.Script == nil || len(*device.Script) == 0 {
+		jsonError(w, "device has no associated script", http.StatusBadRequest)
+		log.Println("device has no associated script")
+		return
+	}
+	if device.PXEHost == nil || len(*device.PXEHost) == 0 {
+		jsonError(w, "device has no associated pxe host", http.StatusBadRequest)
+		log.Println("device has no associated pxe host")
+		return
+	}
+	cors(w)
+	url := fmt.Sprintf("http://%s/kickstart/profiles/%s", *device.PXEHost, *device.Script)
+	fmt.Println("PROFILE URL:", url)
+	http.Redirect(w, r, url, http.StatusFound)
+}
+
+/*
+Paul-Stuarts-MacBook-Pro:dcman Paul.Stuart$ sqlite3 data.db "select profile,pxehost,script,mac from pxedevice where mac='0c:c4:7a:43:0e:52'"
+Hyperviser|10.110.192.11|hyper.sh|0c:c4:7a:43:0e:52
+*/
+
 // get user info for self
 func apiCheck(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
@@ -616,6 +644,7 @@ var webHandlers = []hFunc{
 	{"/static/", StaticPage},
 	{"/ping", pingPage},
 	{"/servers", serverDump},
+	{"/script/", profileScript},
 	{"/api/db/pragmas", apiPragmas},
 	{"/api/device/adjust/", MakeREST(deviceAdjust{})},
 	{"/api/device/audit/", deviceAudit},

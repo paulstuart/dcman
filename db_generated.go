@@ -881,15 +881,15 @@ func (o site) NewObj() interface{} {
 // site DBObject interface functions
 //
 func (o *site) InsertValues() []interface{} {
-	return []interface{}{o.Name, o.Address, o.City, o.State, o.Postal, o.Country, o.Phone, o.Web, o.Note, o.USR, o.TS}
+	return []interface{}{o.Name, o.Address, o.City, o.State, o.Postal, o.Country, o.Phone, o.Web, o.Note, o.PXEHost, o.USR, o.TS}
 }
 
 func (o *site) UpdateValues() []interface{} {
-	return []interface{}{o.Name, o.Address, o.City, o.State, o.Postal, o.Country, o.Phone, o.Web, o.Note, o.USR, o.TS, o.STI}
+	return []interface{}{o.Name, o.Address, o.City, o.State, o.Postal, o.Country, o.Phone, o.Web, o.Note, o.PXEHost, o.USR, o.TS, o.STI}
 }
 
 func (o *site) MemberPointers() []interface{} {
-	return []interface{}{&o.STI, &o.Name, &o.Address, &o.City, &o.State, &o.Postal, &o.Country, &o.Phone, &o.Web, &o.Note, &o.USR, &o.TS}
+	return []interface{}{&o.STI, &o.Name, &o.Address, &o.City, &o.State, &o.Postal, &o.Country, &o.Phone, &o.Web, &o.Note, &o.PXEHost, &o.USR, &o.TS}
 }
 
 func (o *site) Key() int64 {
@@ -905,11 +905,11 @@ func (o *site) TableName() string {
 }
 
 func (o *site) SelectFields() string {
-	return "sti,name,address,city,state,postal,country,phone,web,note,usr,ts"
+	return "sti,name,address,city,state,postal,country,phone,web,note,pxehost,usr,ts"
 }
 
 func (o *site) InsertFields() string {
-	return "sti,name,address,city,state,postal,country,phone,web,note,usr,ts"
+	return "sti,name,address,city,state,postal,country,phone,web,note,pxehost,usr,ts"
 }
 
 func (o *site) KeyField() string {
@@ -921,7 +921,7 @@ func (o *site) KeyName() string {
 }
 
 func (o *site) Names() []string {
-	return []string{"Name", "Address", "City", "State", "Postal", "Country", "Phone", "Web", "Note", "USR", "TS"}
+	return []string{"Name", "Address", "City", "State", "Postal", "Country", "Phone", "Web", "Note", "PXEHost", "USR", "TS"}
 }
 
 func (o *site) ModifiedBy(user int64, t time.Time) {
@@ -2603,15 +2603,15 @@ func (o pxeDevice) NewObj() interface{} {
 // pxeDevice DBObject interface functions
 //
 func (o *pxeDevice) InsertValues() []interface{} {
-	return []interface{}{o.STI, o.RID, o.Site, o.Rack, o.RU, o.Restricted, o.Hostname, o.Profile, o.MAC, o.IP, o.IPMI, o.Note}
+	return []interface{}{o.STI, o.RID, o.Site, o.Rack, o.RU, o.Restricted, o.Hostname, o.PXEHost, o.Profile, o.Script, o.MAC, o.IP, o.IPMI, o.Note}
 }
 
 func (o *pxeDevice) UpdateValues() []interface{} {
-	return []interface{}{o.STI, o.RID, o.Site, o.Rack, o.RU, o.Restricted, o.Hostname, o.Profile, o.MAC, o.IP, o.IPMI, o.Note, o.DID}
+	return []interface{}{o.STI, o.RID, o.Site, o.Rack, o.RU, o.Restricted, o.Hostname, o.PXEHost, o.Profile, o.Script, o.MAC, o.IP, o.IPMI, o.Note, o.DID}
 }
 
 func (o *pxeDevice) MemberPointers() []interface{} {
-	return []interface{}{&o.DID, &o.STI, &o.RID, &o.Site, &o.Rack, &o.RU, &o.Restricted, &o.Hostname, &o.Profile, &o.MAC, &o.IP, &o.IPMI, &o.Note}
+	return []interface{}{&o.DID, &o.STI, &o.RID, &o.Site, &o.Rack, &o.RU, &o.Restricted, &o.Hostname, &o.PXEHost, &o.Profile, &o.Script, &o.MAC, &o.IP, &o.IPMI, &o.Note}
 }
 
 func (o *pxeDevice) Key() int64 {
@@ -2627,11 +2627,11 @@ func (o *pxeDevice) TableName() string {
 }
 
 func (o *pxeDevice) SelectFields() string {
-	return "did,sti,rid,site,rack,ru,restricted,hostname,profile,mac,ip,ipmi,note"
+	return "did,sti,rid,site,rack,ru,restricted,hostname,pxehost,profile,script,mac,ip,ipmi,note"
 }
 
 func (o *pxeDevice) InsertFields() string {
-	return "did,sti,rid,site,rack,ru,restricted,hostname,profile,mac,ip,ipmi,note"
+	return "did,sti,rid,site,rack,ru,restricted,hostname,pxehost,profile,script,mac,ip,ipmi,note"
 }
 
 func (o *pxeDevice) KeyField() string {
@@ -2643,7 +2643,7 @@ func (o *pxeDevice) KeyName() string {
 }
 
 func (o *pxeDevice) Names() []string {
-	return []string{"STI", "RID", "Site", "Rack", "RU", "Restricted", "Hostname", "Profile", "MAC", "IP", "IPMI", "Note"}
+	return []string{"STI", "RID", "Site", "Rack", "RU", "Restricted", "Hostname", "PXEHost", "Profile", "Script", "MAC", "IP", "IPMI", "Note"}
 }
 
 func (o *pxeDevice) ModifiedBy(user int64, t time.Time) {

@@ -289,6 +289,7 @@ type site struct {
 	Phone   *string   `sql:"phone"`
 	Web     *string   `sql:"web"`
 	Note    *string   `sql:"note"`
+	PXEHost *string   `sql:"pxehost"`
 	USR     *int64    `sql:"usr"  audit:"user"`
 	TS      time.Time `sql:"ts" audit:"time"`
 }
@@ -765,7 +766,9 @@ type pxeDevice struct {
 	RU         int     `sql:"ru"`
 	Restricted bool    `sql:"restricted"`
 	Hostname   *string `sql:"hostname"`
+	PXEHost    *string `sql:"pxehost"`
 	Profile    *string `sql:"profile"`
+	Script     *string `sql:"script"`
 	MAC        *string `sql:"mac"`
 	IP         *string `sql:"ip"`
 	IPMI       *string `sql:"ipmi"`

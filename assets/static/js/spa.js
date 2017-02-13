@@ -3929,6 +3929,7 @@ var siteList = Vue.component("site-list", {
                 "City",
                 "Country",
                 "Note",
+                "PXEHost",
             ],
         }
     },

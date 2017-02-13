@@ -423,10 +423,12 @@ CREATE VIEW mactable as
 DROP VIEW IF EXISTS pxedevice;
 CREATE VIEW pxedevice as
     select d.sti, d.did, d.rid, d.site, d.rack, d.ru, d.hostname, d.profile, 
-            i.mac, i.ipv4 as ip, m.ipv4 as ipmi, d.note, d.restricted
+            i.mac, i.ipv4 as ip, m.ipv4 as ipmi, d.note, d.restricted, p.profile, p.script, s.pxehost
     from devices_view d
     left outer join interfaces_view i on d.did = i.did
     left outer join interfaces_view m on d.did = m.did
+    left outer join profiles p on d.prd = p.prd
+    left outer join sites s on d.sti = s.sti
     where i.ip32 > 0 and i.ip32 < 184549375 -- 10.255.255.255
       and i.port=0
       and i.mgmt=0

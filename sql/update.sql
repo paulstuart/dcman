@@ -1,4 +1,4 @@
-
+/*
 -- move to normalized profiles
 
 drop table if exists profiler;
@@ -196,6 +196,7 @@ drop table old_devices;
 .read 'sql/triggers.sql'
 
 select profile, count(profile) as cnt from devices_view group by profile order by profile;
+*/
 
 /*
 update vlans set starting = route || '1' where starting is null or length(starting) == 0;
@@ -217,3 +218,53 @@ END;
 
 update vlans_fix set vli=fixed ;
 */
+
+ALTER TABLE "sites" rename to old_sites; 
+CREATE TABLE "sites" (
+    sti integer primary key,
+    name text not null,
+    address text,
+    city text,
+    state text,
+    phone text,
+    web text,
+    postal text,
+    country text,
+    note text,
+    pxehost text,
+    usr integer, 
+    ts timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+insert into "sites" (
+    sti,
+    name,
+    address,
+    city,
+    state,
+    phone,
+    web,
+    postal,
+    country,
+    note,
+    usr,
+    ts
+) select
+    sti,
+    name,
+    address,
+    city,
+    state,
+    phone,
+    web,
+    postal,
+    country,
+    note,
+    usr,
+    ts
+from old_sites;
+
+drop table old_sites;
+
+.read sql/views.sql
+.read sql/triggers.sql
