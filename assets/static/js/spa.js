@@ -3222,6 +3222,9 @@ var profileList = Vue.component("profile-list", {
         linkpath: function(entry, key) {
             return "/profile/edit/" + entry["PRD"]
         },
+        addProfile: function() {
+            router.push("/profile/edit/0")
+        },
     },
 })
 

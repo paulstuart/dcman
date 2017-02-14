@@ -2192,6 +2192,7 @@
                 {{ size }}
             </option>
         </select>
+        <button class="btn" v-on:click.prevent="addProfile">Add Profile</button>
 
         <paged-grid 
             :data="filteredRows"
