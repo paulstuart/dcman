@@ -597,17 +597,18 @@ func profileScript(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("PROFILE MAC:", r.URL.Path)
 	device := &pxeDevice{}
 	if err := dbFindBy(device, "mac", r.URL.Path); err != nil {
-		jsonError(w, err, http.StatusBadRequest)
+		msg := fmt.Sprintf("echo '%s'", err)
+		http.Error(w, msg, http.StatusBadRequest)
 		return
 	}
 	if device.Script == nil || len(*device.Script) == 0 {
-		jsonError(w, "device has no associated script", http.StatusBadRequest)
-		log.Println("device has no associated script")
+		msg := fmt.Sprintf("echo '%s has no associated script'", device.Hostname)
+		http.Error(w, msg, http.StatusBadRequest)
 		return
 	}
 	if device.PXEHost == nil || len(*device.PXEHost) == 0 {
-		jsonError(w, "device has no associated pxe host", http.StatusBadRequest)
-		log.Println("device has no associated pxe host")
+		msg := fmt.Sprintf("echo '%s has no associated pxe host'", device.Hostname)
+		http.Error(w, msg, http.StatusBadRequest)
 		return
 	}
 	cors(w)

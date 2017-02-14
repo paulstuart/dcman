@@ -409,7 +409,7 @@ create view devices_public_ips as
 
 DROP VIEW IF EXISTS mactable;
 CREATE VIEW mactable as
-    select a.mac, a.hostname, a.site, ifnull(a.profile,'') as profile, a.ipv4 as ip_internal, ifnull(b.ipv4, '-') as ip_public
+    select a.mac, a.hostname, a.site, ifnull(a.profile,'-') as profile, a.ipv4 as ip_internal, ifnull(b.ipv4, '-') as ip_public
         from devices_network a
         left outer join devices_public_ips b on a.did = b.did
         where a.iptype = 'Internal'
