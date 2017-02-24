@@ -475,7 +475,7 @@ var deviceRacks = function(device) {
 var deviceVMlist = function(device) {
     var url = vmIPsURL + "?DID=" + device.DID;
     return get(url).then(function(v) {
-        device.vms = v;
+        device.vms = v || [];
         return device
     })
 }
