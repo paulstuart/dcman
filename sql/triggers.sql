@@ -49,10 +49,12 @@ DROP TRIGGER IF EXISTS devices_view_insert;
 CREATE TRIGGER devices_view_insert INSTEAD OF INSERT ON devices_view 
 BEGIN
     insert into devices
-        (usr, rid, dti, prd, ru, height, hostname, alias, model, sn, profile, asset_tag, assigned, note, mid, restricted)
+        (usr, rid, dti, prd, ru, height, hostname, alias, model, sn, asset_tag, assigned, note, mid, restricted)
         values
-        (NEW.usr, NEW.rid, nullif(NEW.dti,0), NEW.prd, NEW.ru, NEW.height, NEW.hostname, NEW.alias, 
-            NEW.model, NEW.sn, NEW.profile, NEW.asset_tag, NEW.assigned, NEW.note,
+        (NEW.usr, NEW.rid, nullif(NEW.dti,0), 
+            ifnull(NEW.prd, (select prd from profiles where profile=NEW.profile)), 
+            NEW.ru, NEW.height, NEW.hostname, NEW.alias, 
+            NEW.model, NEW.sn, NEW.asset_tag, NEW.assigned, NEW.note,
             ifnull(NEW.mid, (select mid from mfgrs where name=new.make)),
             NEW.restricted
         )

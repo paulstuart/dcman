@@ -1266,7 +1266,9 @@ var deviceEditVue = {
             Description: "",
             Device: {
                 Hostname: "",
-                Height: 1
+                Height: 1,
+                RID: null,
+                racks: [],
             },
             pageRows: 10,
             startRow: 0,
@@ -1340,12 +1342,15 @@ var deviceEditVue = {
                     STI: null,
                     RID: null,
                     RU: null,
+                    racks: [],
                 }
             }
         },
         loadRacks: function() {
-            const url = rackViewURL + "?STI=" + this.Device.STI;
-            get(url).then(r => this.Device.racks = r)
+            if (this.Device.STI > 0) {
+                const url = rackViewURL + "?STI=" + this.Device.STI;
+                get(url).then(r => this.Device.racks = r)
+            }
         },
         saveSelf: function(event) {
             var device = this.Device;
@@ -1447,9 +1452,11 @@ var deviceAdd = Vue.component("device-add", {
             this.Device.RID = parseInt(this.$route.params.RID)
             this.Device.RU = parseInt(this.$route.params.RU)
             this.Device.Hostname = ""
-
-            const url = rackViewURL + "?STI=" + this.Device.STI;
-            get(url).then(r => this.Device.racks = r)
+            this.Device.racks = []
+            if (this.Device.STI > 0) {
+                const url = rackViewURL + "?STI=" + this.Device.STI;
+                get(url).then(r => this.Device.racks = r || [])
+            }
         },
     },
 })
