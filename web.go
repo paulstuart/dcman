@@ -26,7 +26,6 @@ import (
 	//"github.com/davecgh/go-spew/spew"
 	gorilla "github.com/gorilla/handlers"
 	sqlite3 "github.com/mattn/go-sqlite3"
-	//	"github.com/nytimes/gziphandler"
 	"github.com/paulstuart/dbutil"
 )
 

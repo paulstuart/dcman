@@ -3687,6 +3687,7 @@ var rackLayout = Vue.component("rack-layout", {
 
              getSiteLIST().then(s => this.sites = s)
              get(url).then(units => {
+                 if (! units) units = [];
                  url = rackViewURL + "?STI=" + this.STI;
                  get(url).then(racks => {
                      if (racks) {
