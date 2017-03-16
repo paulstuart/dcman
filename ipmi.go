@@ -85,7 +85,7 @@ func ipmiexec(ip, username, password, input string) (int, string, string, error)
 	if len(password) == 0 {
 		return -1, "", "", ErrNoPassword
 	}
-	args := []string{"-Ilanplus", "-H", ip, "-U", username, "-P", password}
+	args := []string{"-I", "lanplus", "-H", ip, "-U", username, "-P", password}
 	//args := []string{"-H", ip, "-U", username, "-P", password}
 	args = append(args, strings.Fields(input)...)
 	cmd := exec.Command("ipmitool", args...)
@@ -110,7 +110,7 @@ func ipmicmd(ip, username, password, input string) (int, string, string, error) 
 		return -1, "", "", ErrNoAddress
 	}
 	if !ping(ip, pingTimeout) {
-		log.Printf("ping failed for: %s (%d)\n", ip, pingTimeout)
+		//log.Printf("ping failed for: %s (%d)\n", ip, pingTimeout)
 		return -1, "", "", ErrNoPing
 	}
 	return ipmiexec(ip, username, password, input)
@@ -119,7 +119,7 @@ func ipmicmd(ip, username, password, input string) (int, string, string, error) 
 func ipmichk(ip, username, password string) (string, error) {
 	const chkcmd = "mc info"
 	rc, stdout, stderr, err := ipmiexec(ip, username, password, chkcmd)
-	log.Printf("(%s,%s) ipmichk rc:%d stdout:%s stderr:%s\n", username, password, rc, stdout, stderr)
+	//log.Printf("(%s,%s) ipmichk rc:%d stdout:%s stderr:%s\n", username, password, rc, stdout, stderr)
 	if err != nil {
 		return "", err
 	}
@@ -186,7 +186,7 @@ func findMAC(ipmi string) (string, error) {
 	if len(stdout) < 13 {
 		return "", ErrIncompleteIPMI
 	}
-	lines := strings.Split(stdout, "\n")
+	lines := strings.Split(strings.TrimSpace(stdout), "\n")
 	if len(lines) > 1 {
 		stdout = lines[2]
 	}
