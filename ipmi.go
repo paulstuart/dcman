@@ -85,8 +85,8 @@ func ipmiexec(ip, username, password, input string) (int, string, string, error)
 	if len(password) == 0 {
 		return -1, "", "", ErrNoPassword
 	}
-	//args := []string{"-Ilanplus", "-H", ip, "-U", username, "-P", password}
-	args := []string{"-H", ip, "-U", username, "-P", password}
+	args := []string{"-Ilanplus", "-H", ip, "-U", username, "-P", password}
+	//args := []string{"-H", ip, "-U", username, "-P", password}
 	args = append(args, strings.Fields(input)...)
 	cmd := exec.Command("ipmitool", args...)
 	//cmd.Stdin = nil
@@ -110,22 +110,26 @@ func ipmicmd(ip, username, password, input string) (int, string, string, error) 
 		return -1, "", "", ErrNoAddress
 	}
 	if !ping(ip, pingTimeout) {
+		log.Printf("ping failed for: %s (%d)\n", ip, pingTimeout)
 		return -1, "", "", ErrNoPing
 	}
 	return ipmiexec(ip, username, password, input)
 }
 
-func ipmichk(ip, username, password string) error {
+func ipmichk(ip, username, password string) (string, error) {
 	const chkcmd = "mc info"
 	rc, stdout, stderr, err := ipmiexec(ip, username, password, chkcmd)
+	log.Printf("(%s,%s) ipmichk rc:%d stdout:%s stderr:%s\n", username, password, rc, stdout, stderr)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if rc > 0 {
-		return ErrExecFailed
+		return "", ErrExecFailed
 	}
+	log.Println("ipmichk stdout:", stdout)
 	if strings.Contains(stdout, "Manufacturer") {
-		return nil
+		i := strings.Index(stdout, ":") + 2
+		return stdout[i:], nil
 	}
 	if len(stdout) > 0 {
 		log.Println("unexpected stdout:", stdout)
@@ -133,28 +137,29 @@ func ipmichk(ip, username, password string) error {
 	if len(stderr) > 0 {
 		log.Println("unexpected stderr:", stderr)
 	}
-	return ErrBadIPMI
+	return "", ErrBadIPMI
 }
 
-// verify credentials
+// find the correct credentials
 func fixCredentials(ip string) (string, string, error) {
+	log.Println("fix credentials for:", ip)
 	if !ping(ip, pingTimeout) {
 		return "", "", ErrNoPing
 	}
+	// is this a Dell?
+	u := "root"
+	p := "calvin"
+	if _, err := ipmichk(ip, u, p); err == nil {
+		setCredentials(ip, u, p)
+		return u, p, nil
+	}
 	versions := []string{"ADMIN", "Admin", "admin"}
-	for _, u := range versions {
-		for _, p := range versions {
-			if err := ipmichk(ip, u, p); err == nil {
+	for _, u = range versions {
+		for _, p = range versions {
+			if _, err := ipmichk(ip, u, p); err == nil {
 				setCredentials(ip, u, p)
 				return u, p, nil
 			}
-		}
-		// is this a Dell?
-		u = "root"
-		p := "calvin"
-		if err := ipmichk(ip, u, p); err == nil {
-			setCredentials(ip, u, p)
-			return u, p, nil
 		}
 	}
 	return "", "", ErrLoginIPMI
