@@ -118,11 +118,7 @@ BEGIN
         );
 
     -- VM instances --
-    delete from vms 
-        where vmi in (
-            select vmi from vms 
-            where vms.did = OLD.did
-        );
+    delete from vms where did = OLD.did;
 
     -- Device network --
     delete from ips 
