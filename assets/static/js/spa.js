@@ -1709,7 +1709,7 @@ var vmips = Vue.component("vm-ips", {
         loadSelf: function() {
             const url = ipURL + "?VMI=" + this.VMI;
             get(url).then(data => this.rows = data || [])
-            get(iptypesURL).then(data => this.types = data)
+            get(iptypesURL).then(data => this.types = data || [])
         },
         updateIP(i) {
             var row = this.rows[i]
@@ -1767,7 +1767,13 @@ var vmEdit = Vue.component("vm-edit", {
     methods: {
         loadSelf: function() {
             if (this.$route.params.VMI > 0) {
-                getVM(this.$route.params.VMI).then(v => this.VM = v).catch(meh => {
+                getVM(this.$route.params.VMI).then(v => {
+                    if (v.Server) {
+                        this.VM = v
+                    } else {
+                        router.push("/vm/list")
+                    }
+                }).catch(meh => {
                     this.showList()
                 })
             } else {
