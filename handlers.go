@@ -300,7 +300,6 @@ func userLogin(w http.ResponseWriter, r *http.Request) (*user, error) {
 			}
 		}
 		remoteAddr := remoteHost(r)
-		log.Println("user:", obj.Username)
 		user, err := userAuth(obj.Username, obj.Password)
 		if err != nil {
 			return nil, err
@@ -357,7 +356,6 @@ func apiLogin(w http.ResponseWriter, r *http.Request) {
 			objFromForm(obj, r.Form)
 		}
 		remoteAddr := remoteHost(r)
-		log.Println("user:", obj.Username)
 		user, err := userAuth(obj.Username, obj.Password)
 		if err != nil {
 			auditLog(0, remoteAddr, "Login", err.Error())
@@ -641,11 +639,17 @@ func apiCheck(w http.ResponseWriter, r *http.Request) {
 	sendJSON(w, u)
 }
 
+func imgMan(w http.ResponseWriter, r *http.Request) {
+	u := struct{ URL string }{cfg.Main.ImgMan}
+	sendJSON(w, u)
+}
+
 var webHandlers = []hFunc{
 	{"/static/", StaticPage},
 	{"/ping", pingPage},
 	{"/servers", serverDump},
 	{"/script/", profileScript},
+	{"/imgman", imgMan},
 	{"/api/db/pragmas", apiPragmas},
 	{"/api/device/adjust/", MakeREST(deviceAdjust{})},
 	{"/api/device/audit/", deviceAudit},

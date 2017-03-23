@@ -48,6 +48,7 @@ type config struct {
 	Banner   string `gcfg:"banner"`
 	Key      string `gcfg:"key"`
 	LogDir   string `gcfg:"logdir"`
+	ImgMan   string `gcfg:"imgman"`
 	ReadOnly bool   `gcfg:"readonly"`
 	PXEBoot  bool   `gcfg:"pxeboot"`
 	NoKey    bool   `gcfg:"noKey"` // don't require API key for access (for testing only!!)

@@ -688,7 +688,11 @@ Vue.component("main-menu", {
        return {
            searchText: "",
            debug: false,
+           imgman: "",
        }
+    },
+    created: function() {
+        get("imgman").then(u => this.imgman = u.URL)
     },
     computed: {
         "debugAction": function() {
