@@ -345,6 +345,7 @@ DROP TRIGGER IF EXISTS racks_view_update;
 CREATE TRIGGER racks_view_update INSTEAD OF UPDATE ON racks_view 
 BEGIN
   update racks set 
+	rack      = ifnull(NEW.rack,OLD.rack),
 	rackunits = ifnull(NEW.rackunits,OLD.rackunits),
 	vendor_id = ifnull(NEW.vendor_id,OLD.vendor_id),
 	note = ifnull(NEW.note,OLD.note),
